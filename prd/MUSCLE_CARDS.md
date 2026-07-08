@@ -1,0 +1,1 @@
+Muscle Cards MVP spec. Read-only detail panel for a selected region. Shows status, load, recovery, recent activity, explanation factors and related exercises.
