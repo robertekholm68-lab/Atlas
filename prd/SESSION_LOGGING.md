@@ -1,0 +1,1 @@
+Session Logging MVP spec. User creates a session, selects exercises, logs sets, completes the session and triggers server-side engine recompute.
