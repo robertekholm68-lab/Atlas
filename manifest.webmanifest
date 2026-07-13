@@ -12,19 +12,31 @@
   "theme_color": "#090b10",
   "icons": [
     {
-      "src": "/icons/atlas-192.png",
+      "src": "/icons/atlas-48.png?v=5",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/atlas-96.png?v=5",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/atlas-192.png?v=5",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/atlas-512.png",
+      "src": "/icons/atlas-512.png?v=5",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/atlas-maskable-512.png",
+      "src": "/icons/atlas-maskable-512.png?v=5",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
