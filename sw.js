@@ -1,11 +1,15 @@
-const CACHE_NAME = "atlas-mobile-v2";
+const CACHE_NAME = "atlas-mobile-v3";
 const APP_SHELL = [
   "/",
-  "/manifest.webmanifest",
-  "/icons/atlas-192.png",
-  "/icons/atlas-512.png",
-  "/icons/atlas-apple-touch.png",
-  "/icons/atlas-maskable-512.png",
+  "/manifest.webmanifest?v=5",
+  "/favicon.ico?v=5",
+  "/icons/atlas-32.png?v=5",
+  "/icons/atlas-48.png?v=5",
+  "/icons/atlas-96.png?v=5",
+  "/icons/atlas-192.png?v=5",
+  "/icons/atlas-512.png?v=5",
+  "/icons/atlas-apple-touch.png?v=5",
+  "/icons/atlas-maskable-512.png?v=5",
 ];
 
 self.addEventListener("install", (event) => {
