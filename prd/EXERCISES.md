@@ -1,1 +1,0 @@
-Exercise Library MVP spec. Seeded catalogue with stable exercise IDs, movement patterns, equipment, difficulty and muscle activation references.

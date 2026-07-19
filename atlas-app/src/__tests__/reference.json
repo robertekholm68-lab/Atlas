@@ -1,0 +1,53 @@
+{
+  "epley1RM": 117,
+  "sessionLoad": {
+    "pectoralis_major": 400,
+    "triceps_brachii": 200,
+    "deltoid_anterior": 200,
+    "quadriceps": 400,
+    "gluteals": 320,
+    "hamstrings": 160,
+    "erector_spinae": 120,
+    "adductors": 120
+  },
+  "recovery_pec": {
+    "recoveryScore": 97,
+    "status": "ready",
+    "lastTrainedAt": 1700000000000,
+    "daysSince": 0
+  },
+  "readiness": 70,
+  "nutrition": {
+    "kcal": 355,
+    "protein": 23,
+    "carbs": 6,
+    "fat": 19,
+    "estimated": 1,
+    "total": 2
+  },
+  "search_abbore": [
+    "Abborre rå",
+    "Abborre kokt m. salt",
+    "Abborre filé panerad stekt"
+  ],
+  "search_lask": [
+    "Läsk",
+    "Läsk cola"
+  ],
+  "estimate": {
+    "kcal": 850,
+    "protein": 34,
+    "carbs": 78,
+    "fat": 43,
+    "hits": 3
+  },
+  "liftTrend_bench": {
+    "spanD": 56,
+    "pct": 0,
+    "n": 9,
+    "last": 117
+  },
+  "predictions": [],
+  "foodIndexLen": 2675,
+  "muscleCount": 21
+}

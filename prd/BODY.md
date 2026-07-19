@@ -1,1 +1,0 @@
-Body Map MVP spec. Includes front view, back view, zoom, pan, controlled rotation, selectable regions and detail panel. Full free 3D is deferred.
