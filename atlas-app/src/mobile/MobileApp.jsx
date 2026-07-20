@@ -1446,15 +1446,26 @@ function InstallCard({ onDismiss }) {
 }
 
 // Ärlig översikt: vad just den här telefonen klarar.
+
+// "202607202054" (UTC) -> lokal tid enligt telefonens tidszon.
+function byggTidLokalt(stämpel) {
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(String(stämpel || ""));
+  if (!m) return String(stämpel || "okänt");
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+  if (isNaN(d)) return String(stämpel);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function CapsSheet({ onClose }) {
   const caps = capabilities();
   const ok = caps.filter(c => c.ok).length;
   // Byggstämpeln syns här så man kan avgöra OM en uppdatering faktiskt landat.
   // Utan den är "det gick väldigt fort" omöjligt att skilja från "ingenting hände".
   const bygge = typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "okänt";
-  const läsligt = /^\d{12}$/.test(bygge)
-    ? `${bygge.slice(0,4)}-${bygge.slice(4,6)}-${bygge.slice(6,8)} ${bygge.slice(8,10)}:${bygge.slice(10,12)}`
-    : bygge;
+  // Stämpeln sätts i UTC vid bygget. Visas den rakt av ser den fel ut för alla som
+  // inte sitter i UTC — i Sverige två timmar bak på sommaren. Tolka som UTC, visa lokalt.
+  const läsligt = byggTidLokalt(bygge);
   return (
     <div>
       <SheetTitle>Vad din telefon klarar</SheetTitle>

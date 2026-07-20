@@ -245,3 +245,17 @@ describe("rösten är avstängd där den kraschat", () => {
     window.matchMedia = orig.mm;
   });
 });
+
+describe("byggstämpeln tolkas som UTC", () => {
+  // Stämpeln sätts med toISOString() vid bygget, alltså UTC. Visas den rakt av
+  // ser den två timmar fel ut i Sverige på sommaren.
+  it("202607202054 UTC är 22:54 svensk sommartid", () => {
+    const d = new Date(Date.UTC(2026, 6, 20, 20, 54));
+    const svensk = d.toLocaleString("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit" });
+    expect(svensk).toBe("22:54");
+  });
+  it("vintertid ger en timmes skillnad", () => {
+    const d = new Date(Date.UTC(2026, 0, 15, 20, 54));
+    expect(d.toLocaleString("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit" })).toBe("21:54");
+  });
+});
