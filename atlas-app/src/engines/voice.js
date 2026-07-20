@@ -167,6 +167,38 @@ export function voiceSupport() {
   return { ok: true, reason: "ok", note: "Säg vikt och reps, till exempel \"åttio åtta\"." };
 }
 
+
+/**
+ * Kollar att mikrofonen faktiskt är tillgänglig INNAN taligenkänningen startas.
+ *
+ * Varför: i en installerad Android-app (TWA) utan RECORD_AUDIO i manifestet finns
+ * ingen väg att fråga användaren om lov. Att då starta SpeechRecognition dödar
+ * hela processen — appen "kraschar" utan felmeddelande. getUserMedia misslyckas
+ * däremot med ett fångbart löfte, så vi frågar den först och startar bara om den
+ * säger ja. Spåret stängs direkt; vi ville bara veta om dörren är öppen.
+ */
+export async function micReady() {
+  try {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return { ok: false, reason: "saknas", note: "Den här enheten ger inte webbappar tillgång till mikrofonen." };
+    }
+    const ström = await navigator.mediaDevices.getUserMedia({ audio: true });
+    try { ström.getTracks().forEach(t => t.stop()); } catch (e) {}
+    return { ok: true, reason: "ok", note: "" };
+  } catch (err) {
+    const namn = (err && err.name) || "";
+    return {
+      ok: false,
+      reason: namn === "NotAllowedError" ? "nekad" : namn === "NotFoundError" ? "ingen-mikrofon" : "fel",
+      note: namn === "NotAllowedError"
+        ? "Mikrofonen är inte tillåten. Tillåt mikrofon för ATLAS i appens eller webbläsarens inställningar."
+        : namn === "NotFoundError"
+        ? "Ingen mikrofon hittades."
+        : "Mikrofonen går inte att använda här. Är ATLAS installerad som app kan den sakna mikrofonbehörighet — öppna den i webbläsaren i stället.",
+    };
+  }
+}
+
 /**
  * Startar en lyssning. Returnerar en avbrytfunktion.
  *
@@ -178,6 +210,19 @@ export function voiceSupport() {
  *    går att tolka som ett set, vilket räddar en del "åtta/åttio"-förväxlingar.
  */
 export function createSetListener({ onResult, onError, onEnd, timeoutMs = 8000 } = {}) {
+  const stöd0 = voiceSupport();
+  if (!stöd0.ok) { onError && onError(stöd0.reason, stöd0.note); return () => {}; }
+  // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
+  let avbruten0 = false, stoppaInre = null;
+  micReady().then(m => {
+    if (avbruten0) return;
+    if (!m.ok) { onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
+    stoppaInre = _startcreateSetListener({ onResult, onError, onEnd, timeoutMs });
+  });
+  return () => { avbruten0 = true; if (stoppaInre) stoppaInre(); };
+}
+
+function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
   const stöd = voiceSupport();
   if (!stöd.ok) { onError && onError(stöd.reason, stöd.note); return () => {}; }
 
@@ -244,6 +289,19 @@ export function createSetListener({ onResult, onError, onEnd, timeoutMs = 8000 }
  * du skickar. Därför ingen sifferparser, ingen rimlighetsspärr — bara text.
  */
 export function createDictation({ onResult, onError, onEnd, timeoutMs = 12000 } = {}) {
+  const stöd0 = voiceSupport();
+  if (!stöd0.ok) { onError && onError(stöd0.reason, stöd0.note); return () => {}; }
+  // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
+  let avbruten0 = false, stoppaInre = null;
+  micReady().then(m => {
+    if (avbruten0) return;
+    if (!m.ok) { onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
+    stoppaInre = _startcreateDictation({ onResult, onError, onEnd, timeoutMs });
+  });
+  return () => { avbruten0 = true; if (stoppaInre) stoppaInre(); };
+}
+
+function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
   const stöd = voiceSupport();
   if (!stöd.ok) { onError && onError(stöd.reason, stöd.note); return () => {}; }
 

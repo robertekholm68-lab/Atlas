@@ -109,7 +109,16 @@ describe("voiceSupport", () => {
 
 /* Wrappern testad mot en stubbad igenkännare — utan den täcks bara parsern. */
 describe("createSetListener", () => {
-  function stubba(alternativ, { fel = null } = {}) {
+  function stubbaMik(ok = true) {
+    const spår = { stop() {} };
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: () => ok ? Promise.resolve({ getTracks: () => [spår] }) : Promise.reject(Object.assign(new Error("nej"), { name: "NotAllowedError" })) },
+    });
+  }
+
+  function stubba(alternativ, { fel = null, mik = true } = {}) {
+    stubbaMik(mik);
     class FakeRec {
       constructor() { this.lang = ""; this.maxAlternatives = 1; }
       start() {
@@ -141,11 +150,13 @@ describe("createSetListener", () => {
     städa();
   });
 
-  it("förklarar nekad mikrofon på svenska", async () => {
-    const städa = stubba([], { fel: "not-allowed" });
+  it("startar aldrig igenkänningen när mikrofonen är nekad", async () => {
+    // Utan den här vakten dör hela processen i en installerad Android-app
+    // som saknar mikrofonbehörighet — appen "kraschar" utan felmeddelande.
+    const städa = stubba([], { mik: false });
     const { createSetListener } = await import("../engines/voice.js");
     const text = await new Promise(res => createSetListener({ onError: (_k, t) => res(t) }));
-    expect(text).toMatch(/blockerad/i);
+    expect(text).toMatch(/tillåten|mikrofon/i);
     städa();
   });
 
