@@ -13,16 +13,44 @@ const DAY_SV = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "
 // Riktiga foton: lägg en bildfil i src/assets/recipes/ som heter som receptets id
 // (t.ex. r_oat_berry.webp) så används den automatiskt i stället för SVG-identiteten.
 // Saknas bild faller receptet tillbaka på den genererade identiteten.
+//
+// Filnamnet får ha ett läsbart tillägg efter dubbelt understreck, så en bildbank går
+// att bläddra i utan uppslagstabell: "g_bowl_23__bowl-med-kikartor.webp" matchar
+// receptet g_bowl_23. Allt efter "__" ignoreras vid matchningen.
 const PHOTO_MODULES = import.meta.glob("../../assets/recipes/*.{jpg,jpeg,png,webp,avif}", { eager: true });
+export const photoIdFromFilename = name => name.replace(/\.[^.]+$/, "").split("__")[0];
 const RECIPE_PHOTOS = Object.fromEntries(Object.entries(PHOTO_MODULES).map(([path, mod]) => [
-  path.split("/").pop().replace(/\.[^.]+$/, ""), (mod && mod.default) || mod,
+  photoIdFromFilename(path.split("/").pop()), (mod && mod.default) || mod,
 ]));
-export function recipePhoto(recipe) { return RECIPE_PHOTOS[recipe.id] || recipe.image || null; }
+// Vissa recept är samma rätt i praktiken — avokadomacka med och utan tomat, räkpasta
+// i skål eller på tallrik. Då delar de bild i stället för att vi genererar två snarlika
+// påhittade foton. Nyckel = receptet utan egen bild, värde = receptet som har bilden.
+export const PHOTO_ALIASES = {
+  g_snack_10: "r_avokadomacka",     // avokadomacka utan tomat
+  r_shrimp_pasta: "g_bowl_07",      // räkpasta med spenat
+  r_shake: "g_snack_00",            // identiska ingredienser: whey, mjölk, banan
+  r_notmix_apple: "g_snack_07",     // dubblett: äpple + mandlar
+  r_apple_pb: "g_snack_12",         // dubblett: äpple + jordnötssmör
+  r_makrill_quinoa: "g_panna_45",   // makrill + quinoa, spenat resp. grönkål
+};
+
+export function recipePhoto(recipe) {
+  if (!recipe) return null;
+  const alias = PHOTO_ALIASES[recipe.id];
+  return RECIPE_PHOTOS[recipe.id] || (alias && RECIPE_PHOTOS[alias]) || recipe.image || null;
+}
 
 // Genererad bild-identitet: färgtema + enkelt motiv. Väger nästan inget och funkar offline.
-function RecipeIdentity({ recipe, size = 92 }) {
+export function RecipeIdentity({ recipe, size = 92 }) {
   const photo = recipePhoto(recipe);
-  if (photo) return <img src={photo} alt="" loading="lazy" style={{ width: size, height: size, objectFit: "cover", borderRadius: 12, display: "block", flexShrink: 0 }} />;
+  // Bilderna ligger som separata filer bredvid appen. Öppnar någon HTML-filen ensam,
+  // utan bildmappen, ska receptet falla tillbaka på den genererade identiteten i
+  // stället för att visa en trasig bildikon.
+  const [photoFailed, setPhotoFailed] = useState(false);
+  if (photo && !photoFailed) {
+    return <img src={photo} alt="" loading="lazy" onError={() => setPhotoFailed(true)}
+      style={{ width: size, height: size, objectFit: "cover", borderRadius: 12, display: "block", flexShrink: 0 }} />;
+  }
   const [c1, c2] = RECIPE_THEMES[recipe.theme] || RECIPE_THEMES.blue;
   const gid = `g_${recipe.id}`;
   const glyph = {

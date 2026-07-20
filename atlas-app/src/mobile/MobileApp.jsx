@@ -4,6 +4,7 @@ import { MUSCLES } from "../data/muscles.js";
 import { EXERCISES } from "../data/exercises.js";
 import { CARDIO, SPORT_INTENSITY } from "../data/exercises.js";
 import { restDoneCue, DEFAULT_CUES, notificationState, requestNotifications, playBeep, speak } from "../engines/cues.js";
+import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { bluetoothSupported, connectHeartRate, hrSummary } from "../engines/hr.js";
 import { nfcSupported, scanTags, writeTag, encodeTag } from "../engines/nfc.js";
 import { installAdvice, capabilities, isStandalone, platformKind } from "../engines/platform.js";
@@ -282,6 +283,11 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
   const cuesRef = useRef(cues);
   useEffect(() => { cuesRef.current = cues; }, [cues]);
   const [exact, setExact] = useState(false);
+  // Röstinmatning: lyssnar -> förslag -> bekräftelse. Sparar aldrig av sig själv.
+  const [hör, setHör] = useState(false);
+  const [förslag, setFörslag] = useState(null);      // { weight, reps } eller { repeat:true }
+  const [röstFel, setRöstFel] = useState(null);
+  const stoppa = useRef(null);
   const timer = useRef(null);
   useEffect(() => {
     if (rest > 0) {
@@ -320,6 +326,55 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
   const patchSet = (i, patch) => { const logged = (it.logged || []).slice(); logged[i] = { ...(logged[i] || { weight: psv(i, "weight"), reps: psv(i, "reps"), rpe: null }), ...patch }; setLogged(logged); };
   const bump = (field, delta) => setLive(L => { const items = L.items.slice(); const cur = items[L.idx]; const v = field === "weight" ? Math.max(0, +(cur.weight + delta).toFixed(1)) : Math.max(1, cur.reps + delta); items[L.idx] = { ...cur, [field]: v }; return { ...L, items }; });
   const doneCount = (it.logged || []).filter(Boolean).length;
+  const röstStöd = voiceSupport();
+  const röstPå = !!cues.voiceInput && röstStöd.ok;
+
+  const lyssna = () => {
+    if (hör) { stoppa.current && stoppa.current(); return; }
+    setRöstFel(null); setFörslag(null); setHör(true);
+    stoppa.current = createSetListener({
+      onResult: (r) => {
+        if (r.ok && r.repeat) {
+          const f = (it.logged || []).filter(Boolean).slice(-1)[0];
+          if (f) setFörslag({ weight: f.weight, reps: f.reps });
+          else setRöstFel("Det finns inget tidigare set att upprepa.");
+        } else if (r.ok) {
+          setFörslag({ weight: r.weight, reps: r.reps });
+        } else {
+          setRöstFel(
+            r.reason === "ett-tal" ? `Hörde bara ett tal${r.hint != null ? ` (${r.hint})` : ""}. Säg både vikt och reps.`
+            : r.reason === "vikt-orimlig" || r.reason === "reps-orimliga" ? "Det lät orimligt — säg om."
+            : "Uppfattade inte. Säg till exempel \u201dåttio åtta\u201d."
+          );
+        }
+      },
+      onError: (kod, text) => setRöstFel(text),
+      onEnd: () => { setHör(false); stoppa.current = null; },
+    });
+  };
+
+  // Bekräftat förslag: sätt vikt/reps OCH bocka av nästa ologgade set.
+  const godkänn = () => {
+    if (!förslag) return;
+    // nästa ologgade set, annars det sista
+    const antal = it.sets || 1;
+    const loggade = it.logged || [];
+    let idx = -1;
+    for (let n = 0; n < antal; n++) if (!loggade[n]) { idx = n; break; }
+    if (idx === -1) idx = antal - 1;
+    setLive(L => {
+      const items = L.items.slice(); const cur = items[L.idx];
+      const logged = (cur.logged || []).slice();
+      logged[idx] = { weight: förslag.weight, reps: förslag.reps, rpe: null };
+      items[L.idx] = { ...cur, weight: förslag.weight, reps: förslag.reps, logged };
+      return { ...L, items };
+    });
+    setRest(it.restSec);
+    setFörslag(null);
+  };
+
+  useEffect(() => () => { stoppa.current && stoppa.current(); }, []);
+
   const load = computeSessionLoad([].concat(...live.items.map(x => (x.logged || []).filter(Boolean).map(l => ({ exerciseId: x.exId, weight: l.weight, reps: l.reps })))), EXERCISES, bodyweight || 75);
   const loadTop = Object.entries(load).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const loadMax = loadTop.length ? loadTop[0][1] : 1;
@@ -364,6 +419,35 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
           <StepBox label="Arbetsvikt" value={`${it.weight} kg`} onMinus={() => bump("weight", -2.5)} onPlus={() => bump("weight", 2.5)} />
           <StepBox label="Reps" value={it.reps} onMinus={() => bump("reps", -1)} onPlus={() => bump("reps", 1)} />
         </div>
+        {röstPå && (
+          <div style={{ marginTop: 10 }}>
+            <button onClick={lyssna} aria-label={hör ? "Sluta lyssna" : "Säg vikt och reps"} style={{
+              width: "100%", padding: "12px 14px", borderRadius: 12, cursor: "pointer",
+              border: `1px solid ${hör ? C.purple : C.border}`,
+              background: hör ? "rgba(155,124,255,0.16)" : C.card2,
+              color: hör ? C.purple : C.muted, fontSize: 14, fontWeight: 600,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
+              <span style={{ fontSize: 17 }}>{hör ? "\u25CF" : "\u{1F3A4}"}</span>
+              {hör ? "Lyssnar \u2014 säg vikt och reps" : "Säg vikt och reps"}
+            </button>
+
+            {förslag && (
+              <div style={{ marginTop: 8, padding: "12px 14px", borderRadius: 12, background: "rgba(155,124,255,0.10)", border: `1px solid ${C.purple}66` }}>
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>Uppfattade \u2014 stämmer det?</div>
+                <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 10 }}>{förslag.weight} kg \u00D7 {förslag.reps} reps</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={godkänn} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: C.green, color: "#04120a", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Spara setet</button>
+                  <button onClick={() => setFörslag(null)} style={{ padding: "12px 16px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontSize: 14, cursor: "pointer" }}>Ångra</button>
+                </div>
+              </div>
+            )}
+
+            {röstFel && !förslag && (
+              <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, fontSize: 12.5, color: C.muted, lineHeight: 1.45 }}>{röstFel}</div>
+            )}
+          </div>
+        )}
         {it.suggestion && (
           <div style={{ marginTop: 10, padding: "9px 12px", borderRadius: 10, background: "rgba(155,124,255,0.09)", border: `1px solid ${C.purple}44`, fontSize: 12.5, color: C.text, lineHeight: 1.45 }}>
             <span style={{ color: C.purple }}>✦</span> {it.suggestion.note}{it.suggestion.prev && it.suggestion.prev.weight ? ` (förra: ${it.suggestion.prev.weight} kg${it.suggestion.prev.reps ? ` × ${it.suggestion.prev.reps}` : ""})` : ""}
@@ -1066,6 +1150,7 @@ function GPSSheet({ ctx, onClose }) {
 function CuesSheet({ ctx, onClose }) {
   const cues = ctx.cues || DEFAULT_CUES;
   const set = (k, v) => ctx.setCues({ ...cues, [k]: v });
+  const röst = voiceSupport();
   const [notifState, setNotifState] = useState(notificationState());
   const askNotif = async () => { const p = await requestNotifications(); setNotifState(p); set("notify", p === "granted"); };
   const Row = ({ k, label, desc, on, onToggle }) => (
@@ -1085,6 +1170,25 @@ function CuesSheet({ ctx, onClose }) {
       <Row label="Vibration" desc="Fungerar på Android; iPhone saknar stöd för vibration i webbappar." on={cues.vibrate !== false} onToggle={() => set("vibrate", cues.vibrate === false)} />
       <Row label="Notis" desc={notifState === "unsupported" ? "Stöds inte i den här webbläsaren." : notifState === "denied" ? "Nekad — tillåt notiser för sidan i webbläsarens inställningar." : "Når fram även när appen inte är i förgrunden. På iPhone krävs att appen lagts till på hemskärmen."} on={!!cues.notify && notifState === "granted"} onToggle={() => { if (notifState === "granted") set("notify", !cues.notify); else askNotif(); }} />
       <button onClick={() => { playBeep({ times: 2 }); if (cues.voice) speak("Vilan är slut"); }} style={{ ...ghostBtnLg, width: "100%", marginTop: 14 }}>Testa signalen</button>
+
+      <div style={{ marginTop: 22, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 12, letterSpacing: 0.6, textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>Inmatning</div>
+        <Row
+          label="Röstinmatning"
+          desc={röst.ok
+            ? 'Säg vikt och reps under passet, t.ex. "åttio åtta". Rösten föreslår — du bekräftar innan setet sparas.'
+            : röst.note}
+          on={!!cues.voiceInput && röst.ok}
+          onToggle={() => { if (röst.ok) set("voiceInput", !cues.voiceInput); }}
+        />
+        {röst.ok && cues.voiceInput && (
+          <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+            Fungerar bäst nära munnen och i lugn miljö — musik och skrammel drar ner träffsäkerheten.
+            Säg <span style={{ color: C.text }}>"åttio åtta"</span>, <span style={{ color: C.text }}>"82,5 kilo 6 reps"</span> eller <span style={{ color: C.text }}>"samma igen"</span>.
+            Igenkänningen kan behöva nät på vissa telefoner.
+          </div>
+        )}
+      </div>
       <button onClick={onClose} style={{ ...bigBtn, marginTop: 8 }}>Klart</button>
     </div>
   );

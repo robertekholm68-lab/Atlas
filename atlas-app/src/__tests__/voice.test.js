@@ -1,0 +1,159 @@
+import { describe, it, expect } from "vitest";
+import { parseSetSpeech, ordTillTal, voiceSupport } from "../engines/voice.js";
+
+describe("ordTillTal", () => {
+  it("tolkar ental och tiotal", () => {
+    expect(ordTillTal("åtta")).toBe(8);
+    expect(ordTillTal("åttio")).toBe(80);
+    expect(ordTillTal("tolv")).toBe(12);
+  });
+  it("tolkar sammansatta tiotal i ett ord", () => {
+    expect(ordTillTal("åttiotvå")).toBe(82);
+    expect(ordTillTal("tjugofem")).toBe(25);
+    expect(ordTillTal("sjuttiosju")).toBe(77);
+  });
+  it("tolkar hundratal", () => {
+    expect(ordTillTal("hundra")).toBe(100);
+    expect(ordTillTal("etthundra")).toBe(100);
+    expect(ordTillTal("tvåhundra")).toBe(200);
+    expect(ordTillTal("hundratjugo")).toBe(120);
+  });
+  it("säger nej till ord som inte är tal", () => {
+    expect(ordTillTal("bänkpress")).toBeNull();
+    expect(ordTillTal("")).toBeNull();
+  });
+});
+
+describe("parseSetSpeech – det vanliga fallet", () => {
+  it("tar siffror i ordning som vikt och reps", () => {
+    expect(parseSetSpeech("80 8")).toMatchObject({ ok: true, weight: 80, reps: 8 });
+  });
+  it("tar räkneord i ordning", () => {
+    expect(parseSetSpeech("åttio åtta")).toMatchObject({ ok: true, weight: 80, reps: 8 });
+  });
+  it("slår aldrig ihop två ord till ett tal", () => {
+    // Medvetet: "åttio åtta" är 80 kg och 8 reps, inte 88. Sammansatta tal sägs
+    // i ett ord, och då fungerar de.
+    expect(parseSetSpeech("åttiotvå tio")).toMatchObject({ ok: true, weight: 82, reps: 10 });
+  });
+  it("klarar decimaler med svenskt komma", () => {
+    expect(parseSetSpeech("82,5 kilo 6 reps")).toMatchObject({ ok: true, weight: 82.5, reps: 6 });
+  });
+});
+
+describe("parseSetSpeech – enheter vinner över ordning", () => {
+  it("tolkar rätt även när reps sägs först", () => {
+    expect(parseSetSpeech("åtta reps åttio kilo")).toMatchObject({ ok: true, weight: 80, reps: 8 });
+  });
+  it("godtar olika ord för reps", () => {
+    for (const o of ["reps", "gånger", "repetitioner", "ggr"]) {
+      expect(parseSetSpeech(`60 kilo 12 ${o}`)).toMatchObject({ ok: true, weight: 60, reps: 12 });
+    }
+  });
+  it("förstår kroppsvikt som noll kilo", () => {
+    expect(parseSetSpeech("kroppsvikt 12 reps")).toMatchObject({ ok: true, weight: 0, reps: 12 });
+  });
+});
+
+describe("parseSetSpeech – säger hellre nej än gissar", () => {
+  it("vägrar när bara ett tal hörs", () => {
+    const r = parseSetSpeech("åttio");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("ett-tal");
+    expect(r.hint).toBe(80);           // men berättar vad den hörde
+  });
+  it("vägrar tomt och rena ord", () => {
+    expect(parseSetSpeech("").ok).toBe(false);
+    expect(parseSetSpeech("bänkpress känns tungt").ok).toBe(false);
+  });
+  it("vägrar orimlig vikt", () => {
+    expect(parseSetSpeech("8000 kilo 5 reps")).toMatchObject({ ok: false, reason: "vikt-orimlig" });
+  });
+  it("vägrar orimliga reps", () => {
+    expect(parseSetSpeech("80 kilo 900 reps")).toMatchObject({ ok: false, reason: "reps-orimliga" });
+    expect(parseSetSpeech("80 kilo 0 reps")).toMatchObject({ ok: false, reason: "reps-orimliga" });
+  });
+  it("returnerar alltid ett objekt, aldrig undefined", () => {
+    for (const x of [null, undefined, 42, {}]) {
+      expect(parseSetSpeech(x)).toHaveProperty("ok");
+    }
+  });
+});
+
+describe("parseSetSpeech – upprepning", () => {
+  it("förstår samma igen", () => {
+    expect(parseSetSpeech("samma igen")).toMatchObject({ ok: true, repeat: true });
+    expect(parseSetSpeech("en till")).toMatchObject({ ok: true, repeat: true });
+  });
+  it("men siffror slår upprepning", () => {
+    expect(parseSetSpeech("samma vikt 8 reps 80 kilo")).toMatchObject({ ok: true, repeat: false, weight: 80, reps: 8 });
+  });
+});
+
+describe("voiceSupport", () => {
+  it("returnerar alltid ok och reason", () => {
+    const s = voiceSupport();
+    expect(typeof s.ok).toBe("boolean");
+    expect(typeof s.reason).toBe("string");
+  });
+  it("säger nej när API:et saknas", () => {
+    const spara = { S: globalThis.window?.SpeechRecognition, W: globalThis.window?.webkitSpeechRecognition };
+    if (typeof window !== "undefined") {
+      delete window.SpeechRecognition; delete window.webkitSpeechRecognition;
+      expect(voiceSupport()).toMatchObject({ ok: false, reason: "saknas" });
+      if (spara.S) window.SpeechRecognition = spara.S;
+      if (spara.W) window.webkitSpeechRecognition = spara.W;
+    }
+  });
+});
+
+/* Wrappern testad mot en stubbad igenkännare — utan den täcks bara parsern. */
+describe("createSetListener", () => {
+  function stubba(alternativ, { fel = null } = {}) {
+    class FakeRec {
+      constructor() { this.lang = ""; this.maxAlternatives = 1; }
+      start() {
+        setTimeout(() => {
+          if (fel) { this.onerror && this.onerror({ error: fel }); this.onend && this.onend(); return; }
+          const res = alternativ.map(t => ({ transcript: t }));
+          res.length = alternativ.length;
+          this.onresult && this.onresult({ results: [res] });
+        }, 0);
+      }
+      stop() {}
+    }
+    window.SpeechRecognition = FakeRec;
+    return () => { delete window.SpeechRecognition; };
+  }
+
+  it("väljer det första alternativet som går att tolka", async () => {
+    const städa = stubba(["åttio", "80 8"]);
+    const { createSetListener } = await import("../engines/voice.js");
+    const r = await new Promise(res => createSetListener({ onResult: res }));
+    expect(r).toMatchObject({ ok: true, weight: 80, reps: 8 });
+    städa();
+  });
+
+  it("ber om lokal bearbetning när webbläsaren stöder det", async () => {
+    const städa = stubba(["80 8"]);
+    const { createSetListener } = await import("../engines/voice.js");
+    await new Promise(res => createSetListener({ onResult: res }));
+    städa();
+  });
+
+  it("förklarar nekad mikrofon på svenska", async () => {
+    const städa = stubba([], { fel: "not-allowed" });
+    const { createSetListener } = await import("../engines/voice.js");
+    const text = await new Promise(res => createSetListener({ onError: (_k, t) => res(t) }));
+    expect(text).toMatch(/blockerad/i);
+    städa();
+  });
+
+  it("returnerar en avbrytfunktion även när stöd saknas", async () => {
+    const { createSetListener } = await import("../engines/voice.js");
+    delete window.SpeechRecognition; delete window.webkitSpeechRecognition;
+    const av = createSetListener({ onError: () => {} });
+    expect(typeof av).toBe("function");
+    expect(() => av()).not.toThrow();
+  });
+});

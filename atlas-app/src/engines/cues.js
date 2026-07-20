@@ -81,4 +81,6 @@ export function restDoneCue(prefs = {}) {
   return used;
 }
 
-export const DEFAULT_CUES = { sound: true, voice: false, vibrate: true, notify: false };
+// voiceInput = röstinmatning av vikt/reps under pass. Tillval, av som standard:
+// gymljud gör igenkänningen ojämn, och den ska aldrig vara enda vägen in.
+export const DEFAULT_CUES = { sound: true, voice: false, vibrate: true, notify: false, voiceInput: false };

@@ -28,11 +28,25 @@ export function recipeMacros(recipe) {
 // Vilken kosthållning receptet passar: vegan ⊂ vegetarian ⊂ pescetarian ⊂ omnivore.
 export function recipeDiet(recipe) {
   const tags = new Set();
-  (recipe.i || []).forEach(ing => ((FOOD_TRAITS[ing.id] || {}).t || []).forEach(t => tags.add(t)));
+  let unknown = false;
+  (recipe.i || []).forEach(ing => {
+    const tr = FOOD_TRAITS[ing.id];
+    if (!tr) { unknown = true; return; }
+    (tr.t || []).forEach(t => tags.add(t));
+  });
   if (tags.has("meat")) return "omnivore";
   if (tags.has("fish") || tags.has("shellfish")) return "pescetarian";
+  // Försiktighetsprincip: en otaggad ingrediens gör att receptet klassas som "vanligt".
+  // Felriktningen är medveten — ett veganskt recept som visas för allätare är harmlöst,
+  // ett laxrecept i en vegansk veckomeny är ett svek.
+  if (unknown) return "omnivore";
   if (tags.has("dairy") || tags.has("egg")) return "vegetarian";
   return "vegan";
+}
+
+// Har receptet ingredienser utan taggar? Då kan allergier inte garanteras.
+export function recipeHasUnknown(recipe) {
+  return (recipe.i || []).some(ing => !FOOD_TRAITS[ing.id]);
 }
 
 // Restriktioner receptet krockar med (samma id:n som DIET_RESTRICTIONS).
@@ -55,6 +69,9 @@ const DIET_RANK = { vegan: 0, vegetarian: 1, pescetarian: 2, omnivore: 3 };
 
 // Passar receptet användarens kostval, kosthållning och restriktioner?
 export function recipeFits(recipe, { diet = "omnivore", restrictions = [], dietApproach = null } = {}) {
+  // Med restriktioner valda: recept med otaggade ingredienser utesluts — vi kan inte
+  // lova att de är fria från t.ex. nötter, och en gissning är värre än ett smalare utbud.
+  if ((restrictions || []).length && recipeHasUnknown(recipe)) return false;
   if (DIET_RANK[recipeDiet(recipe)] > DIET_RANK[diet || "omnivore"]) return false;
   const bad = recipeAllergens(recipe);
   if ((restrictions || []).some(r => bad.includes(r))) return false;

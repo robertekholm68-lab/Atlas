@@ -35,6 +35,7 @@ export function capabilities() {
     { id: "notifications", label: "Notiser", ok: !!(win && "Notification" in win), note: "Når fram när appen inte är i förgrunden. På iPhone krävs att appen ligger på hemskärmen." },
     { id: "vibration", label: "Vibration", ok: !!(nav && "vibrate" in nav), note: "Haptik när vilan är slut. Finns inte på iPhone — använd ljud i stället." },
     { id: "audio", label: "Ljudsignal", ok: !!(win && (win.AudioContext || win.webkitAudioContext)), note: "Pip när vilan är slut. Fungerar överallt." },
+    { id: "voiceInput", label: "Röstinmatning", ok: !!(win && (win.SpeechRecognition || win.webkitSpeechRecognition)) && !(platformKind() === "ios" && isStandalone()), note: "Säg vikt och reps under passet. Apple har inte kopplat in mikrofonen för webbappar på hemskärmen, så den är tyst där." },
     { id: "speech", label: "Talad cue", ok: !!(win && "speechSynthesis" in win), note: "Säger till när vilan är slut." },
     { id: "bluetooth", label: "Pulsband", ok: !!(nav && nav.bluetooth), note: "Puls från BLE-band. Apple har inte implementerat Web Bluetooth, så det saknas på iPhone." },
     { id: "nfc", label: "NFC-taggar", ok: !!(win && "NDEFReader" in win), note: "Tagga maskiner i gymmet. Apple har inte implementerat Web NFC, så det saknas på iPhone." },

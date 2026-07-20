@@ -31,8 +31,12 @@ describe("brygga mobil → webb", () => {
   });
 
   it("skriver inte om ingenting ändrats — väcker inte andra fliken i onödan", () => {
-    expect(writeBridge({ sessions: [S("a")], food: [] })).toBe(true);
-    expect(writeBridge({ sessions: [S("a")], food: [] })).toBe(false);
+    // Samma objekt båda gångerna. Skapades passet två gånger fick det två olika
+    // Date.now() och innehållet skilde sig åt på millisekunden — då SKA bryggan
+    // skriva, och testet föll slumpmässigt utan att något var fel i appen.
+    const pass = S("a", 1_700_000_000_000);
+    expect(writeBridge({ sessions: [pass], food: [] })).toBe(true);
+    expect(writeBridge({ sessions: [pass], food: [] })).toBe(false);
   });
 
   it("trasigt innehåll i brevlådan kraschar inte, det ignoreras", () => {

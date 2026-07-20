@@ -13,6 +13,8 @@ const BUILD = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12);
 const SW_SOURCE = `
 const CACHE = "atlas-mobile-${BUILD}";
 self.addEventListener("install", () => { self.skipWaiting(); });
+// Receptbilder ligger som separata filer bredvid appen. De hämtas en gång och
+// ligger sedan kvar i cachen även när en ny appversion rullas ut.
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
@@ -55,11 +57,17 @@ const emitServiceWorker = () => ({
 export default defineConfig({
   base: "./",
   define: { __ATLAS_BUILD__: JSON.stringify(BUILD) },
-  plugins: [react(), viteSingleFile(), emitServiceWorker()],
+  plugins: [react(), viteSingleFile({ useRecommendedBuildConfig: false }), emitServiceWorker()],
   build: {
-    assetsInlineLimit: 100000000,
+    // Se kommentaren i vite.config.js: bilder hålls utanför bygget så att en ny
+    // appversion inte tvingar fram en ny nedladdning av hela bildbanken.
+    // Allt bakas in UTOM receptbilderna. Inbakade bilder skulle laddas ner på nytt
+    // vid varje appuppdatering; separata filer ligger kvar i service workerns cache.
+    assetsInlineLimit: (filePath) => !/\.(webp|png|jpe?g|avif)$/i.test(filePath),
+    assetsDir: "",   // filerna måste ligga bredvid HTML:en — koden refererar dem relativt
+    chunkSizeWarningLimit: 100000000,
     cssCodeSplit: false,
     outDir: "dist-mobile",
-    rollupOptions: { input: resolve(process.cwd(), "mobile.html") },
+    rollupOptions: { input: resolve(process.cwd(), "mobile.html"), output: { inlineDynamicImports: true } },
   },
 });

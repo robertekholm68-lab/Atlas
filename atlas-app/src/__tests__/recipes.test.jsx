@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import { RECIPES } from "../data/recipes.js";
-import { recipeMacros, recipeDiet, recipeAllergens, recipeFits, filterRecipes, generateWeekMenu, shoppingList, recipeLogEntry } from "../engines/recipes.js";
+import { recipeMacros, recipeDiet, recipeAllergens, recipeFits, filterRecipes, generateWeekMenu,  shoppingList, recipeLogEntry, recipeHasUnknown } from "../engines/recipes.js";
 import { recipePhoto } from "../features/recipes/index.jsx";
 
 describe("recept — makron ur ingredienser", () => {
@@ -95,12 +95,34 @@ describe("veckomeny", () => {
 
 describe("receptbilder — sömmen mot riktiga foton", () => {
   it("utan fil i assets/recipes faller receptet tillbaka på genererad identitet", () => {
-    RECIPES.forEach(r => { if (!r.image) expect(recipePhoto(r)).toBe(null); });
+    // Recept med inlagt foto ska förstås ge en bild — testet gäller de övriga.
+    const utanFoto = RECIPES.filter(r => !r.image && !recipePhoto(r));
+    expect(utanFoto.length).toBeGreaterThan(0);
+    utanFoto.forEach(r => expect(recipePhoto(r)).toBe(null));
   });
   it("ett recept med image-fält (extern URL) används rakt av", () => {
     expect(recipePhoto({ id: "finns_inte", image: "https://exempel.se/bild.webp" })).toBe("https://exempel.se/bild.webp");
   });
   it("varje recept har ett tema och motiv för identiteten", () => {
     RECIPES.forEach(r => { expect(r.theme).toBeTruthy(); expect(r.icon).toBeTruthy(); });
+  
+
+});
+});
+
+describe("recept — taggdisciplin (försiktighetsprincipen)", () => {
+  it("varje recept har enbart taggade ingredienser — annars vägrar sviten", () => {
+    const otaggade = RECIPES.filter(recipeHasUnknown).map(r => r.id);
+    expect(otaggade).toEqual([]);
+  });
+
+  it("otaggad ingrediens klassar receptet som vanligt, aldrig veganskt", () => {
+    const fejk = { i: [{ id: "slv_9999_finns_inte", g: 100 }, { id: "spinach", g: 50 }] };
+    expect(recipeDiet(fejk)).toBe("omnivore");
+  });
+
+  it("med restriktioner valda utesluts recept med otaggade ingredienser helt", () => {
+    const fejk = { i: [{ id: "slv_9999_finns_inte", g: 100 }] };
+    expect(recipeFits(fejk, { diet: "omnivore", restrictions: ["nuts"] })).toBe(false);
   });
 });
