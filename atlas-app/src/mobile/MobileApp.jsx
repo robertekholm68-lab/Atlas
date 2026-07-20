@@ -1449,9 +1449,19 @@ function InstallCard({ onDismiss }) {
 function CapsSheet({ onClose }) {
   const caps = capabilities();
   const ok = caps.filter(c => c.ok).length;
+  // Byggstämpeln syns här så man kan avgöra OM en uppdatering faktiskt landat.
+  // Utan den är "det gick väldigt fort" omöjligt att skilja från "ingenting hände".
+  const bygge = typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "okänt";
+  const läsligt = /^\d{12}$/.test(bygge)
+    ? `${bygge.slice(0,4)}-${bygge.slice(4,6)}-${bygge.slice(6,8)} ${bygge.slice(8,10)}:${bygge.slice(10,12)}`
+    : bygge;
   return (
     <div>
       <SheetTitle>Vad din telefon klarar</SheetTitle>
+      <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 10, background: C.card2, border: `1px solid ${C.border}`, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+        Byggd <span style={{ color: C.text, fontWeight: 600 }}>{läsligt}</span> · {isStandalone() ? "körs som installerad app" : "körs i webbläsaren"}
+        <div style={{ marginTop: 4 }}>Ändras inte tiden efter en omstart har uppdateringen inte landat.</div>
+      </div>
       <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.55, marginBottom: 12 }}>
         {ok} av {caps.length} funktioner är tillgängliga här. ATLAS är ett och samma bygge — det som saknas beror på webbläsaren, inte på appen.
       </div>

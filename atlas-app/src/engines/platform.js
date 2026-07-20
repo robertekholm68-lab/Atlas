@@ -3,6 +3,12 @@
 // (Gränserna följer inte ens alltid operativsystemet: Web Bluetooth finns i Chrome på
 // Android men inte i Firefox på Android. Därför frågar vi webbläsaren, inte OS:et.)
 
+// Installerad app på Android (TWA eller hemskärms-PWA). Rösten är avstängd där
+// tills vi vet varför den dödar processen — en krasch är värre än en saknad funktion.
+export function isInstalledAndroid() {
+  return platformKind() === "android" && isStandalone();
+}
+
 export function isStandalone() {
   try {
     if (typeof window === "undefined") return false;

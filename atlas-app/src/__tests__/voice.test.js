@@ -229,3 +229,19 @@ describe("självläkning – appen upptäcker att den dog i mikrofonen", () => {
     expect(localStorage.getItem("atlas.voice.pending")).toBeNull();
   });
 });
+
+describe("rösten är avstängd där den kraschat", () => {
+  it("installerad Android-app säger nej med förklaring", async () => {
+    const p = await import("../engines/platform.js");
+    const orig = { ua: navigator.userAgent, mm: window.matchMedia };
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Linux; Android 14)" });
+    window.matchMedia = () => ({ matches: true });
+    expect(p.isInstalledAndroid()).toBe(true);
+    const s = voiceSupport();
+    expect(s.ok).toBe(false);
+    expect(s.reason).toBe("android-installerad");
+    expect(s.note).toMatch(/Chrome/);
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: orig.ua });
+    window.matchMedia = orig.mm;
+  });
+});

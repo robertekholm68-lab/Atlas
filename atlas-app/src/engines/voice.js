@@ -9,7 +9,7 @@
 // den sortens påhittade siffra ATLAS är byggd för att inte visa. Därför går allt
 // via ett förslag som användaren bekräftar.
 
-import { platformKind, isStandalone } from "./platform.js";
+import { platformKind, isStandalone, isInstalledAndroid } from "./platform.js";
 
 /* ---------- svenska räkneord ---------- */
 
@@ -151,6 +151,10 @@ export function parseSetSpeech(text) {
  */
 export function voiceSupport() {
   if (typeof window === "undefined") return { ok: false, reason: "ingen-window", note: "" };
+  if (isInstalledAndroid()) return {
+    ok: false, reason: "android-installerad",
+    note: "Avstängd i den installerade appen — mikrofonen har dödat appen där och orsaken är inte fastställd. Öppna ATLAS i Chrome så fungerar rösten.",
+  };
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Rec) return {
     ok: false, reason: "saknas",
