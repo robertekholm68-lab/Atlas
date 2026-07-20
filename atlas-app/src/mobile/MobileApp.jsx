@@ -30,7 +30,20 @@ function save(k, v) { try { localStorage.setItem(LS(k), JSON.stringify(v)); } ca
 const PPL = ALL_TEMPLATES.find(t => t.family === "ppl" && t.level === "Intermediate") || ALL_TEMPLATES[0];
 const DEMO_PROGRAM = copyProgram(PPL, { name: "Min PPL", active: true });
 
-const C = { bg: "#090b10", card: "#11151d", card2: "#171c26", border: "#29313e", muted: "#8994a5", text: "#f4f7fa", blue: "#4DA3FF", purple: "#9B7CFF", green: "#39D98A", yellow: "#FFD166", red: "#FF5C5C" };
+// Designspråk 2026-07-20: nära svart, EN accent (lime), statusfärger endast för data.
+// blue/purple behålls som NYCKLAR men pekar på accenten — ett fyrtiotal gamla
+// anropsställen blir rätt utan jakt, och glömmer någon en nyckel blir det ändå
+// rätt färg i stället för ett fel.
+const C = {
+  bg: "#0A0A0A", card: "#141414", card2: "#181818", border: "#232323",
+  muted: "#8A8F98", text: "#FFFFFF",
+  lime: "#D4FF3F", blue: "#D4FF3F", purple: "#D4FF3F",
+  green: "#39D98A", yellow: "#FFD166", red: "#FF5C5C", nodata: "#5E6673",
+};
+// Rubriker: kondenserad grotesk i versaler. Roboto Condensed finns på Android,
+// Arial Narrow på äldre system; resten av stacken tar vid där de saknas.
+const HFONT = "'Roboto Condensed','Arial Narrow',sans-serif-condensed,sans-serif";
+const hdr = (size = 22) => ({ fontFamily: HFONT, fontSize: size, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.6, lineHeight: 1.05 });
 const fmtTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const sv = id => (MUSCLES[id] && MUSCLES[id].name) || id;
 
@@ -172,7 +185,7 @@ export function MobileApp() {
         setSessions(m === "demo" ? DEMO_SESSIONS.slice() : []);
         if (prof.weight) setWeights([{ id: `w_${Date.now()}`, ts: Date.now(), kg: prof.weight }]);
       }} />}
-      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym, röstKrasch}}
+      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym, röstKrasch, sessions}}
         onResume={() => setScreen("workout")}
         onDiscard={() => setLive(null)} />}
       {mode && screen === "workout" && live && <Workout {...{ live, setLive, finishWorkout, setSheet, cues, bodyweight }}
@@ -182,7 +195,7 @@ export function MobileApp() {
 
       {mode && screen === "home" && <TabBar setSheet={setSheet} startWorkout={startWorkout} />}
 
-      {sheet && <Sheet name={sheet} onClose={() => setSheet(null)} ctx={{ sessions, setSessions, queue, setQueue, checkin, setCheckin, checkins, setCheckins, foodLog, setFoodLog, cues, setCues, installHidden, setInstallHidden, weights, setWeights, notes, setNotes, profile, setProfile, mode, muscleStates, overall, nw, DEMO_PROGRAM }} />}
+      {sheet && <Sheet name={sheet} onClose={() => setSheet(null)} ctx={{ sessions, setSessions, queue, setQueue, checkin, setCheckin, checkins, setCheckins, foodLog, setFoodLog, cues, setCues, installHidden, setInstallHidden, weights, setWeights, notes, setNotes, profile, setProfile, mode, muscleStates, overall, nw, DEMO_PROGRAM, setSheet }} />}
     </div>
   );
 }
@@ -234,98 +247,145 @@ function ModePicker({ onPick }) {
   );
 }
 
-function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null, röstKrasch = false }) {
-  const rd = overall == null ? C.muted : overall >= 76 ? C.green : overall >= 56 ? C.yellow : C.red;
-  const lbl = overall == null ? "För lite data" : overall >= 76 ? "Bra beredskap" : overall >= 56 ? "Måttlig beredskap" : "Låg beredskap";
-  const top = Object.entries(muscleStates).filter(([, s]) => s.status !== "no_data").sort((a, b) => a[1].readiness - b[1].readiness).slice(0, 2);
+function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null, röstKrasch = false, sessions = [] }) {
+  // Designspråk 2026-07-20: kartan dominerar, EN primärhandling, tre genvägar.
+  // Åtta snabbknappar i rad var själva plottret — resten bor i menyn nu.
+
+  const idag = new Date();
+  const datum = idag.toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" });
+
+  // Veckans pass räknas per kalendervecka mån–sön — samma definition som nutrition.
+  const vd = (idag.getDay() + 6) % 7;
+  const veckostart = new Date(idag); veckostart.setDate(idag.getDate() - vd); veckostart.setHours(0, 0, 0, 0);
+  const veckansPass = (sessions || []).filter(x => x && (x.completedAt || 0) >= veckostart.getTime()).length;
+  const senast = (() => {
+    const t = (sessions || []).map(x => x && x.completedAt).filter(Boolean).sort((a, b) => b - a)[0];
+    if (!t) return "\u2014";
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    const d1 = new Date(t); d1.setHours(0, 0, 0, 0);
+    const d = Math.round((d0 - d1) / 86400000);
+    return d <= 0 ? "Idag" : d === 1 ? "Igår" : `${d} dgr`;
+  })();
+
+  // Huvudbeskedet: EN mening som svarar på "vad ska jag göra idag?".
+  // Härledd ur muscleStates — aldrig påhittad. Utan underlag sägs det rakt ut.
+  const besked = (() => {
+    const med = Object.entries(muscleStates).filter(([, x]) => x.status !== "no_data" && x.readiness != null);
+    if (!med.length) return { rad: "Ingen historik än. Logga ett pass så börjar kartan färgas.", tom: true };
+    const redo = med.filter(([, x]) => x.readiness >= 76).sort((a, b) => b[1].readiness - a[1].readiness);
+    const trött = med.filter(([, x]) => x.readiness < 56).sort((a, b) => a[1].readiness - b[1].readiness);
+    const namn = arr => arr.slice(0, 2).map(([id]) => sv(id)).join(" och ");
+    if (redo.length && trött.length) return { rad: `${namn(redo)} är redo. ${sv(trött[0][0])} behöver mer vila.` };
+    if (redo.length) return { rad: `${namn(redo)} är redo för belastning.` };
+    if (trött.length) return { rad: "Kroppen behöver återhämtning idag. Ta det lugnt eller vila." };
+    return { rad: "Måttlig beredskap över hela kroppen." };
+  })();
+
+  const osäkert = overall != null && (sessions || []).length < 3;
+  const nyckeltal = [
+    ["Readiness", overall == null ? "\u2014" : overall, osäkert ? "osäkert underlag" : null,
+      overall == null ? C.muted : overall >= 76 ? C.green : overall >= 56 ? C.yellow : C.red],
+    ["Veckans pass", (sessions || []).length ? veckansPass : "\u2014", null, C.text],
+    ["Senast", senast, null, C.text],
+  ];
+
   return (
-    <div style={{ padding: "18px 16px 8px" }}>
-      <Header title={profile.name ? `Hej, ${profile.name}` : "Hej"} sub="ATLAS · Idag" right={queue.length > 0 ? <Badge onClick={() => setSheet("export")}>{queue.length} att föra över</Badge> : null} />
+    <div style={{ padding: "14px 16px 20px" }}>
+      {/* Topprad: ordmärke + meny. Menyn bär allt som inte förtjänar plats här. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ ...hdr(19), color: C.lime }}>▲</span>
+          <span style={{ ...hdr(19), letterSpacing: 2.4 }}>ATLAS</span>
+        </div>
+        <button onClick={() => setSheet("menu")} aria-label="Meny" style={{ background: "none", border: "none", padding: 10, cursor: "pointer" }}>
+          <div style={{ width: 20, height: 2, background: C.text, marginBottom: 5 }} />
+          <div style={{ width: 20, height: 2, background: C.text, marginBottom: 5 }} />
+          <div style={{ width: 20, height: 2, background: C.text }} />
+        </button>
+      </div>
+      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2, textTransform: "capitalize" }}>{datum}</div>
+
+      {queue.length > 0 && <div style={{ marginTop: 8 }}><Badge onClick={() => setSheet("export")}>{queue.length} att föra över</Badge></div>}
 
       {live && (
-        <Card style={{ marginTop: 14, borderColor: C.blue + "66", background: "rgba(77,163,255,0.08)" }}>
-          <div style={{ fontSize: 11, letterSpacing: 1, color: C.blue, textTransform: "uppercase" }}>Pausat pass</div>
-          <div style={{ fontSize: 17, fontWeight: 800, margin: "3px 0 2px" }}>{live.name}</div>
-          <div style={{ fontSize: 12, color: C.muted }}>
+        <Card style={{ marginTop: 12, borderColor: C.lime + "66" }}>
+          <div style={{ ...hdr(15) }}>Pausat pass — {live.name}</div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
             Startat {new Date(live.startedAt).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })} · {(live.items || []).reduce((a, x) => a + (x.logged || []).filter(Boolean).length, 0)} set loggade
           </div>
-          <button onClick={onResume} style={{ ...bigBtn, marginTop: 12 }}>Fortsätt passet</button>
-          <button onClick={onDiscard} style={{ width: "100%", marginTop: 8, padding: 11, borderRadius: 12, border: "none", background: "transparent", color: C.muted, fontSize: 13, cursor: "pointer" }}>Kasta passet</button>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button onClick={onResume} style={{ ...bigBtn, padding: 12 }}>Fortsätt passet</button>
+            <button onClick={onDiscard} style={{ ...ghostBtn, color: C.red, borderColor: C.red + "55" }}>Kasta</button>
+          </div>
         </Card>
       )}
 
-      <Card style={{ marginTop: 14, display: "flex", gap: 16, alignItems: "center" }}>
-        <Ring value={overall} color={rd} />
-        <div>
-          <div style={{ fontSize: 11, letterSpacing: 1, color: C.muted, textTransform: "uppercase" }}>{lbl}</div>
-          <div style={{ fontSize: 19, fontWeight: 800, marginTop: 2 }}>{nw ? `Grönt ljus för ${nw.workout.name}` : "Inget planerat pass"}</div>
-          <div style={{ fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>{overall == null ? "Logga pass så bygger ATLAS din beredskap." : "Håll första pressövningen kring RPE 7–8."}</div>
-        </div>
-      </Card>
-
-      <div style={{ marginTop: 14, borderRadius: 16, border: `1px solid ${C.border}`, background: "radial-gradient(circle at 50% 22%, rgba(77,163,255,0.07), transparent 62%)", padding: "8px 8px 14px", position: "relative" }}>
-        <div style={{ height: 360 }}><SvgBody muscleStates={muscleStates} onSelect={() => { }} reduced /></div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, paddingLeft: 4 }}>
-          {top.map(([id, s]) => <Pill key={id} color={s.readiness >= 76 ? C.green : s.readiness >= 56 ? C.yellow : C.red}>{sv(id)} {s.readiness}%</Pill>)}
-        </div>
-      </div>
-
-      <Card style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <span style={{ color: C.purple, fontSize: 18 }}>✦</span>
-          <div>
-            <div style={{ fontSize: 11, letterSpacing: 1, color: C.muted, textTransform: "uppercase" }}>Coachens nästa steg</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>Träna enligt planen</div>
-            <div style={{ fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>Din utveckling ligger i rätt riktning. Prioritera teknik före extra volym idag.</div>
-          </div>
-        </div>
-      </Card>
-
       {röstKrasch && (
-        <div style={{ marginTop: 12, padding: "13px 14px", borderRadius: 13, border: `1px solid ${C.red}66`, background: "rgba(255,92,92,0.08)" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>Röstinmatningen är avstängd</div>
+        <div style={{ marginTop: 12, padding: "13px 14px", borderRadius: 14, border: `1px solid ${C.red}66`, background: "rgba(255,92,92,0.07)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Röstinmatningen är avstängd</div>
           <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
             Appen avslutades förra gången mikrofonen användes, så ATLAS stängde av funktionen åt dig.
-            Allt annat fungerar som vanligt. Du kan slå på den igen under Signaler → Inmatning.
+            Allt annat fungerar som vanligt. Slå på den igen under Signaler → Inmatning.
           </div>
         </div>
       )}
+
+      {/* KARTAN — appens mittpunkt. Ska dominera skärmen. */}
+      <div style={{ marginTop: 8, height: 380 }}>
+        <SvgBody muscleStates={muscleStates} onSelect={() => { }} reduced />
+      </div>
+
+      {/* Huvudbeskedet: en mening, stor text, inget kort runt. */}
+      <div style={{ textAlign: "center", fontSize: besked.tom ? 15.5 : 17, fontWeight: 600, lineHeight: 1.45, margin: "14px 8px 0" }}>
+        {besked.rad}
+      </div>
 
       {atGym && !live && (
-        <div style={{ marginTop: 12, padding: "14px 15px", borderRadius: 14, border: `1px solid ${C.green}66`, background: "rgba(57,217,138,0.09)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 15 }}>📍</span>
-            <span style={{ fontSize: 14.5, fontWeight: 700 }}>Du är på {atGym.place.name}</span>
-          </div>
-          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginBottom: 11 }}>
-            {atGym.distance != null ? `${atGym.distance} m från sparad position. ` : ""}Vill du börja träna?
-          </div>
-          <button onClick={startWorkout} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: C.green, color: "#04120a", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Starta pass</button>
+        <div style={{ marginTop: 8, textAlign: "center", fontSize: 12.5, color: C.green }}>
+          Du är på {atGym.place.name}{atGym.distance != null ? ` · ${atGym.distance} m från sparad position` : ""}
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <QuickBtn onClick={() => setSheet("food")}><Icon name="apple" size={15} style={{ verticalAlign: "-2px" }} /> Mat</QuickBtn>
-        <QuickBtn onClick={() => setSheet("checkin")}>◎ Check-in</QuickBtn>
-        <QuickBtn onClick={() => setSheet("weight")}>↗ Vikt</QuickBtn>
-        <QuickBtn onClick={() => setSheet("cues")}>🔔 Signaler</QuickBtn>
-        <QuickBtn onClick={() => setSheet("places")}>📍 Mina gym</QuickBtn>
-        {nfcSupported() && <QuickBtn onClick={() => setSheet("nfc")}>📶 NFC</QuickBtn>}
-        <QuickBtn onClick={() => setSheet("caps")}>📱 Telefon</QuickBtn>
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button onClick={() => setSheet("gps")} style={{ flex: 1, padding: "14px 6px", borderRadius: 12, border: `1px solid ${C.blue}`, background: "rgba(77,163,255,0.14)", color: C.text, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>📍 Utepass (GPS)</button>
-        <button onClick={() => setSheet("cardio")} style={{ flex: 1, padding: "14px 6px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>🏃 Logga cardio</button>
-      </div>
-      {!installHidden && <InstallCard onDismiss={() => setInstallHidden(true)} />}
+      {!live && (
+        <>
+          <button onClick={startWorkout} style={{ ...bigBtn, marginTop: 14 }}>
+            {besked.tom ? "Starta första passet" : "Starta pass"} <span style={{ marginLeft: 6 }}>→</span>
+          </button>
+          {nw && <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 8 }}>Föreslaget: {nw.workout.name}</div>}
+        </>
+      )}
 
-      {nw && <button onClick={startWorkout} style={{ ...bigBtn, marginTop: 12 }}>Starta dagens pass · {nw.workout.name} →</button>}
-      {nw && <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 8 }}>{workoutExercises(nw.workout).length} övningar · cirka 55 min · Gym</div>}
+      {/* Tre nyckeltal. Streck, inte nollor, när underlag saknas. */}
+      <div style={{ display: "flex", marginTop: 18, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        {nyckeltal.map(([l, v, sub, col], i) => (
+          <div key={l} style={{ flex: 1, textAlign: "center", padding: "13px 4px", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.2, color: C.muted, textTransform: "uppercase", fontFamily: HFONT }}>{l}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 3, color: col, fontFamily: HFONT }}>{v}</div>
+            {sub && <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Tre genvägar — inte åtta. Tunna linjeikoner, aldrig emoji. */}
+      <div style={{ display: "flex", marginTop: 6 }}>
+        {[["apple", "Logga mat", "food"], ["scale", "Vikt", "weight"], ["user", "Coach", "coach"]].map(([ic, l, mål], i) => (
+          <button key={mål} onClick={() => setSheet(mål)} style={{ flex: 1, padding: "14px 0", background: "none", border: "none", borderLeft: i ? `1px solid ${C.border}` : "none", color: C.text, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <Icon name={ic} size={19} strokeWidth={1.6} color={C.muted} />
+            <span style={{ fontSize: 12 }}>{l}</span>
+          </button>
+        ))}
+      </div>
+
+      {checkin === null && !besked.tom && (
+        <div style={{ marginTop: 4, textAlign: "center" }}>
+          <button onClick={() => setSheet("checkin")} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>Dagens check-in är inte gjord</button>
+        </div>
+      )}
+
+      {!installHidden && <div style={{ marginTop: 12 }}><InstallCard onDismiss={() => setInstallHidden(true)} /></div>}
     </div>
   );
 }
-
-// ════════ AKTIVT PASS ════════
 function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, bodyweight = null, onPause, onAbort }) {
   const it = live.items[live.idx];
   const [confirmExit, setConfirmExit] = useState(false);
@@ -459,7 +519,7 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: 1, color: C.muted, textTransform: "uppercase" }}>Huvudövning</div>
-            <div style={{ fontSize: 24, fontWeight: 800 }}>{it.name}</div>
+            <div style={{ ...hdr(30), textAlign: "center" }}>{it.name}</div>
           </div>
           <button onClick={() => setExact(e => !e)} style={{ ...ghostBtn, borderColor: exact ? C.blue : C.border, color: exact ? C.blue : C.muted }}>{exact ? "Exact ✓" : "Exact Mode"}</button>
         </div>
@@ -676,6 +736,7 @@ function Sheet({ name, onClose, ctx }) {
         {name === "nfc" && <NFCSheet ctx={ctx} onClose={onClose} />}
         {name === "caps" && <CapsSheet onClose={onClose} />}
         {name === "places" && <PlacesSheet ctx={ctx} onClose={onClose} />}
+        {name === "menu" && <MenuSheet ctx={ctx} onClose={onClose} />}
         {name === "progress" && <ProgressSheet ctx={ctx} />}
         {name === "weight" && <SimpleSheet title="Registrera vikt" label="Vikt i kilogram" placeholder="t.ex. 82,4" kind="weight" ctx={ctx} />}
         {name === "food" && <FoodSheet ctx={ctx} onClose={onClose} />}
@@ -1633,9 +1694,48 @@ function PlacesSheet({ ctx, onClose }) {
   );
 }
 
+
+function MenuSheet({ ctx, onClose }) {
+  // Allt som inte förtjänar plats på hemskärmen bor här: en rad per sak,
+  // tunn linjeikon, versaletikett. Byggstämpeln längst ner — det är hit man
+  // går för att svara på "kör jag verkligen senaste versionen?".
+  const gå = mål => ctx.setSheet && ctx.setSheet(mål);
+  const rader = [
+    ["target", "Check-in", "checkin"],
+    ["bell", "Signaler", "cues"],
+    ["flag", "Mina gym", "places"],
+    ...(nfcSupported() ? [["zap", "NFC-taggar", "nfc"]] : []),
+    ["compass", "Utepass (GPS)", "gps"],
+    ["heart", "Logga cardio", "cardio"],
+    ["trending-up", "Överför till datorn", "export"],
+    ["cog", "Telefonens förmågor", "caps"],
+  ];
+  const bygge = typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "";
+  return (
+    <>
+      <SheetTitle>{(ctx.profile && ctx.profile.name) ? ctx.profile.name : "Meny"}</SheetTitle>
+      {ctx.mode && (
+        <div style={{ marginBottom: 12 }}>
+          <span style={{ fontSize: 11, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 999, padding: "3px 10px" }}>
+            {ctx.mode === "demo" ? "Demo" : "Real Mode"}
+          </span>
+        </div>
+      )}
+      {rader.map(([ic, l, mål]) => (
+        <button key={mål} onClick={() => gå(mål)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, padding: "14px 4px", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, color: C.text, cursor: "pointer", textAlign: "left" }}>
+          <Icon name={ic} size={19} strokeWidth={1.6} color={C.muted} />
+          <span style={{ ...hdr(13.5), letterSpacing: 1 }}>{l}</span>
+          <span style={{ marginLeft: "auto", color: C.muted }}>›</span>
+        </button>
+      ))}
+      {bygge && <div style={{ fontSize: 10.5, color: C.muted, marginTop: 14, textAlign: "center" }}>Bygge {bygge}</div>}
+    </>
+  );
+}
+
 function SheetTitle({ children }) { return <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 8 }}>{children}</div>; }
 function StepBox({ label, value, onMinus, onPlus }) {
-  const step = { width: 48, height: 48, borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2, color: C.blue, fontSize: 26, fontWeight: 700, cursor: "pointer", lineHeight: "1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none" };
+  const step = { width: 48, height: 48, borderRadius: 999, border: `1px solid ${C.border}`, background: C.card2, color: C.blue, fontSize: 26, fontWeight: 700, cursor: "pointer", lineHeight: "1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none" };
   return (
     <div style={{ flex: 1 }}>
       <div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{label}</div>
@@ -1648,7 +1748,8 @@ function StepBox({ label, value, onMinus, onPlus }) {
   );
 }
 
-const bigBtn = { width: "100%", padding: "16px", borderRadius: 14, border: "none", background: C.blue, color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer" };
+// Primärknappen: pillerform, lime, SVART text (vit text på lime är oläslig), versaler.
+const bigBtn = { width: "100%", padding: "16px", borderRadius: 999, border: "none", background: C.lime, color: "#0A0A0A", fontSize: 15, fontWeight: 800, cursor: "pointer", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: HFONT };
 const ghostBtn = { padding: "8px 14px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13, cursor: "pointer" };
 const ghostBtnLg = { padding: "16px 18px", borderRadius: 14, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" };
 const miniIn = { width: "100%", background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", fontSize: 15, fontWeight: 600 };

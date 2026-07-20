@@ -7,6 +7,15 @@ import { parseHeartRate, hrSummary, hrIntensity, bluetoothSupported } from "../e
 import { encodeTag, decodeTag, readMessage, nfcSupported } from "../engines/nfc.js";
 import { DEFAULT_CUES, notificationState } from "../engines/cues.js";
 
+// Designspråket 2026-07-20 flyttade sekundärfunktionerna in i menyn.
+// Testet öppnar den först — avsikten i varje test är oförändrad.
+const öppnaMeny = async (el) => {
+  const b = el.querySelector('[aria-label="Meny"]');
+  if (!b) throw new Error("hittar inte menyknappen");
+  await act(async () => { b.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await new Promise(x => setTimeout(x, 60));
+};
+
 const roots = [];
 const mount = async () => { const el = document.createElement("div"); document.body.appendChild(el); const r = createRoot(el); roots.push({ r, el }); await act(async () => { r.render(<MobileApp />); }); await new Promise(x => setTimeout(x, 200)); return el; };
 afterEach(async () => { await act(async () => { roots.splice(0).forEach(({ r, el }) => { try { r.unmount(); } catch (e) { } el.remove(); }); }); });
@@ -58,7 +67,7 @@ describe("signaler och telefonfunktioner i mobilen", () => {
   it("Signaler-sheeten öppnas och beskriver plattformsgränserna ärligt", async () => {
     window.localStorage.clear(); localStorage.setItem("atlas.mobile.mode", JSON.stringify("demo"));
     const el = await mount();
-    clickText(el, "Signaler"); await act(async () => { }); await new Promise(r => setTimeout(r, 150));
+    await öppnaMeny(el); clickText(el, "Signaler"); await act(async () => { }); await new Promise(r => setTimeout(r, 150));
     expect(/Signaler i passet/.test(el.textContent)).toBe(true);
     expect(/iPhone saknar stöd för vibration/.test(el.textContent)).toBe(true);
   });
@@ -73,7 +82,7 @@ describe("signaler och telefonfunktioner i mobilen", () => {
   it("telefon-översikten förklarar ärligt vad som saknas och varför", async () => {
     window.localStorage.clear(); localStorage.setItem("atlas.mobile.mode", JSON.stringify("demo"));
     const el = await mount();
-    clickText(el, "Telefon"); await act(async () => { }); await new Promise(r => setTimeout(r, 150));
+    await öppnaMeny(el); clickText(el, "Telefon"); await act(async () => { }); await new Promise(r => setTimeout(r, 150));
     expect(/Vad din telefon klarar/.test(el.textContent)).toBe(true);
     expect(/ett och samma bygge/.test(el.textContent)).toBe(true);
     expect(/NFC-taggar/.test(el.textContent)).toBe(true);   // syns som rad, men inte som knapp

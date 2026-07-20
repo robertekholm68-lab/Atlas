@@ -7,6 +7,13 @@ import { act } from "react-dom/test-utils";
 import { MobileApp } from "../mobile/MobileApp.jsx";
 import { readBridge } from "../engines/bridge.js";
 
+const öppnaMeny = async (el) => {
+  const b = el.querySelector('[aria-label="Meny"]');
+  if (!b) throw new Error("hittar inte menyknappen");
+  await act(async () => { b.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await new Promise(x => setTimeout(x, 60));
+};
+
 const roots = [];
 const mount = async () => {
   const el = document.createElement("div"); document.body.appendChild(el);
@@ -39,11 +46,14 @@ describe("mobilen — första start", () => {
     expect(LS("sessions")).toEqual([]);
   });
 
-  it("namnet i hälsningen kommer från profilen, inte från koden", async () => {
+  it("namnet i menyn kommer från profilen, inte från koden", async () => {
+    // Hälsningen på startsidan togs bort i designspråket 2026-07-20; namnet visas
+    // överst i menyn i stället. Avsikten är oförändrad: profilens namn, aldrig kodens.
     localStorage.setItem("atlas.mobile.mode", JSON.stringify("real"));
     localStorage.setItem("atlas.mobile.profile", JSON.stringify({ name: "Sara", weight: 64 }));
     const el = await mount();
-    expect(/Hej, Sara/.test(el.textContent)).toBe(true);
+    await öppnaMeny(el);
+    expect(/Sara/.test(el.textContent)).toBe(true);
     expect(/Robert/.test(el.textContent)).toBe(false);
   });
 
