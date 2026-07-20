@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { parseSetSpeech, ordTillTal, voiceSupport , shortSpoken, voiceCrashedLastTime, markVoiceAttempt, clearVoiceAttempt } from "../engines/voice.js";
 
 describe("ordTillTal", () => {
@@ -186,7 +186,25 @@ describe("shortSpoken – rösten säger huvudsaken, skärmen bär djupet", () =
 });
 
 describe("självläkning – appen upptäcker att den dog i mikrofonen", () => {
-  beforeEach(() => { try { localStorage.clear(); } catch (e) {} });
+  // Egen lagring i minnet, aldrig den riktiga. Testerna körs i node-miljö där
+  // localStorage inte finns, och att röra en delad sådan förorenar andra testfiler.
+  let original;
+  beforeEach(() => {
+    const box = {};
+    original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: k => (k in box ? box[k] : null),
+        setItem: (k, v) => { box[k] = String(v); },
+        removeItem: k => { delete box[k]; },
+      },
+    });
+  });
+  afterEach(() => {
+    if (original) Object.defineProperty(globalThis, "localStorage", original);
+    else delete globalThis.localStorage;
+  });
 
   it("inget spår betyder ingen krasch", () => {
     expect(voiceCrashedLastTime()).toBe(false);
