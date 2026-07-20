@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { T } from "../data/tokens.js";
 import { MUSCLES } from "../data/muscles.js";
 import { EXERCISES } from "../data/exercises.js";
 import { CARDIO, SPORT_INTENSITY } from "../data/exercises.js";
 import { restDoneCue, DEFAULT_CUES, notificationState, requestNotifications, playBeep, speak } from "../engines/cues.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
+import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
+import { detectGym, makePlace, getPositionOnce, DEFAULT_RADIUS_M } from "../engines/geofence.js";
+import { GYM_CLUBS } from "../data/gyms.js";
 import { bluetoothSupported, connectHeartRate, hrSummary } from "../engines/hr.js";
 import { nfcSupported, scanTags, writeTag, encodeTag } from "../engines/nfc.js";
 import { installAdvice, capabilities, isStandalone, platformKind } from "../engines/platform.js";
@@ -41,6 +44,8 @@ export function MobileApp() {
   const [checkin, setCheckin] = useState(() => load("checkin", null)); // "low"|"normal"|"high"
   const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
   const [cues, setCues] = useState(() => load("cues", DEFAULT_CUES));
+  const [places, setPlaces] = useState(() => load("places", []));
+  const [atGym, setAtGym] = useState(null);      // { place, distance } när vi står på ett sparat gym
   const [installHidden, setInstallHidden] = useState(() => load("installHidden", false));
   const [weights, setWeights] = useState(() => load("weights", []));   // [{id, ts, kg}]
   const [notes, setNotes] = useState(() => load("notes", []));         // [{id, ts, text}]
@@ -62,6 +67,20 @@ export function MobileApp() {
   useEffect(() => save("checkin", checkin), [checkin]);
   useEffect(() => save("foodLog", foodLog), [foodLog]);
   useEffect(() => save("cues", cues), [cues]);
+  useEffect(() => save("places", places), [places]);
+
+  // Positionskoll när appen öppnas, en enda avläsning. En webbapp kan inte geofenca
+  // i bakgrunden, så det här är det enda tillfälle vi faktiskt har.
+  useEffect(() => {
+    if (!places.length) { setAtGym(null); return; }
+    let avbruten = false;
+    getPositionOnce().then(r => {
+      if (avbruten || !r.ok) return;
+      const träff = detectGym(places, r.pos);
+      setAtGym(träff.found ? träff : null);
+    });
+    return () => { avbruten = true; };
+  }, [places.length]);
   useEffect(() => save("installHidden", installHidden), [installHidden]);
   useEffect(() => save("mode", mode), [mode]);
   useEffect(() => save("profile", profile), [profile]);
@@ -144,13 +163,13 @@ export function MobileApp() {
         setSessions(m === "demo" ? DEMO_SESSIONS.slice() : []);
         if (prof.weight) setWeights([{ id: `w_${Date.now()}`, ts: Date.now(), kg: prof.weight }]);
       }} />}
-      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile, live }}
+      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym}}
         onResume={() => setScreen("workout")}
         onDiscard={() => setLive(null)} />}
       {mode && screen === "workout" && live && <Workout {...{ live, setLive, finishWorkout, setSheet, cues, bodyweight }}
         onPause={() => setScreen("home")}
         onAbort={() => { setLive(null); setScreen("home"); }} />}
-      {mode && screen === "complete" && done && <Complete {...{ done, muscleStates, setScreen, setSheet }} />}
+      {mode && screen === "complete" && done && <Complete {...{ done, muscleStates, setScreen, setSheet, sessions, setSessions }} />}
 
       {mode && screen === "home" && <TabBar setSheet={setSheet} startWorkout={startWorkout} />}
 
@@ -206,7 +225,7 @@ function ModePicker({ onPick }) {
   );
 }
 
-function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard }) {
+function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null }) {
   const rd = overall == null ? C.muted : overall >= 76 ? C.green : overall >= 56 ? C.yellow : C.red;
   const lbl = overall == null ? "För lite data" : overall >= 76 ? "Bra beredskap" : overall >= 56 ? "Måttlig beredskap" : "Låg beredskap";
   const top = Object.entries(muscleStates).filter(([, s]) => s.status !== "no_data").sort((a, b) => a[1].readiness - b[1].readiness).slice(0, 2);
@@ -253,11 +272,25 @@ function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setShee
         </div>
       </Card>
 
+      {atGym && !live && (
+        <div style={{ marginTop: 12, padding: "14px 15px", borderRadius: 14, border: `1px solid ${C.green}66`, background: "rgba(57,217,138,0.09)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 15 }}>📍</span>
+            <span style={{ fontSize: 14.5, fontWeight: 700 }}>Du är på {atGym.place.name}</span>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginBottom: 11 }}>
+            {atGym.distance != null ? `${atGym.distance} m från sparad position. ` : ""}Vill du börja träna?
+          </div>
+          <button onClick={startWorkout} style={{ width: "100%", padding: 12, borderRadius: 11, border: "none", background: C.green, color: "#04120a", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Starta pass</button>
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <QuickBtn onClick={() => setSheet("food")}><Icon name="apple" size={15} style={{ verticalAlign: "-2px" }} /> Mat</QuickBtn>
         <QuickBtn onClick={() => setSheet("checkin")}>◎ Check-in</QuickBtn>
         <QuickBtn onClick={() => setSheet("weight")}>↗ Vikt</QuickBtn>
         <QuickBtn onClick={() => setSheet("cues")}>🔔 Signaler</QuickBtn>
+        <QuickBtn onClick={() => setSheet("places")}>📍 Mina gym</QuickBtn>
         {nfcSupported() && <QuickBtn onClick={() => setSheet("nfc")}>📶 NFC</QuickBtn>}
         <QuickBtn onClick={() => setSheet("caps")}>📱 Telefon</QuickBtn>
       </div>
@@ -509,8 +542,17 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
 }
 
 // ════════ EFTER PASS ════════
-function Complete({ done, muscleStates, setScreen, setSheet }) {
+function Complete({ done, muscleStates, setScreen, setSheet, sessions = [], setSessions }) {
   const s = done.session;
+  // Sammanfattningen räknas fram lokalt ur loggen — inga nätanrop, fungerar utan täckning.
+  const historik = sessions.filter(x => x && x.id !== s.id);
+  const post = useMemo(() => buildPostSession({ session: s, sessions: historik, exercises: EXERCISES, now: Date.now() }), [s.id]);
+  const signal = useMemo(() => reasonSignal(sessions, Date.now()), [sessions.length]);
+  const [svarat, setSvarat] = useState(null);
+  const svara = (code) => {
+    setSvarat(code);
+    if (setSessions) setSessions(list => list.map(x => x.id === s.id ? attachReason(x, code, post.question) : x));
+  };
   const sets = s.sets || [];
   const volume = sets.reduce((a, x) => a + (x.weight || 0) * (x.reps || 0), 0);
   const trained = Object.entries(s.muscleLoads || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 4);
@@ -522,6 +564,40 @@ function Complete({ done, muscleStates, setScreen, setSheet }) {
         <div style={{ fontSize: 24, fontWeight: 800, marginTop: 12 }}>Passet är registrerat</div>
         <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>ATLAS har uppdaterat belastning och recovery.</div>
       </div>
+
+      {post.lines.length > 0 && (
+        <Card style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, letterSpacing: 1, color: C.muted, textTransform: "uppercase", marginBottom: 8 }}>Sammanfattning</div>
+          {post.lines.map((l, i) => (
+            <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginTop: i ? 8 : 0 }}>
+              <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, flexShrink: 0,
+                background: l.tone === "warn" ? C.red : l.tone === "good" ? C.green : l.tone === "low" ? C.muted : C.blue }} />
+              <span style={{ fontSize: 13.5, lineHeight: 1.5 }}>{l.text}</span>
+            </div>
+          ))}
+          {signal && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{signal.text}</div>
+          )}
+        </Card>
+      )}
+
+      {post.question && (
+        <Card style={{ marginTop: 12 }}>
+          {svarat ? (
+            <div style={{ fontSize: 13, color: C.muted }}>Tack \u2014 det tas med i kommande rekommendationer.</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 10 }}>{post.question.prompt}</div>
+              <div style={{ display: "grid", gap: 7 }}>
+                {post.question.options.map(o => (
+                  <button key={o.code} onClick={() => svara(o.code)} style={{ padding: "11px 13px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13.5, textAlign: "left", cursor: "pointer" }}>{o.label}</button>
+                ))}
+              </div>
+              <button onClick={() => setSvarat("skip")} style={{ marginTop: 8, width: "100%", padding: 9, borderRadius: 10, border: "none", background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer" }}>Hoppa över</button>
+            </>
+          )}
+        </Card>
+      )}
 
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <Stat v={`${done.durationMin} min`} l="Tid" />
@@ -580,6 +656,7 @@ function Sheet({ name, onClose, ctx }) {
         {name === "cues" && <CuesSheet ctx={ctx} onClose={onClose} />}
         {name === "nfc" && <NFCSheet ctx={ctx} onClose={onClose} />}
         {name === "caps" && <CapsSheet onClose={onClose} />}
+        {name === "places" && <PlacesSheet ctx={ctx} onClose={onClose} />}
         {name === "progress" && <ProgressSheet ctx={ctx} />}
         {name === "weight" && <SimpleSheet title="Registrera vikt" label="Vikt i kilogram" placeholder="t.ex. 82,4" kind="weight" ctx={ctx} />}
         {name === "food" && <FoodSheet ctx={ctx} onClose={onClose} />}
@@ -1413,6 +1490,85 @@ function Stat({ v, l }) { return <div style={{ flex: 1, background: C.card, bord
 function Pill({ children, color }) { return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 999, background: C.card2, border: `1px solid ${C.border}`, fontSize: 12.5 }}>{color && <span style={{ width: 7, height: 7, borderRadius: 4, background: color }} />}{children}</span>; }
 function Badge({ children, onClick }) { return <button onClick={onClick} style={{ padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.blue}55`, background: "rgba(77,163,255,0.12)", color: C.blue, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{children}</button>; }
 function QuickBtn({ children, onClick }) { return <button onClick={onClick} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{children}</button>; }
+
+function PlacesSheet({ ctx, onClose }) {
+  const places = ctx.places || [];
+  const [läge, setLäge] = useState("idle");      // idle | hämtar | namnge | fel
+  const [pos, setPos] = useState(null);
+  const [namn, setNamn] = useState("");
+  const [klubb, setKlubb] = useState("");
+  const [fel, setFel] = useState(null);
+
+  const hämta = async () => {
+    setLäge("hämtar"); setFel(null);
+    const r = await getPositionOnce();
+    if (!r.ok) { setFel(r.note); setLäge("fel"); return; }
+    setPos(r.pos); setLäge("namnge");
+  };
+
+  const spara = () => {
+    const p = makePlace({ name: namn || "Mitt gym", pos, clubId: klubb || null });
+    if (!p) { setFel("Kunde inte spara platsen."); setLäge("fel"); return; }
+    ctx.setPlaces([...(places), p]);
+    setLäge("idle"); setPos(null); setNamn(""); setKlubb("");
+  };
+
+  const taBort = id => ctx.setPlaces(places.filter(p => p.id !== id));
+
+  return (
+    <>
+      <SheetTitle>Mina gym</SheetTitle>
+      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>
+        Stå på gymmet och spara platsen en gång. Nästa gång du öppnar ATLAS där känner den igen stället.
+        Koordinaterna stannar i telefonen och skickas ingenstans.
+      </div>
+
+      {places.length > 0 && places.map(p => (
+        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 13px", marginBottom: 8, borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2 }}>
+          <span style={{ fontSize: 17 }}>📍</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.name}</div>
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
+              Radie {p.radius} m{p.accuracy != null ? ` · sparad med ±${p.accuracy} m noggrannhet` : ""}
+            </div>
+          </div>
+          <button onClick={() => taBort(p.id)} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", padding: 6 }}>Ta bort</button>
+        </div>
+      ))}
+
+      {läge === "namnge" ? (
+        <div style={{ marginTop: 10, padding: 14, borderRadius: 12, border: `1px solid ${C.purple}66`, background: "rgba(155,124,255,0.08)" }}>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
+            Position hittad{pos && pos.accuracy != null ? ` (±${Math.round(pos.accuracy)} m)` : ""}. Vad heter stället?
+          </div>
+          <input value={namn} onChange={e => setNamn(e.target.value)} placeholder="t.ex. Fitness24Seven Kista"
+            style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 14, marginBottom: 8, boxSizing: "border-box" }} />
+          <select value={klubb} onChange={e => setKlubb(e.target.value)}
+            style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 14, marginBottom: 10, boxSizing: "border-box" }}>
+            <option value="">Koppla till klubb (valfritt) — ger rätt maskinlista</option>
+            {GYM_CLUBS.map(c => <option key={c.id} value={c.id}>{c.name} · {c.city}</option>)}
+          </select>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={spara} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: C.green, color: "#04120a", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Spara platsen</button>
+            <button onClick={() => { setLäge("idle"); setPos(null); }} style={{ padding: "12px 16px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontSize: 14, cursor: "pointer" }}>Avbryt</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={hämta} disabled={läge === "hämtar"} style={{ ...ghostBtnLg, width: "100%", marginTop: places.length ? 6 : 0, opacity: läge === "hämtar" ? 0.6 : 1 }}>
+          {läge === "hämtar" ? "Hämtar position…" : "+ Spara platsen jag står på"}
+        </button>
+      )}
+
+      {fel && <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{fel}</div>}
+
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.border}`, fontSize: 12, color: C.muted, lineHeight: 1.55 }}>
+        ATLAS kan bara kolla positionen när appen är öppen — webbappar får inte köra positionsbevakning
+        i bakgrunden. Den kan alltså inte säga till av sig själv när du kommer fram.
+      </div>
+    </>
+  );
+}
+
 function SheetTitle({ children }) { return <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 8 }}>{children}</div>; }
 function StepBox({ label, value, onMinus, onPlus }) {
   const step = { width: 48, height: 48, borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2, color: C.blue, fontSize: 26, fontWeight: 700, cursor: "pointer", lineHeight: "1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none" };

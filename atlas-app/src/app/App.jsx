@@ -190,7 +190,7 @@ function AtlasApp({ mode, onSwitchMode }) {
       {training && <TrainingMode equip={equip} sessions={sessions} muscleStates={muscleStates} seed={programPlan} onComplete={session => { handleComplete({ ...session, programId: programPlan && programPlan.programId, workoutId: programPlan && programPlan.workoutId }); setTraining(false); setProgramPlan(null); }} onExit={() => { setTraining(false); setProgramPlan(null); }} />}
       {modal === "session" && <SessionModal onComplete={handleComplete} onClose={() => setModal(null)} />}
       {modal === "sport" && <SportModal initialId={sportPreset} activeSports={activeSports} onComplete={handleComplete} onClose={() => setModal(null)} />}
-      {modal === "post" && completedSession && <PostSessionModal session={completedSession} muscleStates={muscleStates} recommendation={recommendation} onClose={() => { setCompletedSession(null); setModal(null); }} />}
+      {modal === "post" && completedSession && <PostSessionModal session={completedSession} muscleStates={muscleStates} recommendation={recommendation} sessions={sessions} onReason={upd => setSessions(list => list.map(x => x.id === upd.id ? upd : x))} onClose={() => { setCompletedSession(null); setModal(null); }} />}
       {showLegacy && <LegacyMigrationModal onDone={() => setLegacyDismissed(true)} />}
     </div>
   );

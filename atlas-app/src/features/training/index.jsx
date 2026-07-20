@@ -1,8 +1,9 @@
 // FEATURE: Training
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { BodyMapCard } from "../body-map/index.jsx";
 import { Card, CardLabel, Stepper } from "../../components/common/index.jsx";
 import { coachFor, progressionSuggestion, subExercise, lastPerformance } from "../../engines/index.js";
+import { buildPostSession, attachReason } from "../../engines/post-session.js";
 import { updateSet as sessionUpdateSet, deleteSet as sessionDeleteSet } from "../../engines/session.js";
 import { CUES, EQUIP_ALL, EXERCISES, EX_GROUPS, WORKOUTS } from "../../data/exercises.js";
 import { MUSCLES } from "../../data/muscles.js";
@@ -158,7 +159,14 @@ function StatTile({ icon, value, unit, label, color }) {
   );
 }
 
-function PostSessionModal({ session, muscleStates, recommendation, onClose }) {
+function PostSessionModal({ session, muscleStates, recommendation, onClose, sessions = [], onReason = null }) {
+  // Samma motor som mobilen. Två uppsättningar sammanfattningsregler skulle glida isär.
+  const post = React.useMemo(
+    () => buildPostSession({ session, sessions: (sessions || []).filter(x => x && x.id !== session.id), exercises: EXERCISES, now: Date.now() }),
+    [session && session.id]
+  );
+  const [svarat, setSvarat] = React.useState(null);
+  const svara = (code) => { setSvarat(code); if (onReason && code !== "skip") onReason(attachReason(session, code, post.question)); };
   const sets = session.sets || [];
   const totalSets = sets.length;
   const exCount = new Set(sets.map(s => s.exerciseId)).size;
@@ -187,6 +195,37 @@ function PostSessionModal({ session, muscleStates, recommendation, onClose }) {
             <StatTile icon={<Repeat size={16} />} value={totalSets} label={`set · ${exCount} öv`} />
             <StatTile icon={<Flame size={16} />} value={totalLoad} label="Träningslast" color={T.accent.warning} />
           </div>
+
+          {post.lines.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <label style={lbl}>Sammanfattning</label>
+              {post.lines.map((l, i) => (
+                <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginTop: i ? 8 : 4 }}>
+                  <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, flexShrink: 0,
+                    background: l.tone === "warn" ? T.accent.danger : l.tone === "good" ? T.accent.success : l.tone === "low" ? T.text.muted : T.accent.primary }} />
+                  <span style={{ fontSize: 13, lineHeight: 1.5, color: T.text.primary }}>{l.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {post.question && (
+            <div style={{ marginBottom: 18, padding: "13px 14px", borderRadius: 12, background: T.bg.raised, border: `1px solid ${T.border.subtle}` }}>
+              {svarat ? (
+                <div style={{ fontSize: 12.5, color: T.text.secondary }}>Tack — det tas med i kommande rekommendationer.</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, lineHeight: 1.5, color: T.text.primary, marginBottom: 10 }}>{post.question.prompt}</div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {post.question.options.map(o => (
+                      <button key={o.code} onClick={() => svara(o.code)} style={{ padding: "9px 12px", borderRadius: 9, border: `1px solid ${T.border.subtle}`, background: T.bg.base, color: T.text.primary, fontSize: 13, textAlign: "left", cursor: "pointer" }}>{o.label}</button>
+                    ))}
+                  </div>
+                  <button onClick={() => setSvarat("skip")} style={{ marginTop: 7, background: "none", border: "none", color: T.text.muted, fontSize: 12, cursor: "pointer", padding: 4 }}>Hoppa över</button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* muskler + hur mycket last var, och kroppens nya status */}
           {trained.length > 0 && (
