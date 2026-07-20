@@ -4,7 +4,7 @@ import { MUSCLES } from "../data/muscles.js";
 import { EXERCISES } from "../data/exercises.js";
 import { CARDIO, SPORT_INTENSITY } from "../data/exercises.js";
 import { restDoneCue, DEFAULT_CUES, notificationState, requestNotifications, playBeep, speak } from "../engines/cues.js";
-import { createSetListener, voiceSupport } from "../engines/voice.js";
+import { createSetListener, createDictation, voiceSupport, shortSpoken } from "../engines/voice.js";
 import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
 import { detectGym, makePlace, getPositionOnce, DEFAULT_RADIUS_M } from "../engines/geofence.js";
 import { GYM_CLUBS } from "../data/gyms.js";
@@ -762,11 +762,35 @@ function MusicSheet() {
 function CoachSheet({ ctx }) {
   const [q, setQ] = useState("");
   const [a, setA] = useState(null);
-  const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.DEMO_PROGRAM, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); };
+  const [hör, setHör] = useState(false);
+  const [fel, setFel] = useState(null);
+  const [taladeFråga, setTaladeFråga] = useState(false);
+  const stoppa = useRef(null);
+  const röstPå = !!(ctx.cues || {}).voiceInput && voiceSupport().ok;
+
+  const lyssna = () => {
+    if (hör) { stoppa.current && stoppa.current(); return; }
+    setFel(null); setHör(true); setTaladeFråga(true);
+    stoppa.current = createDictation({
+      onResult: (text) => setQ(text),
+      onError: (_k, t) => setFel(t),
+      onEnd: () => { setHör(false); stoppa.current = null; },
+    });
+  };
+  useEffect(() => () => { stoppa.current && stoppa.current(); }, []);
+  const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.DEMO_PROGRAM, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); if (taladeFråga) { speak(shortSpoken(r.text)); setTaladeFråga(false); } };
   return (
     <div>
       <SheetTitle>Fråga coachen</SheetTitle>
       <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && ask()} placeholder="Din fråga…" style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14 }} />
+      {röstPå && (
+        <button onClick={lyssna} style={{
+          width: "100%", marginTop: 8, padding: "11px 13px", borderRadius: 11, cursor: "pointer",
+          border: `1px solid ${hör ? C.purple : C.border}`, background: hör ? "rgba(155,124,255,0.16)" : C.card2,
+          color: hör ? C.purple : C.muted, fontSize: 13.5, fontWeight: 600,
+        }}>{hör ? "\u25CF Lyssnar \u2014 ställ din fråga" : "\u{1F3A4} Fråga med rösten"}</button>
+      )}
+      {fel && <div style={{ marginTop: 8, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{fel}</div>}
       <button onClick={ask} style={{ ...bigBtn, marginTop: 10 }}>Fråga</button>
       {a && <div style={{ marginTop: 14, padding: "12px 14px", background: C.card2, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{a}</div>}
     </div>

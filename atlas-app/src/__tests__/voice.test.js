@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSetSpeech, ordTillTal, voiceSupport } from "../engines/voice.js";
+import { parseSetSpeech, ordTillTal, voiceSupport , shortSpoken } from "../engines/voice.js";
 
 describe("ordTillTal", () => {
   it("tolkar ental och tiotal", () => {
@@ -155,5 +155,21 @@ describe("createSetListener", () => {
     const av = createSetListener({ onError: () => {} });
     expect(typeof av).toBe("function");
     expect(() => av()).not.toThrow();
+  });
+});
+
+describe("shortSpoken – rösten säger huvudsaken, skärmen bär djupet", () => {
+  it("kortar till två meningar", () => {
+    const r = shortSpoken("Först detta. Sedan detta. Och till sist en tredje sak som inte ska sägas.");
+    expect(r).toBe("Först detta. Sedan detta.");
+  });
+  it("klarar text utan skiljetecken", () => {
+    expect(shortSpoken("bara en rad utan punkt")).toBe("bara en rad utan punkt");
+  });
+  it("klarar tomt", () => {
+    for (const x of ["", null, undefined]) expect(shortSpoken(x)).toBe("");
+  });
+  it("går att styra antalet meningar", () => {
+    expect(shortSpoken("Ett. Två. Tre.", 1)).toBe("Ett.");
   });
 });

@@ -233,3 +233,71 @@ export function createSetListener({ onResult, onError, onEnd, timeoutMs = 8000 }
 
   return avsluta;
 }
+
+/* ---------- diktering ---------- */
+
+/**
+ * Fri diktering — för coachfrågor, inte för siffror.
+ *
+ * Skillnaden mot createSetListener är principiell: här ska ingenting tolkas.
+ * Coachen förstår meningen själv, och blir texten fel ser du den i rutan innan
+ * du skickar. Därför ingen sifferparser, ingen rimlighetsspärr — bara text.
+ */
+export function createDictation({ onResult, onError, onEnd, timeoutMs = 12000 } = {}) {
+  const stöd = voiceSupport();
+  if (!stöd.ok) { onError && onError(stöd.reason, stöd.note); return () => {}; }
+
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec, klar = false, vakt = null;
+  const städa = () => { if (vakt) { clearTimeout(vakt); vakt = null; } };
+  const avsluta = () => { if (klar) return; klar = true; städa(); try { rec && rec.stop(); } catch (e) {} onEnd && onEnd(); };
+
+  try {
+    rec = new Rec();
+    rec.lang = "sv-SE";
+    rec.continuous = false;
+    rec.interimResults = true;          // visa texten medan den talas — känns levande
+    rec.maxAlternatives = 1;
+    try { if ("processLocally" in rec) rec.processLocally = true; } catch (e) {}
+  } catch (e) { onError && onError("start-misslyckades", "Kunde inte starta mikrofonen."); return () => {}; }
+
+  rec.onresult = (ev) => {
+    let text = "", slutgiltig = false;
+    for (let i = 0; i < ev.results.length; i++) {
+      text += ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) slutgiltig = true;
+    }
+    onResult && onResult(text.trim(), slutgiltig);
+    if (slutgiltig) { klar = true; städa(); onEnd && onEnd(); }
+  };
+
+  rec.onerror = (ev) => {
+    klar = true; städa();
+    const kod = (ev && ev.error) || "okänt";
+    onError && onError(kod,
+      kod === "not-allowed" || kod === "service-not-allowed" ? "Mikrofonen är blockerad. Tillåt mikrofon för ATLAS i webbläsarens inställningar."
+      : kod === "no-speech" ? "Hörde ingenting."
+      : kod === "network" ? "Taligenkänningen behöver nät just nu."
+      : "Det gick inte att tolka ljudet.");
+    onEnd && onEnd();
+  };
+
+  rec.onend = () => { if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+  vakt = setTimeout(() => { if (!klar) avsluta(); }, timeoutMs);
+
+  try { rec.start(); } catch (e) { klar = true; städa(); onError && onError("start-misslyckades", "Mikrofonen är upptagen."); onEnd && onEnd(); }
+  return avsluta;
+}
+
+/**
+ * Kortar ett coachsvar till det som är rimligt att säga högt.
+ *
+ * En coach som läser upp femton meningar i ett gym krockar med hela poängen med
+ * korta svar. Skärmen får bära djupet; rösten säger huvudsaken.
+ */
+export function shortSpoken(text, maxMeningar = 2) {
+  const rå = String(text || "").replace(/\s+/g, " ").trim();
+  if (!rå) return "";
+  const meningar = rå.match(/[^.!?]+[.!?]*/g) || [rå];
+  return meningar.slice(0, maxMeningar).map(m => m.trim()).filter(Boolean).join(" ").trim();
+}
