@@ -66,5 +66,31 @@
   hint += '<br><br><b>Din data stannar hos dig.</b> Allt sparas lokalt i din egen webbläsare. Inget konto, ingen server.';
   document.getElementById('hint').innerHTML = hint;
 </script>
+
+<script>
+// Webbversionen är byggd för stora skärmar och är tyngre att tolka. På telefon
+// pekar vi tydligt ut mobilversionen i stället — inte en tvingande omdirigering,
+// men den blir det uppenbara valet.
+(function () {
+  try {
+    var liten = window.matchMedia && window.matchMedia("(max-width: 820px)").matches;
+    var pekskarm = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (!(liten || pekskarm)) return;
+    document.documentElement.setAttribute("data-telefon", "1");
+    document.addEventListener("DOMContentLoaded", function () {
+      var web = document.querySelector('a[href="./app.html"]');
+      if (web) {
+        web.setAttribute("data-sekundar", "1");
+        var varning = document.createElement("div");
+        varning.textContent = "Webbversionen är gjord för dator och kan bli tung på telefon.";
+        varning.style.cssText = "font-size:12.5px;opacity:.6;line-height:1.5;margin-top:8px;text-align:center";
+        web.parentNode.insertBefore(varning, web.nextSibling);
+      }
+      var mob = document.querySelector('a[href="./mobile.html"]');
+      if (mob) mob.setAttribute("data-primar", "1");
+    });
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>

@@ -1,7 +1,8 @@
 // GEMENSAMT — Card, Gauge, Stepper, hooks m.m.
 import { useState, useEffect } from "react";
 import { T, lbl, stepBtn } from "../../data/tokens.js";
-import { SPORT_LIB, LEGACY_MAP } from "../../data/sportLibrary.js";
+import { LEGACY_MAP } from "../../data/sportLibrary.js";
+import { sportIcons, ensureSportIcons, onSportIcons } from "../../data/sport-icons.js";
 import { BookOpen, Dumbbell, Apple, Calendar, CalendarDays, User, Target, Camera, Heart, Gem, Cake, Flag, Sprout, Hourglass, Bell, Flame, Cog, Zap, TrendingUp, TrendingDown, Clock, AlertCircle, AlertTriangle, Scale, Minus, Beef, Compass, Trophy, Droplet, Sparkles, SlidersHorizontal } from "lucide-react";
 
 // Central ikon-registry. Data/nav håller stabila NAMN; okända namn (geometriska
@@ -16,7 +17,17 @@ function Icon({ name, size = 16, color, strokeWidth = 2, style }) {
 // Sport-/cardio-ikon: äkta relief-vektor för atletiska aktiviteter, annars emoji.
 // Relief används bara i stort format (≥28 px) där den läser; småformat får emoji.
 function SportIcon({ id, emoji, size = 32, style }) {
-  const svg = SPORT_LIB[id] || SPORT_LIB[LEGACY_MAP[id]];
+  // Ikonerna ligger utanför bygget och hämtas första gången en sportvy visas.
+  // Tills de är inne renderas emoji-fallbacken — inget hopp i layouten, ingen tom ruta.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (sportIcons()) return;
+    const av = onSportIcons(() => tick(n => n + 1));
+    ensureSportIcons();
+    return av;
+  }, []);
+  const lib = sportIcons();
+  const svg = lib ? (lib[id] || lib[LEGACY_MAP[id]]) : null;
   if (svg) {
     const sized = svg.replace("<svg ", `<svg width="${size}" height="${size}" `);
     return <span aria-hidden style={{ display: "inline-flex", width: size, height: size, lineHeight: 0, ...style }} dangerouslySetInnerHTML={{ __html: sized }} />;
