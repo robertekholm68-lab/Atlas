@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseSetSpeech, ordTillTal, voiceSupport , shortSpoken } from "../engines/voice.js";
+import { describe, it, expect, beforeEach } from "vitest";
+import { parseSetSpeech, ordTillTal, voiceSupport , shortSpoken, voiceCrashedLastTime, markVoiceAttempt, clearVoiceAttempt } from "../engines/voice.js";
 
 describe("ordTillTal", () => {
   it("tolkar ental och tiotal", () => {
@@ -182,5 +182,32 @@ describe("shortSpoken – rösten säger huvudsaken, skärmen bär djupet", () =
   });
   it("går att styra antalet meningar", () => {
     expect(shortSpoken("Ett. Två. Tre.", 1)).toBe("Ett.");
+  });
+});
+
+describe("självläkning – appen upptäcker att den dog i mikrofonen", () => {
+  beforeEach(() => { try { localStorage.clear(); } catch (e) {} });
+
+  it("inget spår betyder ingen krasch", () => {
+    expect(voiceCrashedLastTime()).toBe(false);
+  });
+  it("ett gammalt spår betyder att appen dog mitt i", () => {
+    localStorage.setItem("atlas.voice.pending", String(Date.now() - 9000));
+    expect(voiceCrashedLastTime()).toBe(true);
+  });
+  it("svarar bara ja en gång — spåret rensas", () => {
+    localStorage.setItem("atlas.voice.pending", String(Date.now() - 9000));
+    expect(voiceCrashedLastTime()).toBe(true);
+    expect(voiceCrashedLastTime()).toBe(false);
+  });
+  it("ett färskt spår är en vanlig omladdning, inte en krasch", () => {
+    localStorage.setItem("atlas.voice.pending", String(Date.now()));
+    expect(voiceCrashedLastTime()).toBe(false);
+  });
+  it("markera och rensa fungerar ihop", () => {
+    markVoiceAttempt();
+    expect(localStorage.getItem("atlas.voice.pending")).toBeTruthy();
+    clearVoiceAttempt();
+    expect(localStorage.getItem("atlas.voice.pending")).toBeNull();
   });
 });

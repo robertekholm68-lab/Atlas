@@ -213,10 +213,12 @@ export function createSetListener({ onResult, onError, onEnd, timeoutMs = 8000 }
   const stöd0 = voiceSupport();
   if (!stöd0.ok) { onError && onError(stöd0.reason, stöd0.note); return () => {}; }
   // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
+  // Spåret läggs FÖRE anropet så vi vet om appen dog här.
+  markVoiceAttempt();
   let avbruten0 = false, stoppaInre = null;
   micReady().then(m => {
     if (avbruten0) return;
-    if (!m.ok) { onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
+    if (!m.ok) { clearVoiceAttempt(); onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
     stoppaInre = _startcreateSetListener({ onResult, onError, onEnd, timeoutMs });
   });
   return () => { avbruten0 = true; if (stoppaInre) stoppaInre(); };
@@ -252,7 +254,7 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
       if (tolkning.ok) { bäst = tolkning; break; }
       if (!bäst) bäst = tolkning;               // spara första misslyckandet som förklaring
     }
-    klar = true; städa();
+    klar = true; städa(); clearVoiceAttempt();
     onResult && onResult(bäst || { ok: false, reason: "inget-svar", raw: "" });
     onEnd && onEnd();
   };
@@ -269,7 +271,7 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
     onEnd && onEnd();
   };
 
-  rec.onend = () => { if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+  rec.onend = () => { clearVoiceAttempt(); if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
 
   // Vakthund: vissa webbläsare varken svarar eller avslutar. Släpp aldrig knappen i "lyssnar" för evigt.
   vakt = setTimeout(() => { if (!klar) { onError && onError("timeout", "Hörde ingenting."); avsluta(); } }, timeoutMs);
@@ -292,10 +294,12 @@ export function createDictation({ onResult, onError, onEnd, timeoutMs = 12000 } 
   const stöd0 = voiceSupport();
   if (!stöd0.ok) { onError && onError(stöd0.reason, stöd0.note); return () => {}; }
   // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
+  // Spåret läggs FÖRE anropet så vi vet om appen dog här.
+  markVoiceAttempt();
   let avbruten0 = false, stoppaInre = null;
   micReady().then(m => {
     if (avbruten0) return;
-    if (!m.ok) { onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
+    if (!m.ok) { clearVoiceAttempt(); onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
     stoppaInre = _startcreateDictation({ onResult, onError, onEnd, timeoutMs });
   });
   return () => { avbruten0 = true; if (stoppaInre) stoppaInre(); };
@@ -340,7 +344,7 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
     onEnd && onEnd();
   };
 
-  rec.onend = () => { if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+  rec.onend = () => { clearVoiceAttempt(); if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
   vakt = setTimeout(() => { if (!klar) avsluta(); }, timeoutMs);
 
   try { rec.start(); } catch (e) { klar = true; städa(); onError && onError("start-misslyckades", "Mikrofonen är upptagen."); onEnd && onEnd(); }
@@ -358,4 +362,37 @@ export function shortSpoken(text, maxMeningar = 2) {
   if (!rå) return "";
   const meningar = rå.match(/[^.!?]+[.!?]*/g) || [rå];
   return meningar.slice(0, maxMeningar).map(m => m.trim()).filter(Boolean).join(" ").trim();
+}
+
+/* ---------- självläkning efter en krasch ---------- */
+//
+// En dödad renderare går inte att fånga med try/catch — ingen kod hinner köra.
+// Men vi kan lämna ett spår INNAN mikrofonen rörs och sudda det när allt gick bra.
+// Ligger spåret kvar vid nästa start vet vi att appen dog mitt i, och då stänger
+// vi av röstinmatningen automatiskt i stället för att låta användaren gå på samma
+// mina igen. Bättre en funktion som stänger av sig än en app som dör.
+
+const SPÅR = "atlas.voice.pending";
+
+function sparaSpår(v) { try { localStorage.setItem(SPÅR, String(v)); } catch (e) {} }
+function läsSpår() { try { return localStorage.getItem(SPÅR); } catch (e) { return null; } }
+function rensaSpår() { try { localStorage.removeItem(SPÅR); } catch (e) {} }
+
+/** Anropas precis innan mikrofonen används. */
+export function markVoiceAttempt() { sparaSpår(Date.now()); }
+
+/** Anropas när användningen avslutats normalt. */
+export function clearVoiceAttempt() { rensaSpår(); }
+
+/**
+ * Kördes appen ner förra gången mikrofonen användes?
+ * Anropas en gång vid start. Rensar spåret, så den svarar bara ja en gång.
+ */
+export function voiceCrashedLastTime() {
+  const v = läsSpår();
+  if (!v) return false;
+  rensaSpår();
+  const när = Number(v);
+  // Ett spår från samma sekund kan vara en helt vanlig omladdning mitt i.
+  return Number.isFinite(när) && Date.now() - när > 1500;
 }

@@ -4,7 +4,7 @@ import { MUSCLES } from "../data/muscles.js";
 import { EXERCISES } from "../data/exercises.js";
 import { CARDIO, SPORT_INTENSITY } from "../data/exercises.js";
 import { restDoneCue, DEFAULT_CUES, notificationState, requestNotifications, playBeep, speak } from "../engines/cues.js";
-import { createSetListener, createDictation, voiceSupport, shortSpoken } from "../engines/voice.js";
+import { createSetListener, createDictation, voiceSupport, shortSpoken, voiceCrashedLastTime } from "../engines/voice.js";
 import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
 import { detectGym, makePlace, getPositionOnce, DEFAULT_RADIUS_M } from "../engines/geofence.js";
 import { GYM_CLUBS } from "../data/gyms.js";
@@ -45,6 +45,15 @@ export function MobileApp() {
   const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
   const [cues, setCues] = useState(() => load("cues", DEFAULT_CUES));
   const [places, setPlaces] = useState(() => load("places", []));
+  // Dog appen förra gången mikrofonen användes? Stäng då av röstinmatningen själv.
+  // En processkrasch går inte att fånga, men spåret den lämnade går att läsa.
+  const [röstKrasch, setRöstKrasch] = useState(false);
+  useEffect(() => {
+    if (voiceCrashedLastTime()) {
+      setRöstKrasch(true);
+      setCues(c => ({ ...c, voiceInput: false }));
+    }
+  }, []);
   const [atGym, setAtGym] = useState(null);      // { place, distance } när vi står på ett sparat gym
   const [installHidden, setInstallHidden] = useState(() => load("installHidden", false));
   const [weights, setWeights] = useState(() => load("weights", []));   // [{id, ts, kg}]
@@ -163,7 +172,7 @@ export function MobileApp() {
         setSessions(m === "demo" ? DEMO_SESSIONS.slice() : []);
         if (prof.weight) setWeights([{ id: `w_${Date.now()}`, ts: Date.now(), kg: prof.weight }]);
       }} />}
-      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym}}
+      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym, röstKrasch}}
         onResume={() => setScreen("workout")}
         onDiscard={() => setLive(null)} />}
       {mode && screen === "workout" && live && <Workout {...{ live, setLive, finishWorkout, setSheet, cues, bodyweight }}
@@ -225,7 +234,7 @@ function ModePicker({ onPick }) {
   );
 }
 
-function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null }) {
+function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null, röstKrasch = false }) {
   const rd = overall == null ? C.muted : overall >= 76 ? C.green : overall >= 56 ? C.yellow : C.red;
   const lbl = overall == null ? "För lite data" : overall >= 76 ? "Bra beredskap" : overall >= 56 ? "Måttlig beredskap" : "Låg beredskap";
   const top = Object.entries(muscleStates).filter(([, s]) => s.status !== "no_data").sort((a, b) => a[1].readiness - b[1].readiness).slice(0, 2);
@@ -271,6 +280,16 @@ function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setShee
           </div>
         </div>
       </Card>
+
+      {röstKrasch && (
+        <div style={{ marginTop: 12, padding: "13px 14px", borderRadius: 13, border: `1px solid ${C.red}66`, background: "rgba(255,92,92,0.08)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>Röstinmatningen är avstängd</div>
+          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+            Appen avslutades förra gången mikrofonen användes, så ATLAS stängde av funktionen åt dig.
+            Allt annat fungerar som vanligt. Du kan slå på den igen under Signaler → Inmatning.
+          </div>
+        </div>
+      )}
 
       {atGym && !live && (
         <div style={{ marginTop: 12, padding: "14px 15px", borderRadius: 14, border: `1px solid ${C.green}66`, background: "rgba(57,217,138,0.09)" }}>
