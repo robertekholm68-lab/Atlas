@@ -17,6 +17,7 @@ import { computeRecovery, computeReadiness, computeSystemicFatigue, computeSessi
 import { buildSession } from "../engines/session.js";
 import { ALL_TEMPLATES, copyProgram, nextWorkout, workoutExercises } from "../engines/programs.js";
 import { Icon } from "../components/common/index.jsx";
+import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
 import { coachReply } from "../features/ai-coach/index.jsx";
 import { SvgBody } from "../features/body-map/index.jsx";
 import { DEMO_SESSIONS, DEMO_PROGRAM as DEMO_PROG, DEMO_PROGRAMS } from "../data/demo.js";
@@ -232,59 +233,72 @@ function ModePicker({ onPick }) {
     const visa = kön => sex === null || sex === kön;
     return (
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "18px 18px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ ...hdr(20), color: C.lime }}>▲</span>
-            <span style={{ ...hdr(20), letterSpacing: 2.6 }}>ATLAS</span>
-          </div>
-          <div style={{ fontSize: 10, letterSpacing: 2, color: C.muted, marginTop: 3, fontFamily: HFONT }}>TRÄNA. FÖRSTÅ. ÅTERHÄMTA.</div>
+        <div style={{ padding: "22px 20px 0" }}>
+          <AtlasLogo size={34} hfont={HFONT} />
         </div>
 
-        {/* Hjälten: två personer, valet låter en bli ensam kvar. */}
-        <div style={{ position: "relative", height: 300, margin: "14px 0 0", display: "flex", justifyContent: "center", overflow: "hidden" }}>
+        {/* Hjälten: två spegelvända porträtt som möts i mitten. Väljs ett kön
+            tonas det andra bort och det valda tar hela bredden. Bilderna ligger
+            som externa webp — saknas de bär gradienten utseendet i stället. */}
+        <div style={{ position: "relative", height: 330, marginTop: 10, display: "flex", justifyContent: "center", overflow: "hidden" }}>
           {["m", "f"].map(kön => (bildOk[kön] && visa(kön)) ? (
             <img key={kön} src={bild(kön)} alt="" onError={() => setBildOk(b => ({ ...b, [kön]: false }))}
-              style={{ width: sex ? "70%" : "50%", height: "100%", objectFit: "cover", objectPosition: "top", transition: "width .3s", filter: "brightness(0.92)" }} />
+              style={{
+                width: sex ? "78%" : "50%", height: "100%", objectFit: "cover",
+                objectPosition: kön === "m" ? "70% top" : "30% top",
+                transition: "width .35s ease", filter: "contrast(1.12) brightness(0.9)",
+              }} />
           ) : null)}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 40%, rgba(10,10,10,0.55) 78%, #0A0A0A 100%)" }} />
-          <div style={{ position: "absolute", bottom: 14, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 10 }}>
+          {/* mjuka kanter så bilderna smälter in i svärtan i stället för att sluta tvärt */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, #0A0A0A 0%, transparent 18%, transparent 82%, #0A0A0A 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,10,10,0.45) 0%, transparent 22%, transparent 55%, rgba(10,10,10,0.85) 88%, #0A0A0A 100%)" }} />
+
+          <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 14 }}>
             {[["m", "Man"], ["f", "Kvinna"]].map(([k, l]) => (
               <button key={k} onClick={() => setSex(sex === k ? null : k)} style={{
-                padding: "9px 26px", borderRadius: 999, cursor: "pointer", fontFamily: HFONT, fontSize: 13, fontWeight: 800,
-                textTransform: "uppercase", letterSpacing: 1.2,
-                border: `1.5px solid ${sex === k ? C.lime : "rgba(255,255,255,0.55)"}`,
-                background: "rgba(10,10,10,0.45)", color: sex === k ? C.lime : C.text,
+                minWidth: 132, padding: "13px 8px", borderRadius: 999, cursor: "pointer",
+                fontFamily: HFONT, fontSize: 14.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.6,
+                border: `1.5px solid ${sex === k ? C.lime : "rgba(255,255,255,0.75)"}`,
+                background: "rgba(10,10,10,0.35)", color: sex === k ? C.lime : C.text,
+                backdropFilter: "blur(2px)",
               }}>{l}</button>
             ))}
           </div>
         </div>
-        <div style={{ textAlign: "center", fontSize: 11, color: C.muted, marginTop: 8 }}>Styr kroppskartan och beräkningarna i appen. Går att hoppa över.</div>
+        <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted, marginTop: 12 }}>Styr kroppskartan och beräkningarna i appen.</div>
 
-        <div style={{ padding: "18px 18px 0" }}>
-          <div style={{ ...hdr(30) }}>Träna.</div>
-          <div style={{ ...hdr(30), color: C.lime }}>Utvecklas.</div>
-          <div style={{ ...hdr(30) }}>Överträffa dig själv.</div>
-          <div style={{ width: 34, height: 3, background: C.lime, margin: "12px 0" }} />
-          <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6 }}>
-            Se vilka muskler som är återhämtade, vad de tål idag, och när nästa pass gör nytta.
-            Byggt på vad du faktiskt loggar — inte på gissningar.
+        <div style={{ padding: "26px 20px 0" }}>
+          <div style={{ ...hdr(40), lineHeight: 1.12 }}>Träna.</div>
+          <div style={{ ...hdr(40), lineHeight: 1.12, color: C.lime }}>Utvecklas.</div>
+          <div style={{ ...hdr(40), lineHeight: 1.12 }}>Överträffa dig själv.</div>
+          <div style={{ width: 62, height: 4, background: C.lime, margin: "20px 0 18px", borderRadius: 2 }} />
+          <div style={{ fontSize: 15, color: "#C8CCD2", lineHeight: 1.75, maxWidth: 330 }}>
+            Se vilka muskler som är återhämtade, vad de tål idag, och när nästa pass
+            gör nytta. Byggt på vad du faktiskt loggar — inte på gissningar.
           </div>
         </div>
 
-        <div style={{ display: "flex", margin: "18px 18px 0" }}>
-          {[["activity", "Muskelkarta", "Återhämtning per muskelgrupp, inte bara en totalsiffra."],
-            ["trending-up", "Veckovolym", "Vet när en muskel fått tillräckligt — och när det blir för mycket."],
-            ["target", "Ärliga siffror", "Saknas underlag säger appen det, i stället för att gissa."]].map(([ic, t, b], i) => (
-            <div key={t} style={{ flex: 1, padding: "0 9px", borderLeft: i ? `1px solid ${C.border}` : "none", textAlign: "center" }}>
-              <Icon name={ic} size={18} strokeWidth={1.6} color={C.lime} />
-              <div style={{ ...hdr(11.5), letterSpacing: 1, margin: "7px 0 4px" }}>{t}</div>
-              <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.5 }}>{b}</div>
+        <div style={{ display: "flex", margin: "30px 16px 0" }}>
+          {[["body", "Muskelkarta", "Se återhämtning per muskelgrupp, inte bara en totalsiffra."],
+            ["bars", "Veckovolym", "Vet när en muskel fått tillräckligt — och när det blir för mycket."],
+            ["shield", "Ärliga siffror", "Saknas underlag säger appen det, i stället för att gissa."]].map(([ic, t, b], i) => (
+            <div key={t} style={{ flex: 1, padding: "0 11px", borderLeft: i ? `1px solid ${C.border}` : "none", textAlign: "center" }}>
+              <div style={{ height: 54, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <FeatureIcon name={ic} size={ic === "body" ? 30 : 38} accent={C.lime} />
+              </div>
+              <div style={{ ...hdr(13), letterSpacing: 0.9, margin: "9px 0 7px" }}>{t}</div>
+              <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.65 }}>{b}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ padding: 18, marginTop: "auto" }}>
-          <button onClick={() => setStep("mode")} style={bigBtn}>Kom igång <span style={{ marginLeft: 6 }}>→</span></button>
+        <div style={{ padding: "30px 20px 26px", marginTop: "auto" }}>
+          <button onClick={() => setStep("mode")} style={{ ...bigBtn, padding: "20px 16px", fontSize: 17, letterSpacing: 1.4, display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
+            Kom igång <span style={{ fontSize: 20 }}>→</span>
+          </button>
+          <div style={{ textAlign: "center", fontSize: 13.5, color: C.muted, marginTop: 16 }}>
+            Har du redan ett konto? <span style={{ color: C.lime }}>Logga in</span>
+          </div>
         </div>
       </div>
     );
