@@ -142,8 +142,8 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
 
       {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot svärtan
           och det enda som lyser är muskler med faktiskt underlag. */}
-      <div style={{ marginTop: 10 }}>
-        <BodyMap2 muscleStates={states} onSelect={() => onOpen("map")} height={360} />
+      <div style={{ marginTop: 12 }}>
+        <BodyMap2 muscleStates={states} onSelect={() => onOpen("map")} height={300} />
       </div>
 
       <div style={{ textAlign: "center", fontSize: besked.empty ? 15.5 : 17.5, fontWeight: 600, lineHeight: 1.45, margin: "12px 6px 0", color: C.text }}>

@@ -108,3 +108,31 @@ describe("ATLAS 2.0 — egen namnrymd skyddar befintlig data", () => {
     expect(load("sessions", [])).toEqual([]);
   });
 });
+
+describe("ATLAS 2.0 — muskelkartans regioner", () => {
+  it("en region färgas efter den MINST återhämtade muskeln", async () => {
+    const { regionState } = await import("../atlas2/BodyMap2.jsx");
+    // Axelregionen är EN form men tre muskler i taxonomin. Är en av dem trött
+    // ska det synas — en utvilad delmuskel får aldrig dölja en sliten.
+    const states = {
+      deltoid_anterior: { status: "ready", readiness: 90 },
+      deltoid_lateral: { status: "critical", readiness: 22 },
+      deltoid_posterior: { status: "ready", readiness: 88 },
+    };
+    expect(regionState("deltoids", states).readiness).toBe(22);
+  });
+
+  it("region utan underlag ger null, inte ett påhittat medelvärde", async () => {
+    const { regionState } = await import("../atlas2/BodyMap2.jsx");
+    const states = { deltoid_anterior: { status: "no_data", readiness: null } };
+    expect(regionState("deltoids", states)).toBe(null);
+  });
+
+  it("varje region mappar mot riktiga muskel-id ur taxonomin", async () => {
+    const { REGION_MAP } = await import("../atlas2/BodyMap2.jsx");
+    const { MUSCLES } = await import("../data/muscles.js");
+    Object.values(REGION_MAP).flat().forEach(id => {
+      expect(MUSCLES[id], `${id} finns inte i taxonomin`).toBeTruthy();
+    });
+  });
+});
