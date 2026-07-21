@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
-import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout } from "./store.js";
+import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout, identitet, migrera, stämplaLista, stämplaPost, identitetSync } from "./store.js";
 import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { BottomNav } from "./Nav.jsx";
@@ -197,34 +197,68 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
 /* ══════════ APP ══════════ */
 
 export function Atlas2() {
-  const [step, setStep] = useState(() => (load("mode", null) ? "app" : "start"));
-  const [sex, setSex] = useState(() => (load("profile", {}) || {}).sex || null);
-  const [mode, setMode] = useState(() => load("mode", null));
-  const [sessions, setSessions] = useState(() => load("sessions", []));
-  const [programs, setPrograms] = useState(() => load("programs", []));
-  const [activeProgramId, setActiveProgramId] = useState(() => load("activeProgramId", null));
+  // ── LAGRING: async hydrering ──────────────────────────────────────────────
+  // store.load/save är asynkrona (förberedelse för enhetssynk). Tillståndet kan
+  // därför inte längre initieras synkront ur load() — det hydreras EN gång efter
+  // montering. Alla hooks MÅSTE ligga före de villkorade returerna nedan (React
+  // räknar hooks per render; en useState efter en return ger error #310).
+  const [hydrated, setHydrated] = useState(false);
+  const [step, setStep] = useState("start");
+  const [sex, setSex] = useState(null);
+  const [mode, setMode] = useState(null);
+  const [profile, setProfile] = useState({});
+  const [sessions, setSessions] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [activeProgramId, setActiveProgramId] = useState(null);
+  const [weights, setWeights] = useState([]);
+  const [live, setLive] = useState(null);   // pågående pass; persisteras av WorkoutView
+  const [foodLog, setFoodLog] = useState([]);
+  const [mål, setMål] = useState(null);
+  const [nutritionTargets, setNutritionTargets] = useState(null);
+  // Rena UI-tillstånd (lagras inte).
   const [sheet, setSheet] = useState(null);
-  // OBS: alla hooks MÅSTE ligga före de villkorade returerna nedan. React
-  // räknar hooks per render; en useState efter en return ger error #310.
   const [flik, setFlik] = useState("hem");
-  const [weights, setWeights] = useState(() => load("weights", []));
-  useEffect(() => { save("weights", weights); }, [weights]);
-  // Pågående pass överlever omladdning: sparas vid varje ändring, inte vid avslut.
-  const [live, setLive] = useState(() => load("live", null));
   const [klart, setKlart] = useState(null);
-  const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
-  const [mål, setMål] = useState(() => load("goal", null));
-  // Näringsmål i v3. Måste ligga i state (inte läsas direkt ur load vid varje
-  // render) så att matvyn och coachen uppdateras direkt när målet ändras.
-  const [nutritionTargets, setNutritionTargets] = useState(() => load("nutritionTargets", null));
-  useEffect(() => { save("goal", mål); }, [mål]);
-  useEffect(() => { save("foodLog", foodLog); }, [foodLog]);
-  useEffect(() => { save("nutritionTargets", nutritionTargets); }, [nutritionTargets]);
-  const profile = load("profile", {}) || {};
 
-  useEffect(() => { save("sessions", sessions); }, [sessions]);
-  useEffect(() => { save("programs", programs); }, [programs]);
-  useEffect(() => { save("activeProgramId", activeProgramId); }, [activeProgramId]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [m, prof, sess, progs, apid, w, lv, fl, g, nt] = await Promise.all([
+        load("mode", null), load("profile", {}), load("sessions", []), load("programs", []),
+        load("activeProgramId", null), load("weights", []), load("live", null),
+        load("foodLog", []), load("goal", null), load("nutritionTargets", null),
+      ]);
+      if (!alive) return;
+      const p = prof || {};
+      // Synk-form: hämta identitet och migrera in id/userId/deviceId/updatedAt på
+      // befintlig data. Idempotent — körs vid varje boot utan att ändra något
+      // andra gången. Skrivvägens save-effekter stämplar sedan nya poster.
+      const idn = await identitet();
+      if (!alive) return;
+      const migr = migrera({ sessions: sess, weights: w, foodLog: fl, goal: g }, idn);
+      setMode(m); setProfile(p); setSex(p.sex || null);
+      setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
+      setWeights(migr.weights); setLive(lv); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
+      // step sätts EFTER laddningen så en befintlig användare aldrig blinkar
+      // förbi onboarding innan lagringen hunnit läsas.
+      setStep(m ? "app" : "start");
+      setHydrated(true);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Persistens — gatad på `hydrated` så att de tomma start-defaulterna ALDRIG
+  // skriver över lagrad data innan den hunnit läsas in. Poster (pass, vikt,
+  // matlogg, mål) stämplas på vägen ut så att NYA poster får synkfälten; redan
+  // stämplade rörs inte (stämplingen är idempotent).
+  const idn = identitetSync();
+  useEffect(() => { if (hydrated) save("sessions", stämplaLista(sessions, "session", idn)); }, [hydrated, sessions]);
+  useEffect(() => { if (hydrated) save("programs", programs); }, [hydrated, programs]);
+  useEffect(() => { if (hydrated) save("activeProgramId", activeProgramId); }, [hydrated, activeProgramId]);
+  useEffect(() => { if (hydrated) save("weights", stämplaLista(weights, "weight", idn)); }, [hydrated, weights]);
+  useEffect(() => { if (hydrated) save("goal", mål ? stämplaPost(mål, "goal", idn) : mål); }, [hydrated, mål]);
+  useEffect(() => { if (hydrated) save("foodLog", stämplaLista(foodLog, "food", idn)); }, [hydrated, foodLog]);
+  useEffect(() => { if (hydrated) save("nutritionTargets", nutritionTargets); }, [hydrated, nutritionTargets]);
 
   // ── OS-bakåtknappen mot webbhistoriken ────────────────────────────────────
   // popstate-lyssnaren registreras EN gång och läser flik/sheet ur en ref, så
@@ -270,7 +304,14 @@ export function Atlas2() {
     setStep("app");
   };
 
-  if (step === "start") return <Start onNext={(s) => { setSex(s); save("profile", { ...(load("profile", {}) || {}), sex: s }); setStep("mode"); }} />;
+  // Kort laddskärm tills lagringen hydrerats — annars skulle en befintlig
+  // användare se onboarding blinka förbi innan datan lästs in.
+  if (!hydrated) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <AtlasLogo size={30} hfont={HFONT} tagline={null} />
+    </div>
+  );
+  if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setSex(s); setProfile(p); save("profile", p); setStep("mode"); }} />;
   if (step === "mode") return <ModeChoice onPick={pickMode} />;
 
   const startaPass = () => {

@@ -2,7 +2,7 @@
 // Askr 2.0 — bevakar att det NYA gränssnittet ärver den GAMLA sanningen.
 // Utseendet får ändras fritt; det här är reglerna som inte får ändras.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save, dagensNutrition, nutritionCtx } from "../atlas2/store.js";
+import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save, dagensNutrition, nutritionCtx, migrera, stämplaPost, stämplaLista, nyId } from "../atlas2/store.js";
 import { C, orDash, DASH, statusColor } from "../atlas2/design.js";
 import { backAction, harBakåtmål } from "../atlas2/backnav.js";
 import { createRoot } from "react-dom/client";
@@ -98,18 +98,18 @@ describe("Askr 2.0 — egen namnrymd skyddar befintlig data", () => {
   });
   afterEach(() => { delete globalThis.localStorage; });
 
-  it("skriver under atlas.v3. och rör inte v2 eller mobile", () => {
+  it("skriver under atlas.v3. och rör inte v2 eller mobile", async () => {
     box["atlas.v2.sessions"] = JSON.stringify([{ id: "gammal" }]);
     box["atlas.mobile.sessions"] = JSON.stringify([{ id: "mobil" }]);
-    save("sessions", [{ id: "ny" }]);
+    await save("sessions", [{ id: "ny" }]);
     expect(box["atlas.v3.sessions"]).toBeTruthy();
     expect(JSON.parse(box["atlas.v2.sessions"])[0].id).toBe("gammal");
     expect(JSON.parse(box["atlas.mobile.sessions"])[0].id).toBe("mobil");
   });
 
-  it("läser inte gammal data av misstag", () => {
+  it("läser inte gammal data av misstag", async () => {
     box["atlas.v2.sessions"] = JSON.stringify([{ id: "gammal" }]);
-    expect(load("sessions", [])).toEqual([]);
+    expect(await load("sessions", [])).toEqual([]);
   });
 });
 
@@ -572,7 +572,11 @@ describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
     const el = document.createElement("div"); document.body.appendChild(el);
     const r = createRoot(el); roots.push({ r, el });
     await act(async () => { r.render(createElement(Atlas2)); });
-    await new Promise(x => setTimeout(x, 80));
+    // Vänta in den async hydreringen (laddskärm → app). mount presetar demo, så
+    // hem-vyns meny-knapp dyker upp när lagringen lästs in.
+    for (let i = 0; i < 60 && el.querySelectorAll('[aria-label="Meny"]').length === 0; i++) {
+      await act(async () => { await new Promise(x => setTimeout(x, 10)); });
+    }
     return el;
   };
   const pop = async () => { await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); }); await new Promise(x => setTimeout(x, 40)); };
@@ -677,5 +681,116 @@ describe("Askr 2.0 — coachen skiljer kosttillstånd", () => {
     const r = await fråga([post()], { protein: 170, kcal: 2200 });
     expect(r.text).toMatch(/proteinmål/i);
     expect(r.text).toMatch(/idag/i);               // dagens siffra vägs in
+  });
+});
+
+describe("Askr 2.0 — synk-form (id, userId, deviceId, updatedAt)", () => {
+  const ID = { userId: "u_test", deviceId: "d_test" };
+  const data = () => ({
+    sessions: [{ id: "sess1", completedAt: 1000, title: "Push", sets: [] }],   // har redan id
+    weights: [{ ts: 2000, kg: 82 }, { ts: 3000, kg: 81 }],                     // saknar id
+    foodLog: [{ ts: 4000, name: "Ägg", kcal: 78 }],                            // saknar id
+    goal: { id: "goal_x", startDatum: 500, målDatum: 5000, typ: "muscle" },
+    programs: [{ id: "p1" }],                                                   // rörs inte
+  });
+
+  it("migreringen är körbar två gånger utan att ändra något andra gången", () => {
+    // Kravet: idempotens. Andra körningen får INTE röra något.
+    const en = migrera(data(), ID);
+    const två = migrera(en, ID);
+    expect(två).toEqual(en);
+  });
+
+  it("stämplar alla fyra fälten på poster som saknar dem", () => {
+    const r = migrera(data(), ID);
+    const w = r.weights[0];
+    expect(w.id).toMatch(/^w_/);
+    expect(w.userId).toBe("u_test");
+    expect(w.deviceId).toBe("d_test");
+    expect(typeof w.updatedAt).toBe("number");
+    const f = r.foodLog[0];
+    expect(f.id).toMatch(/^f_/);
+    expect(f.userId).toBe("u_test");
+    expect(f.deviceId).toBe("d_test");
+  });
+
+  it("id för befintlig data är INNEHÅLLSbaserat — samma post ger samma id på olika enheter", () => {
+    // Detta är den bit som inte går att ångra: två enheter som importerar samma
+    // gamla vikt måste räkna fram SAMMA id, annars dubblas den vid framtida synk.
+    const a = migrera({ weights: [{ ts: 2000, kg: 82 }] }, { userId: "u_A", deviceId: "d_A" });
+    const b = migrera({ weights: [{ ts: 2000, kg: 82 }] }, { userId: "u_B", deviceId: "d_B" });
+    expect(a.weights[0].id).toBe(b.weights[0].id);      // id följer innehållet
+    expect(a.weights[0].userId).toBe("u_A");            // userId följer enheten
+    expect(b.weights[0].userId).toBe("u_B");
+    // Olika innehåll ger olika id.
+    const c = migrera({ weights: [{ ts: 2000, kg: 83 }] }, ID);
+    expect(c.weights[0].id).not.toBe(a.weights[0].id);
+  });
+
+  it("updatedAt sätts till postens händelsetid, aldrig 'nu'", () => {
+    const w = migrera({ weights: [{ ts: 2000, kg: 82 }] }, ID).weights[0];
+    expect(w.updatedAt).toBe(2000);                     // = ts, inte Date.now()
+    const s = migrera({ sessions: [{ id: "s", completedAt: 1234 }] }, ID).sessions[0];
+    expect(s.updatedAt).toBe(1234);                     // = completedAt
+  });
+
+  it("befintliga id/userId/updatedAt bevaras — bara det som saknas fylls", () => {
+    const pre = { weights: [{ ts: 2000, kg: 82, id: "w_custom", userId: "u_old", updatedAt: 999 }] };
+    const w = migrera(pre, ID).weights[0];
+    expect(w.id).toBe("w_custom");
+    expect(w.userId).toBe("u_old");
+    expect(w.updatedAt).toBe(999);
+    expect(w.deviceId).toBe("d_test");                  // bara det saknade fältet fylls
+  });
+
+  it("pass och mål behåller sina motorgenererade id", () => {
+    const r = migrera(data(), ID);
+    expect(r.sessions[0].id).toBe("sess1");
+    expect(r.goal.id).toBe("goal_x");
+  });
+
+  it("programmen lämnas orörda av migreringen", () => {
+    const r = migrera(data(), ID);
+    expect(r.programs).toEqual([{ id: "p1" }]);
+  });
+
+  it("stämplaPost är en ren funktion — tomt/ogiltigt in ger samma ut", () => {
+    expect(stämplaPost(null, "weight", ID)).toBe(null);
+  });
+});
+
+describe("Askr 2.0 — id-policy: slump vid skapande, hash bara vid migrering", () => {
+  const ID = { userId: "u_test", deviceId: "d_test" };
+
+  it("nyId ger unika id med rätt prefix", () => {
+    const a = nyId("f_"), b = nyId("f_");
+    expect(a).toMatch(/^f_/);
+    expect(a).not.toBe(b);
+  });
+
+  it("en NY post behåller sitt id när innehållet ändras", () => {
+    // Skapad post har ett slumpat id. Användaren rättar kcal.
+    const skapad = { id: "f_slump123", ts: 4000, name: "Ägg", kcal: 78, userId: "u_test", deviceId: "d_test", updatedAt: 4000 };
+    const ändrad = { ...skapad, kcal: 90 };
+    // Varken migrering eller lagringsstämpling får byta id → synken ser en
+    // ÄNDRING, inte radering + ny post.
+    expect(migrera({ foodLog: [ändrad] }, ID).foodLog[0].id).toBe("f_slump123");
+    expect(stämplaLista([ändrad], "food", ID)[0].id).toBe("f_slump123");
+  });
+
+  it("lagringsstämpling (skrivvägen) hittar ALDRIG på ett id ur innehållet", () => {
+    // Utan idGen: en post utan id förblir utan id på skrivvägen. Content-id är
+    // migreringens jobb, inte skrivvägens.
+    const utanId = { ts: 4000, name: "Ägg", kcal: 78 };
+    expect(stämplaLista([utanId], "food", ID)[0].id).toBeUndefined();
+    // ... men den får userId/deviceId/updatedAt.
+    const s = stämplaLista([utanId], "food", ID)[0];
+    expect(s.userId).toBe("u_test");
+    expect(s.updatedAt).toBe(4000);
+  });
+
+  it("migrering (och BARA migrering) ger befintlig id-lös post ett content-id", () => {
+    const utanId = { ts: 4000, name: "Ägg", kcal: 78 };
+    expect(migrera({ foodLog: [utanId] }, ID).foodLog[0].id).toMatch(/^f_/);
   });
 });
