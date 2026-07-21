@@ -15,6 +15,7 @@ import { ProgressView } from "./ProgressView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { FoodView } from "./FoodView.jsx";
+import { ImportSheet } from "./ImportSheet.jsx";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
@@ -141,7 +142,7 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
     <div style={{ padding: "16px 18px 90px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <AtlasLogo size={26} hfont={HFONT} tagline={null} />
-        <button aria-label="Meny" onClick={() => onOpen("menu")} style={{ background: "none", border: "none", padding: 10, cursor: "pointer" }}>
+        <button aria-label="Meny" onClick={() => onOpen("import")} style={{ background: "none", border: "none", padding: 10, cursor: "pointer" }}>
           {[0, 1, 2].map(i => <div key={i} style={{ width: 21, height: 2, background: C.text, marginBottom: i < 2 ? 5 : 0 }} />)}
         </button>
       </div>
@@ -195,7 +196,8 @@ export function Atlas2() {
   // OBS: alla hooks MÅSTE ligga före de villkorade returerna nedan. React
   // räknar hooks per render; en useState efter en return ger error #310.
   const [flik, setFlik] = useState("hem");
-  const [weights] = useState(() => load("weights", []));
+  const [weights, setWeights] = useState(() => load("weights", []));
+  useEffect(() => { save("weights", weights); }, [weights]);
   // Pågående pass överlever omladdning: sparas vid varje ändring, inte vid avslut.
   const [live, setLive] = useState(() => load("live", null));
   const [klart, setKlart] = useState(null);
@@ -277,7 +279,11 @@ export function Atlas2() {
         <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
-            {sheet === "program" ? (
+            {sheet === "import" ? (
+              <ImportSheet sessions={sessions} setSessions={setSessions}
+                setWeights={setWeights} setFoodLog={setFoodLog}
+                onClose={() => setSheet(null)} />
+            ) : sheet === "program" ? (
               <ProgramSheet aktiv={activeProgram} sessions={sessions}
                 setPrograms={setPrograms} setActiveProgramId={setActiveProgramId}
                 nästa={activeProgram ? nästaPass(activeProgram, sessions) : null}

@@ -222,3 +222,67 @@ describe("ATLAS 2.0 — mat", () => {
     expect(f.calories).toBeUndefined();
   });
 });
+
+describe("ATLAS 2.0 — import av befintlig historik", () => {
+  let box;
+  const D = 864e5;
+  beforeEach(() => {
+    box = {};
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: { getItem: k => (k in box ? box[k] : null), setItem: (k, v) => { box[k] = String(v); }, removeItem: k => { delete box[k]; } },
+    });
+  });
+  afterEach(() => { delete globalThis.localStorage; });
+
+  const pass = (id, dagar, titel, nu) => ({ id, title: titel, completedAt: nu - dagar * D, sets: [], muscleLoads: { pectoralis_major: 300 } });
+
+  it("samma pass i båda källorna importeras EN gång", async () => {
+    const { förbered } = await import("../atlas2/import.js");
+    const nu = Date.now();
+    box["atlas.v2.sessions"] = JSON.stringify([pass("s1", 3, "Push", nu), pass("s2", 6, "Ben", nu)]);
+    box["atlas.mobile.sessions"] = JSON.stringify([pass("s2", 6, "Ben", nu), pass("m1", 1, "Pull", nu)]);
+    const plan = förbered([]);
+    expect(plan.nya.map(s => s.id).sort()).toEqual(["m1", "s1", "s2"]);
+    expect(plan.dubbletter).toBe(1);
+  });
+
+  it("liknande pass utan gemensamt id avgörs INTE automatiskt", async () => {
+    const { förbered } = await import("../atlas2/import.js");
+    const nu = Date.now();
+    const redan = [pass("a1", 3, "Push", nu)];
+    // Samma titel, en halvtimme isär, olika id — kan vara samma pass loggat på
+    // två enheter, eller två riktiga pass. Appen ska inte gissa: en felaktig
+    // dubblett dubblar muskellasten och får readiness att ljuga.
+    box["atlas.mobile.sessions"] = JSON.stringify([{ ...pass("b1", 3, "Push", nu), completedAt: nu - 3 * D + 18e5 }]);
+    const plan = förbered(redan);
+    expect(plan.nya.length).toBe(0);
+    expect(plan.misstänkta.length).toBe(1);
+  });
+
+  it("importen skriver aldrig till v2 eller mobile", async () => {
+    const { förbered, genomför } = await import("../atlas2/import.js");
+    const nu = Date.now();
+    box["atlas.v2.sessions"] = JSON.stringify([pass("s1", 2, "Push", nu)]);
+    const före = box["atlas.v2.sessions"];
+    const r = genomför(förbered([]), [], { sessions: [] });
+    expect(r.sessions.length).toBe(1);
+    expect(box["atlas.v2.sessions"]).toBe(före);   // originalet orört
+  });
+
+  it("spårfältet _källa följer inte med in i sparad data", async () => {
+    const { förbered, genomför } = await import("../atlas2/import.js");
+    const nu = Date.now();
+    box["atlas.v2.sessions"] = JSON.stringify([pass("s1", 2, "Push", nu)]);
+    const r = genomför(förbered([]), [], { sessions: [] });
+    expect(r.sessions[0]._källa).toBeUndefined();
+  });
+
+  it("vikter dedupliceras på tidsstämpel", async () => {
+    const { förbered } = await import("../atlas2/import.js");
+    const nu = Date.now();
+    box["atlas.v2.weights"] = JSON.stringify([{ ts: nu - 5 * D, kg: 82 }, { ts: nu - D, kg: 81 }]);
+    box["atlas.mobile.weights"] = JSON.stringify([{ ts: nu - D, kg: 81 }, { ts: nu, kg: 80.8 }]);
+    expect(förbered([]).vikter.length).toBe(3);
+  });
+});
