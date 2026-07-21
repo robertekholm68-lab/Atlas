@@ -35,7 +35,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22, inte 20: sviten (t.ex. voice.test.js) förlitar sig på den
+          # globala `navigator` som bara finns i Node >= 21. Node 20 ger
+          # "navigator is not defined" och stoppar en i övrigt korrekt publicering.
+          # Repot utvecklas och testas på Node 22 — CI ska matcha.
+          node-version: 22
           cache: npm
           cache-dependency-path: atlas-app/package-lock.json
 
