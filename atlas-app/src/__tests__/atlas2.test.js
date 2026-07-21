@@ -136,3 +136,43 @@ describe("ATLAS 2.0 — muskelkartans regioner", () => {
     });
   });
 });
+
+describe("ATLAS 2.0 — coachens faktakälla", () => {
+  const pass = (dagarSen, laster, vol = 3000) => ({
+    completedAt: Date.now() - dagarSen * 864e5, muscleLoads: laster, totalVolume: vol, sets: [],
+  });
+
+  it("tom vikthistorik tystar INTE coachen om kroppen", async () => {
+    const { coachFacts, recommendation } = await import("../atlas2/facts.js");
+    // Riktig bugg, hittad i bygget: tilliten togs som globalt minimum över alla
+    // block, så en tom vikthistorik gjorde att coachen påstod sig veta
+    // ingenting trots 42 loggade pass. Att jag inte vet vad du väger säger
+    // ingenting om dina muskler.
+    const sessions = [pass(1, { pectoralis_major: 500 }), pass(4, { quadriceps: 600 }), pass(8, { latissimus_dorsi: 400 })];
+    const f = coachFacts({ sessions, weights: [] });
+    expect(f.datalage.svagast).not.toBe("ingen");
+    expect(recommendation(f).rubrik).not.toMatch(/logga ett pass/i);
+    expect(f.datalage.perBlock.vikt).toBe("ingen");   // vikten är fortfarande svag
+  });
+
+  it("utan pass säger coachen rakt ut att den inte vet", async () => {
+    const { coachFacts, recommendation } = await import("../atlas2/facts.js");
+    const f = coachFacts({ sessions: [], weights: [] });
+    expect(f.kropp.readiness).toBe(null);
+    expect(recommendation(f).rubrik).toMatch(/logga ett pass/i);
+    expect(recommendation(f).skäl).toEqual([]);
+  });
+
+  it("rekommendationen bär alltid sina skäl när den uttalar sig", async () => {
+    const { coachFacts, recommendation } = await import("../atlas2/facts.js");
+    const sessions = [pass(1, { quadriceps: 900 }), pass(3, { pectoralis_major: 400 }), pass(9, { latissimus_dorsi: 300 })];
+    const r = recommendation(coachFacts({ sessions, weights: [] }));
+    expect(r.skäl.length).toBeGreaterThan(0);
+  });
+
+  it("svagt underlag ger reservation, inte tystnad", async () => {
+    const { coachFacts, recommendation } = await import("../atlas2/facts.js");
+    const r = recommendation(coachFacts({ sessions: [pass(1, { pectoralis_major: 500 })], weights: [] }));
+    expect(r.reservation).toBe(true);
+  });
+});

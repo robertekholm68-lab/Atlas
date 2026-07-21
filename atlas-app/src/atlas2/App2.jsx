@@ -9,6 +9,9 @@ import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, st
 import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout } from "./store.js";
 import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
+import { BottomNav } from "./Nav.jsx";
+import { CoachView } from "./CoachView.jsx";
+import { ProgressView } from "./ProgressView.jsx";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
 /* ══════════ STARTSIDA ══════════ */
@@ -171,18 +174,6 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
         ))}
       </div>
 
-      <div style={{ display: "flex", marginTop: 6 }}>
-        {[["body", "Logga mat", "food"], ["bars", "Framsteg", "progress"], ["shield", "Coachen", "coach"]].map(([ic, l, mål], i) => (
-          <button key={mål} onClick={() => onOpen(mål)} style={{
-            flex: 1, padding: "15px 0", background: "none", border: "none",
-            borderLeft: i ? `1px solid ${C.border}` : "none", color: C.text, cursor: "pointer",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
-          }}>
-            <FeatureIcon name={ic} size={ic === "body" ? 17 : 21} color={C.muted} accent={C.muted} />
-            <span style={{ fontSize: 12 }}>{l}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -197,6 +188,11 @@ export function Atlas2() {
   const [programs, setPrograms] = useState(() => load("programs", []));
   const [activeProgramId, setActiveProgramId] = useState(() => load("activeProgramId", null));
   const [sheet, setSheet] = useState(null);
+  // OBS: alla hooks MÅSTE ligga före de villkorade returerna nedan. React
+  // räknar hooks per render; en useState efter en return ger error #310.
+  const [flik, setFlik] = useState("hem");
+  const [weights] = useState(() => load("weights", []));
+  const profile = load("profile", {}) || {};
 
   useEffect(() => { save("sessions", sessions); }, [sessions]);
   useEffect(() => { save("programs", programs); }, [programs]);
@@ -216,16 +212,37 @@ export function Atlas2() {
   if (step === "start") return <Start onNext={(s) => { setSex(s); save("profile", { ...(load("profile", {}) || {}), sex: s }); setStep("mode"); }} />;
   if (step === "mode") return <ModeChoice onPick={pickMode} />;
 
+  const vy = () => {
+    if (flik === "hem") return (
+      <Home sessions={sessions} activeProgram={activeProgram}
+        onStart={() => setSheet("workout")} onOpen={setSheet} />
+    );
+    if (flik === "coachen") return (
+      <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights}
+        profile={profile} onStart={() => setSheet("workout")} />
+    );
+    if (flik === "framsteg") return (
+      <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} />
+    );
+    // Pass och Mat är inte byggda än. Att säga det rakt ut är bättre än en
+    // halvfärdig vy som ser färdig ut.
+    return (
+      <div style={{ padding: "70px 24px", textAlign: "center" }}>
+        <div style={hdr(20)}>{flik === "pass" ? "Pass" : "Mat"}</div>
+        <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6, marginTop: 12 }}>
+          Den här vyn är inte byggd i ATLAS 2.0 än.
+          {flik === "pass" ? " Passloggning finns i nuvarande appen så länge." : " Matloggningen finns i nuvarande appen så länge."}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BFONT, maxWidth: 480, margin: "0 auto" }}>
-      <Home
-        sessions={sessions}
-        activeProgram={activeProgram}
-        onStart={() => setSheet("workout")}
-        onOpen={setSheet}
-      />
+      {vy()}
+      <BottomNav aktiv={flik} onChange={setFlik} />
       {sheet && (
-        <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 50, display: "flex", alignItems: "flex-end" }}>
+        <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
             <div style={hdr(18)}>{sheet}</div>
