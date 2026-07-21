@@ -83,7 +83,7 @@ function AtlasApp({ mode, onSwitchMode }) {
   const muscleStates = {};
   Object.keys(MUSCLES).forEach(id => {
     const rec = computeRecovery(sessions, id, nowMs);
-    const weeklyLoad = sessions.filter(s => nowMs - s.completedAt < 7 * 24 * 3600000).reduce((sum, s) => sum + (s.muscleLoads[id] || 0), 0);
+    const weeklyLoad = sessions.filter(s => nowMs - s.completedAt < 7 * 24 * 3600000).reduce((sum, s) => sum + ((s.muscleLoads || {})[id] || 0), 0);
     const baseReadiness = computeReadiness(rec.recoveryScore, weeklyLoad, rec.daysSince);
     // nutrition + systemic conditioning fatigue adjust readiness (not per-muscle fatigue)
     const readiness = rec.status === "no_data" ? baseReadiness : Math.max(0, Math.min(100, baseReadiness - cardioPenalty));

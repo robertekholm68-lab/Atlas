@@ -69,6 +69,11 @@ export function coachFacts(ctx = {}, now = Date.now()) {
     volymIVeckan: volym(vecka),
     volymFörraVeckan: volym(förraVeckan),
     senast: lastSessionLabel(sessions, now),
+    // Dagar sedan senaste passet. Avgörande för att skilja "utvilad" från
+    // "har inte tränat" — se `förbehåll` nedan.
+    dagarSedanPass: sessions.length
+      ? Math.floor((now - Math.max(...sessions.map(x => x.completedAt))) / 864e5)
+      : null,
     tillit: tillit(sessions.length),
   };
 
@@ -178,3 +183,21 @@ export function recommendation(facts) {
  * och dokument kan tala samma språk.
  */
 export const buildCoachFacts = coachFacts;
+
+/**
+ * Förbehåll som MÅSTE följa med varje uttalande om återhämtning.
+ *
+ * Hög readiness betyder två helt olika saker beroende på historiken: att
+ * kroppen hunnit återhämta sig, eller att den inte belastats alls. Utan det
+ * här förbehållet säger coachen "beredskap 98 %, fräscha och redo" till någon
+ * som inte tränat på en månad — avträning presenterad som form.
+ *
+ * Returnerar null när readiness kan tas för vad den ser ut att vara.
+ */
+export function readinessFörbehåll(facts, tröskel = 10) {
+  const d = facts && facts.träning && facts.träning.dagarSedanPass;
+  if (d == null) return "Du har inga loggade pass, så siffran beskriver en kropp som inte belastats — inte en återhämtad kropp.";
+  if (d < tröskel) return null;
+  const tid = d >= 60 ? `${Math.floor(d / 30)} månader` : `${d} dagar`;
+  return `Observera: ditt senaste pass var för ${tid} sedan. Den höga siffran betyder att kroppen inte belastats, inte att den är i form. Börja lugnt.`;
+}

@@ -9,6 +9,10 @@ import { missionCoachSummary, STATUS_LABEL, STATUS_COLOR } from "../../engines/m
 import { nextWorkout } from "../../engines/programs.js";
 import { analyzeProgram } from "../../engines/coach-programs.js";
 import { goalReasoning, GOAL_EVIDENCE, GOAL_TYPES } from "../../engines/goal.js";
+// §13: coachens gemensamma faktakälla. Nuvarande appen räknar än så länge sina
+// egna svar ur ctx, men ÄRLIGHETSGRINDARNA hämtas härifrån så att båda
+// apparna gör samma bedömning av när data får uttalas om.
+import { buildCoachFacts, readinessFörbehåll } from "../../engines/facts.js";
 import { MUSCLES } from "../../data/muscles.js";
 import { citableFacts, citableTopic, hasKnowledge, hasTopic, KNOWLEDGE, TOPICS } from "../../data/knowledge.js";
 import { hasLlm, getLlmConfig, callClaude, coachSystemPrompt, buildGroundingContext } from "../../app/llm.js";
@@ -132,6 +136,10 @@ function coachReply(text, ctx, lastTopic = null) {
     if (tired.length) r += `\nBehöver mer vila: ${tired.map(x => x.name).join(", ")}.`;
     if (overallReadiness < 56) r += "\n\nMed låg beredskap: håll intensiteten nere, prioritera sömn och protein, eller ta en lugnare dag.";
     if (cycle) r += `\n\nDin cykel: ${cycle.sv} (dag ${cycle.day}) — jag har redan vägt in det i beredskapen (${cycle.readiness >= 0 ? "+" : ""}${cycle.readiness}). ${cycle.phase === "menstrual" || cycle.phase === "luteal" ? "Var snäll mot dig själv med intensiteten om orken är låg." : "Bra fönster att pusha lite extra."}`;
+    // Skilj "utvilad" från "har inte tränat". Utan detta presenterar coachen
+    // avträning som god form.
+    const förbehåll = readinessFörbehåll(buildCoachFacts({ sessions, activeProgram }));
+    if (förbehåll) r += `\n\n${förbehåll}`;
     if (senior) r += "\n\nMed åren tar återhämtningen ofta lite längre tid — pressa inte varje pass till max, och prioritera sömn och protein. Samtidigt ger styrketräningen ännu mer utdelning nu: den motverkar muskel- och benförlust.";
     return { text: r, chips: chip([...(senior ? ["Träning efter 50"] : []), "Vad ska jag träna?", "Hur går mitt mål?"]) };
   }

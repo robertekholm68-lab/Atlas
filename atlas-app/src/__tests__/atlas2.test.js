@@ -409,3 +409,39 @@ describe("§13 buildCoachFacts finns i motorlagret", () => {
     expect(gammal.coachFacts).toBe(ny.coachFacts);
   });
 });
+
+describe("Coachen skiljer utvilad från otränad", () => {
+  const nu = Date.now();
+  const ctx = dagar => ({
+    overallReadiness: 98,
+    muscleStates: { quadriceps: { recoveryScore: 99 } },
+    sessions: [{ completedAt: nu - dagar * 864e5, muscleLoads: { quadriceps: 400 }, sets: [] }],
+    activeProgram: null, goalProfile: null, measurements: [],
+  });
+
+  it("varnar när senaste passet ligger långt tillbaka", async () => {
+    const { coachReply } = await import("../features/ai-coach/index.jsx");
+    // Hög readiness efter en månads uppehåll är avträning, inte form.
+    const r = coachReply("hur ser återhämtningen ut?", ctx(32));
+    expect(r.text).toMatch(/inte belastats/i);
+  });
+
+  it("lägger inte till förbehållet när träningen är aktuell", async () => {
+    const { coachReply } = await import("../features/ai-coach/index.jsx");
+    const r = coachReply("hur ser återhämtningen ut?", ctx(2));
+    expect(r.text).not.toMatch(/inte belastats/i);
+  });
+
+  it("helt utan pass sägs det rakt ut", async () => {
+    const { readinessFörbehåll, buildCoachFacts } = await import("../engines/facts.js");
+    expect(readinessFörbehåll(buildCoachFacts({ sessions: [] }))).toMatch(/inga loggade pass/i);
+  });
+});
+
+describe("Motorn tål ofullständiga pass", () => {
+  it("pass utan muscleLoads kraschar inte återhämtningen", async () => {
+    const { computeRecovery } = await import("../engines/index.js");
+    // Äldre importerad data saknar fältet. Noll last, inte krasch.
+    expect(() => computeRecovery([{ completedAt: Date.now() }], "quadriceps", Date.now())).not.toThrow();
+  });
+});

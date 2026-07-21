@@ -42,7 +42,7 @@ export function MuscleSheet({ regionId, sessions = [], onClose }) {
   // Pass som faktiskt belastat någon av regionens muskler.
   const relevanta = sessions
     .filter(s => s && s.completedAt && s.muscleLoads &&
-      ids.some(id => (s.muscleLoads[id] || 0) > 0))
+      ids.some(id => ((s.muscleLoads || {})[id] || 0) > 0))
     .sort((a, b) => b.completedAt - a.completedAt);
 
   const delar = ids.map(id => ({
@@ -68,7 +68,7 @@ export function MuscleSheet({ regionId, sessions = [], onClose }) {
     const till = nu - v * 7 * DAG, från = till - 7 * DAG;
     const last = sessions
       .filter(s => s && s.completedAt >= från && s.completedAt < till && s.muscleLoads)
-      .reduce((a, s) => a + ids.reduce((b, id) => b + (s.muscleLoads[id] || 0), 0), 0);
+      .reduce((a, s) => a + ids.reduce((b, id) => b + ((s.muscleLoads || {})[id] || 0), 0), 0);
     veckor.push(Math.round(last));
   }
   const maxLast = Math.max(...veckor, 1);

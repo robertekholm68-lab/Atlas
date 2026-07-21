@@ -28,14 +28,16 @@ function computeRecovery(sessions, muscleId, nowMs) {
   let remaining = 0;
   sessions.forEach(s => {
     if (nowMs - s.completedAt > lookbackMs) return;
-    const load = s.muscleLoads[muscleId] || 0;
+    // Ett pass utan muscleLoads ska bidra med noll last, inte krascha hela
+    // återhämtningsberäkningen. Fältet saknas bl.a. i äldre importerad data.
+    const load = (s.muscleLoads || {})[muscleId] || 0;
     if (load === 0) return;
     remaining += (load / 35) * Math.exp(-((nowMs - s.completedAt) / 3600000) / halfLifeHours);
   });
   const recoveryScore = Math.max(0, Math.min(100, 100 - remaining));
-  const trained = sessions.some(s => s.muscleLoads[muscleId]);
+  const trained = sessions.some(s => (s.muscleLoads || {})[muscleId]);
   let status = "no_data";
-  const lastSession = [...sessions].sort((a, b) => b.completedAt - a.completedAt).find(s => s.muscleLoads[muscleId] > 0);
+  const lastSession = [...sessions].sort((a, b) => b.completedAt - a.completedAt).find(s => (s.muscleLoads || {})[muscleId] > 0);
   const daysSince = lastSession ? (nowMs - lastSession.completedAt) / 86400000 : 999;
   if (trained) {
     if (recoveryScore <= 30) status = "critical";
@@ -56,7 +58,7 @@ function muscleWeeklySets(sessions, muscleId, now) {
 
 function recoveryContributions(sessions, muscleId, now) {
   return sessions.filter(s => now - s.completedAt < 14 * 864e5 && (s.muscleLoads || {})[muscleId] > 0)
-    .map(s => ({ load: Math.round(s.muscleLoads[muscleId]), days: Math.max(0, Math.round((now - s.completedAt) / 864e5)), title: s.title, sport: !!s.sport,
+    .map(s => ({ load: Math.round((s.muscleLoads || {})[muscleId] || 0), days: Math.max(0, Math.round((now - s.completedAt) / 864e5)), title: s.title, sport: !!s.sport,
       sets: (s.sets || []).filter(x => { const ex = EXERCISES.find(e => e.id === x.exerciseId); return ex && ((ex.activation.find(a => a.muscleId === muscleId) || {}).factor || 0) >= 0.5; }).length }))
     .sort((a, b) => a.days - b.days);
 }
