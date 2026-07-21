@@ -8,7 +8,7 @@
 
 import { C, hdr, label, card, statRow, statCell, orDash, DASH } from "./design.js";
 import { coachFacts } from "./facts.js";
-import { weekSessions } from "./store.js";
+import { weekSessions, sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
 
 const VECKA = 6048e5;
@@ -24,7 +24,7 @@ export function ProgressView({ sessions = [], weights = [], activeProgram }) {
   for (let v = 7; v >= 0; v--) {
     const till = now - v * VECKA, från = till - VECKA;
     const pass = done.filter(s => s.completedAt >= från && s.completedAt < till);
-    veckor.push({ ton: pass.reduce((a, s) => a + (s.totalVolume || 0), 0) / 1000, pass: pass.length });
+    veckor.push({ ton: pass.reduce((a, s) => a + sessionVolume(s), 0) / 1000, pass: pass.length });
   }
   const maxTon = Math.max(...veckor.map(v => v.ton), 0.1);
   const nog = done.length >= TRÖSKEL;

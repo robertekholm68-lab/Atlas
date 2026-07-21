@@ -12,7 +12,7 @@
 // (Motsvarar §13 buildCoachFacts i konceptet. När 2.0 blir huvudappen hör den
 // hemma i engines/ — den ligger här så länge för att inte röra nuvarande appen.)
 
-import { bodyState, weekSessions, lastSessionLabel } from "./store.js";
+import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "./store.js";
 import { MUSCLES } from "../data/muscles.js";
 
 /** Tillitsnivå ur antal observationer. Trubbig med flit — hellre försiktig. */
@@ -50,7 +50,7 @@ export function coachFacts(ctx = {}, now = Date.now()) {
   };
 
   // ── träningen ──────────────────────────────────────────────────────────
-  const volym = list => Math.round(list.reduce((a, s) => a + (s.totalVolume || 0), 0));
+  const volym = list => Math.round(list.reduce((a, s) => a + sessionVolume(s), 0));
   const förraVeckan = sessions.filter(s => {
     const v = weekSessions(sessions, now - 7 * 864e5);
     return v.some(x => x.completedAt === s.completedAt);

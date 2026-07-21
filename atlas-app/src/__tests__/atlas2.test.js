@@ -176,3 +176,25 @@ describe("ATLAS 2.0 — coachens faktakälla", () => {
     expect(r.reservation).toBe(true);
   });
 });
+
+describe("ATLAS 2.0 — volym räknas ur seten", () => {
+  it("ett pass utan totalVolume får ändå rätt volym", async () => {
+    const { sessionVolume } = await import("../atlas2/store.js");
+    // buildSession sätter aldrig totalVolume. Läser man det fältet blir alla
+    // riktiga pass noll — bara demofixturen ser rätt ut. Volymen måste komma
+    // ur seten.
+    const s = { sets: [{ weight: 60, reps: 8 }, { weight: 60, reps: 6 }] };
+    expect(sessionVolume(s)).toBe(840);
+  });
+
+  it("gamla poster med totalVolume men utan set faller tillbaka på fältet", async () => {
+    const { sessionVolume } = await import("../atlas2/store.js");
+    expect(sessionVolume({ sets: [], totalVolume: 5000 })).toBe(5000);
+  });
+
+  it("tomt pass ger noll, inte NaN", async () => {
+    const { sessionVolume } = await import("../atlas2/store.js");
+    expect(sessionVolume({})).toBe(0);
+    expect(sessionVolume(null)).toBe(0);
+  });
+});

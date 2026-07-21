@@ -86,6 +86,21 @@ export function todaysMessage(states, sessionCount) {
   return { text: "Måttlig beredskap över hela kroppen." };
 }
 
+/**
+ * Volym för ett pass, i kg.
+ *
+ * BUGG SOM LEVT LÄNGE: buildSession sätter aldrig `totalVolume`, men både
+ * mobilens framstegsvy och första versionen av 2.0:s läste det fältet. Alla
+ * riktiga pass räknades därför som noll volym — bara demodata såg rätt ut,
+ * eftersom fixturen bär fältet. Här räknas volymen ur seten, med fältet som
+ * fallback för gamla poster som faktiskt har det.
+ */
+export function sessionVolume(s) {
+  if (!s) return 0;
+  const ur = (s.sets || []).reduce((a, x) => a + (x.weight || 0) * (x.reps || 0), 0);
+  return ur > 0 ? ur : (s.totalVolume || 0);
+}
+
 /** Veckans pass, kalendervecka måndag–söndag (samma definition som nutrition). */
 export function weekSessions(sessions, nowMs = Date.now()) {
   const d = new Date(nowMs);
