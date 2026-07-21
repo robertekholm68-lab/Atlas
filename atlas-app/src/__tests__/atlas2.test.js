@@ -4,6 +4,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save } from "../atlas2/store.js";
 import { C, orDash, DASH, statusColor } from "../atlas2/design.js";
+import { backAction, harBakåtmål } from "../atlas2/backnav.js";
+import { createRoot } from "react-dom/client";
+import { act } from "react-dom/test-utils";
+import { createElement } from "react";
 
 const DAG = 864e5;
 
@@ -501,5 +505,110 @@ describe("Askr 2.0 — fråga coachen", () => {
     const src = fs.readFileSync("src/atlas2/CoachChat.jsx", "utf8");
     expect(src).toMatch(/import \{ coachReply \}/);
     expect(src).not.toMatch(/function coachReply/);
+  });
+});
+
+describe("Askr 2.0 — OS-bakåtknappen (beslutet)", () => {
+  it("hem utan ark har inget internt bakåtmål — bakåt får lämna appen", () => {
+    expect(harBakåtmål({ sheet: null, flik: "hem" })).toBe(false);
+    expect(backAction({ sheet: null, flik: "hem" })).toBe("lämna");
+  });
+
+  it("öppet ark ligger överst: bakåt stänger arket, inget annat", () => {
+    expect(harBakåtmål({ sheet: "import", flik: "hem" })).toBe(true);
+    expect(backAction({ sheet: "import", flik: "hem" })).toBe("stäng-ark");
+    // Även när man står på en annan flik vinner arket — det stängs först.
+    expect(backAction({ sheet: "mal", flik: "coachen" })).toBe("stäng-ark");
+    expect(backAction({ sheet: "muskel:pectoralis_major", flik: "framsteg" })).toBe("stäng-ark");
+  });
+
+  it("annan flik än hem utan ark: bakåt går till hem", () => {
+    for (const flik of ["coachen", "framsteg", "mat", "pass"]) {
+      expect(harBakåtmål({ sheet: null, flik })).toBe(true);
+      expect(backAction({ sheet: null, flik })).toBe("till-hem");
+    }
+  });
+
+  it("ett pågående pass kastas aldrig av bakåt — det pausas till hem", () => {
+    // Passvyn är flik "pass". Bakåt därifrån ger "till-hem", ALDRIG någon
+    // kasta-åtgärd. live-passet ligger kvar i state och atlas.v3.live, så att gå
+    // hem pausar passet i stället för att slänga loggade set — samma skydd som
+    // mobilens avbryt-dialog, fast utan att något går förlorat.
+    expect(backAction({ sheet: null, flik: "pass" })).toBe("till-hem");
+    expect(backAction({ sheet: null, flik: "pass" })).not.toBe("lämna");
+  });
+});
+
+describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
+  const roots = [];
+  let box;
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true;   // tystar act()-varningen
+    // Tidigare block i filen gör `delete globalThis.localStorage` i sin afterEach,
+    // så jsdom-lagringen är borta här. Lägg tillbaka en egen i minnet — samma
+    // mönster som namnrymds-blocken ovan.
+    box = {};
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: k => (k in box ? box[k] : null),
+        setItem: (k, v) => { box[k] = String(v); },
+        removeItem: k => { delete box[k]; },
+        clear: () => { box = {}; },
+      },
+    });
+  });
+  afterEach(async () => {
+    // Omonterade rötter läcker mellan testfall (se CLAUDE.md) — montera av alla.
+    await act(async () => { roots.splice(0).forEach(({ r, el }) => { try { r.unmount(); } catch (e) {} el.remove(); }); });
+    delete globalThis.localStorage;
+  });
+
+  const mount = async () => {
+    // Preset av läget gör att appen startar direkt i "app"-steget, förbi
+    // onboarding — det är där flik/ark/historik-kopplingen lever.
+    localStorage.setItem("atlas.v3.mode", JSON.stringify("demo"));
+    const { Atlas2 } = await import("../atlas2/App2.jsx");
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => { r.render(createElement(Atlas2)); });
+    await new Promise(x => setTimeout(x, 80));
+    return el;
+  };
+  const pop = async () => { await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); }); await new Promise(x => setTimeout(x, 40)); };
+  const klick = async (el, pred) => {
+    const b = [...el.querySelectorAll("button")].find(pred);
+    if (!b) throw new Error("hittar ingen matchande knapp");
+    await act(async () => { b.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    await new Promise(x => setTimeout(x, 40));
+  };
+  const harMeny = el => el.querySelectorAll('[aria-label="Meny"]').length > 0;   // bara hem har meny-knappen
+
+  it("bakåt stänger ett öppet ark och lämnar appen orörd i övrigt", async () => {
+    const el = await mount();
+    await klick(el, b => b.getAttribute("aria-label") === "Meny");
+    expect(/hämta din historik/i.test(el.textContent)).toBe(true);   // arket är öppet
+    await pop();
+    expect(/hämta din historik/i.test(el.textContent)).toBe(false);  // arket stängt
+    expect(harMeny(el)).toBe(true);                                   // fortfarande på hem
+  });
+
+  it("bakåt från en annan flik går till hem", async () => {
+    const el = await mount();
+    await klick(el, b => /^framsteg$/i.test(b.textContent.trim()));
+    expect(harMeny(el)).toBe(false);   // framsteg-fliken har ingen meny-knapp
+    await pop();
+    expect(harMeny(el)).toBe(true);    // åter på hem
+  });
+
+  it("att växla flik fram och tillbaka bygger inte upp historik", async () => {
+    const el = await mount();
+    // Efter mount ligger EN vaktpost i historiken. Fler flikbyten får inte lägga
+    // fler poster — annars måste bakåt tryckas en gång per byte för att komma ut.
+    const längd = window.history.length;
+    for (const namn of ["framsteg", "coachen", "hem", "framsteg", "hem"]) {
+      await klick(el, b => new RegExp(`^${namn}$`, "i").test(b.textContent.trim()));
+    }
+    expect(window.history.length).toBe(längd);
   });
 });

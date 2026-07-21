@@ -4,7 +4,7 @@
 // allt du SER; ingenting av det appen VET har skrivits om. Det är en medveten
 // gräns: motorerna bär 550 tester och flera års domänbeslut, utseendet bär noll.
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
 import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout } from "./store.js";
 import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
@@ -18,6 +18,7 @@ import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
 import { GoalSheet } from "./GoalSheet.jsx";
+import { backAction } from "./backnav.js";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
@@ -219,6 +220,39 @@ export function Atlas2() {
   useEffect(() => { save("sessions", sessions); }, [sessions]);
   useEffect(() => { save("programs", programs); }, [programs]);
   useEffect(() => { save("activeProgramId", activeProgramId); }, [activeProgramId]);
+
+  // ── OS-bakåtknappen mot webbhistoriken ────────────────────────────────────
+  // popstate-lyssnaren registreras EN gång och läser flik/sheet ur en ref, så
+  // att den alltid ser aktuellt tillstånd utan att bindas om vid varje byte.
+  const navRef = useRef({ sheet, flik });
+  useEffect(() => { navRef.current = { sheet, flik }; }, [sheet, flik]);
+
+  useEffect(() => {
+    if (step !== "app") return;   // ingen historikvakt under onboarding
+    // EN enda vaktpost i historiken. Vi trycker in den när appen startar och en
+    // ny bara EFTER att ett bakåttryck konsumerat den (se onPop). Därför bygger
+    // fram-och-tillbaka mellan flikar ALDRIG upp historik — bakåt behöver aldrig
+    // tryckas tio gånger för att komma ut.
+    window.history.pushState({ askr: true }, "");
+    const onPop = () => {
+      const åtgärd = backAction(navRef.current);
+      if (åtgärd === "stäng-ark") {
+        setSheet(null);
+        window.history.pushState({ askr: true }, "");   // återställ vaktposten
+      } else if (åtgärd === "till-hem") {
+        // Behåller live-passet — det ligger kvar i state och atlas.v3.live — så
+        // detta pausar ett pågående pass i stället för att kasta det.
+        setFlik("hem");
+        window.history.pushState({ askr: true }, "");
+      } else {
+        // Hem utan ark: låt bakåt lämna appen. Vaktposten är redan borttagen av
+        // webbläsaren, så ett extra steg bakåt tar oss ut ur appen.
+        window.history.back();
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [step]);
 
   const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
 
