@@ -286,3 +286,17 @@ describe("ATLAS 2.0 — import av befintlig historik", () => {
     expect(förbered([]).vikter.length).toBe(3);
   });
 });
+
+describe("mobilen — volymbuggen", () => {
+  it("ett riktigt pass från buildSession saknar totalVolume", async () => {
+    const { buildSession } = await import("../engines/session.js");
+    const s = buildSession({
+      sets: [{ exerciseId: "barbell_bench_press", weight: 60, reps: 8 }],
+      source: "training", title: "Test", completedAt: Date.now(),
+    });
+    // Grunden till buggen: fältet finns helt enkelt inte. All kod som summerar
+    // `totalVolume` får därför noll för varje riktigt pass.
+    expect(s.totalVolume).toBeUndefined();
+    expect((s.sets || []).length).toBe(1);
+  });
+});

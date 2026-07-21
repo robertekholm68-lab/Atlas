@@ -1008,7 +1008,16 @@ function ProgressSheet({ ctx }) {
   const done = sessions.filter(x => x && x.completedAt);
   const wk = done.filter(x => now - x.completedAt < WEEK);
   const prevWk = done.filter(x => now - x.completedAt >= WEEK && now - x.completedAt < WEEK * 2);
-  const vol = list => Math.round(list.reduce((a, x) => a + (x.totalVolume || 0), 0));
+  // Volym räknas UR SETEN. Fältet `totalVolume` sätts aldrig av buildSession —
+  // läser man bara det blir varje riktigt pass noll, och bara demodata ser rätt
+  // ut eftersom fixturen bär fältet. Fältet behålls som fallback för gamla
+  // poster som faktiskt har det.
+  const passVolym = s => {
+    if (!s) return 0;
+    const urSeten = (s.sets || []).reduce((a, x) => a + (x.weight || 0) * (x.reps || 0), 0);
+    return urSeten > 0 ? urSeten : (s.totalVolume || 0);
+  };
+  const vol = list => Math.round(list.reduce((a, x) => a + passVolym(x), 0));
   const fmt = ts => new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
 
   if (!done.length) {
