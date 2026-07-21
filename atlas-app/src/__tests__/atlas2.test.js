@@ -198,3 +198,27 @@ describe("ATLAS 2.0 — volym räknas ur seten", () => {
     expect(sessionVolume(null)).toBe(0);
   });
 });
+
+describe("ATLAS 2.0 — mat", () => {
+  it("recept räknar näring ur ingredienserna, inte ur ett fält som saknas", async () => {
+    const { RECIPES } = await import("../data/recipes.js");
+    const { FOOD_INDEX } = await import("../data/foods.js");
+    // Recepten bär `i: [{id, g}]`, aldrig färdiga kcal. Läser man r.kcal blir
+    // varje recept 0 — samma klass av bugg som totalVolume.
+    const r = RECIPES[0];
+    expect(r.kcal).toBeUndefined();
+    expect(Array.isArray(r.i)).toBe(true);
+    const kcal = r.i.reduce((a, ing) => {
+      const f = FOOD_INDEX.find(x => x.id === ing.id);
+      return a + (f ? f.kcal * (ing.g || 0) / 100 : 0);
+    }, 0) / (r.servings || 1);
+    expect(kcal).toBeGreaterThan(0);
+  });
+
+  it("nutritionsfältet heter kcal, aldrig calories", async () => {
+    const { FOOD_INDEX } = await import("../data/foods.js");
+    const f = FOOD_INDEX[0];
+    expect(f.kcal).toBeGreaterThan(0);
+    expect(f.calories).toBeUndefined();
+  });
+});

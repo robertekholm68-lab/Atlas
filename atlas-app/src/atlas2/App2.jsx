@@ -14,6 +14,7 @@ import { CoachView } from "./CoachView.jsx";
 import { ProgressView } from "./ProgressView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
+import { FoodView } from "./FoodView.jsx";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
@@ -198,6 +199,8 @@ export function Atlas2() {
   // Pågående pass överlever omladdning: sparas vid varje ändring, inte vid avslut.
   const [live, setLive] = useState(() => load("live", null));
   const [klart, setKlart] = useState(null);
+  const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
+  useEffect(() => { save("foodLog", foodLog); }, [foodLog]);
   const profile = load("profile", {}) || {};
 
   useEffect(() => { save("sessions", sessions); }, [sessions]);
@@ -261,13 +264,8 @@ export function Atlas2() {
     // Pass och Mat är inte byggda än. Att säga det rakt ut är bättre än en
     // halvfärdig vy som ser färdig ut.
     return (
-      <div style={{ padding: "70px 24px", textAlign: "center" }}>
-        <div style={hdr(20)}>Mat</div>
-        <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6, marginTop: 12 }}>
-          Matloggningen är inte byggd i ATLAS 2.0 än — den finns i nuvarande appen
-          så länge.
-        </div>
-      </div>
+      <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
+        nutritionTargets={load("nutritionTargets", null)} />
     );
   };
 
