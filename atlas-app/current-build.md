@@ -226,6 +226,12 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
 - Tillgänglighetsgenomgång.
+- **OS-bakåtknappen i 2.0** (`pushState`/`popstate`). Finns inte alls: `flik`,
+  `sheet` och `step` ligger enbart i React-tillstånd, så ett bakåtsvep i den
+  installerade PWA:n lämnar appen i stället för att stänga ett ark. Android-
+  skalet löser det på egen hand, PWA:n gör det inte.
+- **Nutrition i v3.** `atlas.v3.*` saknar näringsmål och matlogg, därför skickar
+  `CoachChat` null och coachen säger att den inte kan svara på kostfrågor.
 - **Struken:** återhämtningsvy (skiss 5). Sömn, HRV och vilopuls har ingen
   datakälla. En vy med tomma fält är sämre än ingen vy. Tas upp igen först när
   en klocka kopplas in.
@@ -237,10 +243,6 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
 - Repo-namn och domän (vänta på `askr.body`, se ovan).
 
 **Nuvarande appen:**
-- **Mobilens volymbugg:** `MobileApp.jsx` rad ~1011 summerar `x.totalVolume`,
-  ett fält som `buildSession` ALDRIG sätter. Alla riktiga pass räknas därför som
-  noll volym; bara demodata ser rätt ut. Fixad i 2.0 via `sessionVolume()` som
-  räknar ur seten — samma fix behövs här.
 - Rösten avstängd i installerad Android-app (`engines/platform.js`,
   `isInstalledAndroid()`) tills mikrofonkraschen är verifierad. Fungerar i
   Chrome. **Pending: test på riktig telefon eller `adb logcat`.**
@@ -258,9 +260,12 @@ aldrig göms bakom en utvilad.
 - **Demo/Real-separation:** alla kort och all coach-logik måste demo-gatas.
   Mobilen hade hårdkodat `DEMO_PROGRAM` som användes även i Real Mode — stängt
   2026-07-21.
-- **Fält som aldrig sätts:** `totalVolume` (buildSession) och `recipe.kcal`
-  (recepten bär `i: [{id, g}]`) läses på flera ställen men skrivs aldrig.
-  Resultatet är tysta nollor som ser ut som riktiga värden. Leta efter fler.
+- **Fält som aldrig sätts:** `buildSession` sätter aldrig `totalVolume`, och
+  recepten bär `i: [{id, g}]` utan `kcal`. Båda är numera skyddade — volym
+  räknas ur seten (`sessionVolume`, även i mobilen), näring ur ingredienserna
+  (`recipeMacros`). Mönstret är däremot värt att leta efter på fler ställen:
+  ett läst men aldrig skrivet fält ger tysta nollor som ser ut som data.
+  *Kontrollerat mot koden 2026-07-21 kväll — båda de namngivna är åtgärdade.*
 - **Underlag före diagnos.** `laggingMuscleAdvice` påstod "~1 set/vecka, under
   minsta effektiva volym" utifrån ETT loggat pass. Kräver nu ≥4 pass över
   ≥14 dagar innan den uttalar sig om volym eller frekvens. De generella råden
