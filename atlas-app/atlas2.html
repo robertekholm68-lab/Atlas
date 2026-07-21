@@ -5,9 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0A" />
   <title>ATLAS 2.0</title>
+  <link rel="manifest" href="./atlas2.webmanifest" />
+  <link rel="apple-touch-icon" href="./atlas-icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
-<body><div id="root"></div><script type="module" src="/src/atlas2/main2.jsx"></script></body>
+<body><div id="root"></div>
+<script>
+  // Registreras bara på http(s). På file:// avvisas den ändå, och felet i
+  // konsolen ser ut som ett riktigt problem fast det inte är det.
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw-atlas2.js").catch(function () {});
+    });
+  }
+</script><script type="module" src="/src/atlas2/main2.jsx"></script></body>
 </html>
