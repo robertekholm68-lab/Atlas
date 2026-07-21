@@ -4,11 +4,11 @@ import { EXERCISES } from "../data/exercises.js";
 
 const prog = ALL_TEMPLATES.find(t => t.id === "tmpl_atlas_50plus");
 
-describe("ATLAS 50+ Performance – curated program", () => {
+describe("Askr 50+ Performance – curated program", () => {
   it("finns i biblioteket och bland kurerade mallar", () => {
     expect(prog).toBeTruthy();
     expect(CURATED_TEMPLATES.some(t => t.id === "tmpl_atlas_50plus")).toBe(true);
-    expect(prog.name).toBe("ATLAS 50+ Performance");
+    expect(prog.name).toBe("Askr 50+ Performance");
     expect(prog.isTemplate).toBe(true);
   });
 

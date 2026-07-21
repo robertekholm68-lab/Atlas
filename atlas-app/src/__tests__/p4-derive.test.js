@@ -78,7 +78,7 @@ describe("§4 resolveNutritionTargets — prioritet & inga påhittade makros", (
     expect(t.kcal).toBe(2600); expect(t.protein).toBe(180); expect(t.source).toBe("user");
     expect(t.carbs).toBe(null); expect(t.fat).toBe(null);   // aldrig uppdiktade
   });
-  it("real med accepterat ATLAS-förslag → förslagets makros", () => {
+  it("real med accepterat Askr-förslag → förslagets makros", () => {
     const t = resolveNutritionTargets({ nutritionTargets: {}, nutritionSuggestionAccepted: true, nutritionSuggestion: { kcal: 2400, protein: 160, carbs: 250, fat: 80 } }, "real");
     expect(t.kcal).toBe(2400); expect(t.carbs).toBe(250); expect(t.fat).toBe(80); expect(t.source).toBe("atlas_suggestion");
   });

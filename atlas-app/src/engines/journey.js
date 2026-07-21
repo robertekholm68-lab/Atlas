@@ -1,4 +1,4 @@
-// ATLAS 2.0 — målresan (konceptets §7).
+// Askr 2.0 — målresan (konceptets §7).
 //
 // Skillnaden mot resten av appen: allt annat svarar på "vad tål kroppen idag?".
 // Det här svarar på "vart är jag på väg, och var i resan står jag?". Utan den

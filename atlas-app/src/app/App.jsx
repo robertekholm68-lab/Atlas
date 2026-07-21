@@ -1,4 +1,4 @@
-// ATLAS ROOT — state-hub + routing
+// Askr ROOT — state-hub + routing
 import { useState, useEffect } from "react";
 import { usePersistentState, clearModeData, getMode, setModeStored, runMigrations, mergeProfileFromOnboarding, hasLegacyV1, getMigrationStatus, maybeReseedDemo, resetDemoSeed } from "./persist.js";
 import { ModeSelect, OnboardingFlow } from "../features/onboarding/index.jsx";
@@ -116,7 +116,7 @@ function AtlasApp({ mode, onSwitchMode }) {
   } : null;
   const recommendation = hasRecentTraining
     ? computeRecommendation(muscleStates)
-    : { title: "Logga ditt första pass", group: "start", summary: "Logga ett träningspass så börjar ATLAS bygga din readiness och dina rekommendationer utifrån just din träning.", targetMuscles: [], actionLabel: "Starta pass", explanation: [] };
+    : { title: "Logga ditt första pass", group: "start", summary: "Logga ett träningspass så börjar Askr bygga din readiness och dina rekommendationer utifrån just din träning.", targetMuscles: [], actionLabel: "Starta pass", explanation: [] };
   const readinessInfo = dataConfidence("readiness", { sessions, recentLoad: totalWeight });
 
   const openMuscle = id => { setSelectedMuscle(id); setModal("muscle"); };

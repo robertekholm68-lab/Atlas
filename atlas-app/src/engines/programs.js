@@ -1,4 +1,4 @@
-// ENGINE: ATLAS Program-motor. Rena funktioner — bygger program ur familj+nivå, beräknar
+// ENGINE: Askr Program-motor. Rena funktioner — bygger program ur familj+nivå, beräknar
 // veckovolym per muskelgrupp, validerar (varnar, blockerar ej) och rekommenderar program.
 // Återanvänder befintliga EXERCISES (id/group/pattern/equipment/activation) och muskelmappning.
 import { EXERCISES } from "../data/exercises.js";
@@ -170,13 +170,13 @@ export const LEVEL_NAMES = ["Novice", "Intermediate", "Advanced"];
 const LEVEL_DURATION = { Novice: 45, Intermediate: 60, Advanced: 75 };
 
 // ── Handskrivna, kurerade mallar (utanför den genererade familjelogiken) ──
-// ATLAS 50+ Performance: 2-dagars helkropp för träningsvana 50+. Axelvänliga val,
+// Askr 50+ Performance: 2-dagars helkropp för träningsvana 50+. Axelvänliga val,
 // dubbel progression, RIR 2, minst två vilodagar mellan passen.
 const ex = (exId, sets, repMin, repMax, restSec) => ({ exId, sets, repMin, repMax, rir: 2, restSec, progression: "Dubbel progression (reps → vikt)" });
-const ATLAS_50PLUS = normalizeProgram({
+const Askr_50PLUS = normalizeProgram({
   id: "tmpl_atlas_50plus",
-  name: "ATLAS 50+ Performance",
-  family: "ATLAS 50+",
+  name: "Askr 50+ Performance",
+  family: "Askr 50+",
   level: "Intermediate",
   goal: "Hypertrophy",
   split: "Helkropp 2-dagars",
@@ -205,7 +205,7 @@ const ATLAS_50PLUS = normalizeProgram({
     ] },
   ],
 });
-export const CURATED_TEMPLATES = [ATLAS_50PLUS];
+export const CURATED_TEMPLATES = [Askr_50PLUS];
 
 export const ALL_TEMPLATES = [
   ...CURATED_TEMPLATES,

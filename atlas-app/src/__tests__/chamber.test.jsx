@@ -16,7 +16,7 @@ async function mount(width, mode) {
   return { el, done };
 }
 
-describe("ATLAS Analyskammare", () => {
+describe("Askr Analyskammare", () => {
   it("demo desktop: kammaren renderar med kropp, plattform och flytande paneler — utan fel", async () => {
     const { el, done } = await mount(1440, "demo");
     expect(el.textContent).toMatch(/Analyskammare/);

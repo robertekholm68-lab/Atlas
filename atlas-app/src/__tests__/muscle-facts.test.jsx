@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import Atlas from "../app/App.jsx";
 import { NAME2MUSCLE, MUSCLES, GROUP_SV } from "../data/muscles.js";
-import ATLAS_HITMAP_DATA from "../assets/data/hitmap_data.json";
+import Askr_HITMAP_DATA from "../assets/data/hitmap_data.json";
 
 describe("Muskelfakta — inforutans data (region → muskel → grupp/storlek/återhämtning)", () => {
   it("region-namn löser till muskel med svensk grupp, storlek och återhämtningstid", () => {
@@ -16,7 +16,7 @@ describe("Muskelfakta — inforutans data (region → muskel → grupp/storlek/�
     expect(M.halfLife).toBe(24);
   });
   it("varje hitmap-region har ett funktions-fält (sträng) som inforutan visar", () => {
-    const r = ATLAS_HITMAP_DATA.front.regions.find(x => x.name === "Biceps brachii");
+    const r = Askr_HITMAP_DATA.front.regions.find(x => x.name === "Biceps brachii");
     expect(typeof r.fn).toBe("string");
     expect(r.fn.length).toBeGreaterThan(5);            // riktig text, inte ett enstaka tecken (gamla fn[1]-buggen)
   });
@@ -25,13 +25,13 @@ describe("Muskelfakta — inforutans data (region → muskel → grupp/storlek/�
 describe("Muskelfakta — alla regioner är rätt markerade / klickbara", () => {
   it("varje region-namn har en känd mappning (muskel-id eller medvetet null för ansikte)", () => {
     const missing = [];
-    for (const view of ["front", "back"]) for (const r of ATLAS_HITMAP_DATA[view].regions) {
+    for (const view of ["front", "back"]) for (const r of Askr_HITMAP_DATA[view].regions) {
       if (NAME2MUSCLE[r.name] === undefined) missing.push(`${view} [${r.id}] ${r.name}`);
     }
     expect(missing).toEqual([]);                        // inga oavsiktligt omappade regioner
   });
   it("triceps är klickbar: baksidan har en Triceps brachii-region → triceps_brachii", () => {
-    const tri = ATLAS_HITMAP_DATA.back.regions.filter(r => r.name === "Triceps brachii");
+    const tri = Askr_HITMAP_DATA.back.regions.filter(r => r.name === "Triceps brachii");
     expect(tri.length).toBeGreaterThan(0);
     expect(NAME2MUSCLE["Triceps brachii"]).toBe("triceps_brachii");
     expect(GROUP_SV[MUSCLES.triceps_brachii.group]).toBe("Armar");
@@ -39,7 +39,7 @@ describe("Muskelfakta — alla regioner är rätt markerade / klickbara", () => 
     expect(tri.every(r => NAME2MUSCLE[r.name] === "triceps_brachii")).toBe(true);
   });
   it("triceps-masken ligger på armarna (lateralt, nedanför axeln) — inte på ryggen", () => {
-    const V = ATLAS_HITMAP_DATA.back;
+    const V = Askr_HITMAP_DATA.back;
     const tri = V.regions.filter(r => r.name === "Triceps brachii");
     expect(tri.length).toBe(2);
     const cx = r => (r.bx + r.bw / 2) / V.W * 100;
@@ -52,7 +52,7 @@ describe("Muskelfakta — alla regioner är rätt markerade / klickbara", () => 
   });
   it("endast kända aggregeringar saknar egen region (regressionsvakt)", () => {
     const named = new Set();
-    for (const view of ["front", "back"]) ATLAS_HITMAP_DATA[view].regions.forEach(r => { const id = NAME2MUSCLE[r.name]; if (id) named.add(id); });
+    for (const view of ["front", "back"]) Askr_HITMAP_DATA[view].regions.forEach(r => { const id = NAME2MUSCLE[r.name]; if (id) named.add(id); });
     const without = Object.keys(MUSCLES).filter(id => !named.has(id)).sort();
     expect(without).toEqual(["deltoid_lateral", "hip_flexors", "serratus_anterior"]);
   });

@@ -5,7 +5,7 @@ import { buildBackup, inspectBackup, restoreBackup, atlasKeys, backupFilename, B
 beforeEach(() => localStorage.clear());
 
 describe("backup", () => {
-  it("fångar alla ATLAS-nycklar men rör inte andra sajters data", () => {
+  it("fångar alla Askr-nycklar men rör inte andra sajters data", () => {
     localStorage.setItem("atlas.v2.real.sessions", JSON.stringify([{ id: "a" }, { id: "b" }]));
     localStorage.setItem("atlas.mobile.foodLog", JSON.stringify([{ id: "f" }]));
     localStorage.setItem("annan-app", "rör-mig-inte");
@@ -19,7 +19,7 @@ describe("backup", () => {
     localStorage.setItem("atlas.v2.real.sessions", JSON.stringify([{ id: "a" }, { id: "b" }, { id: "c" }]));
     localStorage.setItem("atlas.v2.real.foodLog", JSON.stringify([{ id: "f" }]));
     const b = buildBackup();
-    expect(b.app).toBe("ATLAS");
+    expect(b.app).toBe("Askr");
     expect(b.summary.sessions).toBe(3);
     expect(b.summary.foodLog).toBe(1);
   });
@@ -27,7 +27,7 @@ describe("backup", () => {
   it("granskning avvisar skräp och främmande filer", () => {
     expect(inspectBackup("inte json").ok).toBe(false);
     expect(inspectBackup(JSON.stringify({ app: "NågotAnnat", data: {} })).ok).toBe(false);
-    expect(inspectBackup(JSON.stringify({ app: "ATLAS", backupVersion: BACKUP_VERSION + 5, data: {} })).ok).toBe(false);
+    expect(inspectBackup(JSON.stringify({ app: "Askr", backupVersion: BACKUP_VERSION + 5, data: {} })).ok).toBe(false);
   });
 
   it("återläsning återställer exakt det som säkerhetskopierades", () => {

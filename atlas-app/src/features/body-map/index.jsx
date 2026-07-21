@@ -5,10 +5,10 @@ import { useIsMobile } from "../../components/common/index.jsx";
 import { DEMO_LEVELS } from "../../data/demo.js";
 import { bodyGlow, groupState, muscleWeeklySets, recoveryContributions, repActivation, repState, resolveSlug, volumeStatus } from "../../engines/index.js";
 import { EQUIP_ALL, EXERCISES } from "../../data/exercises.js";
-import { ACT, ACT_LABEL, AREAS, GEN, GROUP_PRIMARY, GROUP_SV, MHOT_VB, MSRC, MUSCLES, MUSCLE_ADJUST, MUSCLE_ATLAS, MUSCLE_HOTS, MUSCLE_IMAGES, MUSCLE_PATHS, NAME2MUSCLE, TRAP_CLIP_Y } from "../../data/muscles.js";
+import { ACT, ACT_LABEL, AREAS, GEN, GROUP_PRIMARY, GROUP_SV, MHOT_VB, MSRC, MUSCLES, MUSCLE_ADJUST, MUSCLE_Askr, MUSCLE_HOTS, MUSCLE_IMAGES, MUSCLE_PATHS, NAME2MUSCLE, TRAP_CLIP_Y } from "../../data/muscles.js";
 import { BASE_FILL, H, STATE_COL, T, btn, modal, now, overlay } from "../../data/tokens.js";
-import ATLAS_BODY_SVGS from "../../assets/data/body_svgs.json";
-import ATLAS_HITMAP_DATA from "../../assets/data/hitmap_data.json";
+import Askr_BODY_SVGS from "../../assets/data/body_svgs.json";
+import Askr_HITMAP_DATA from "../../assets/data/hitmap_data.json";
 import { KNOWLEDGE, LEVELS as KB_LEVELS, CATEGORIES as KB_CATS, MEDICAL_DISCLAIMER, hasKnowledge, citableFacts, TOPICS, hasTopic } from "../../data/knowledge.js";
 
 // ── Kunskapsbank: läsvy för en muskel eller ett träningsämne (nivå-märkt, med källor) ──
@@ -361,7 +361,7 @@ function MusclesView() {
   const [view, setView] = useState("front");
   const [region, setRegion] = useState(null);
   const [hover, setHover] = useState(null);
-  const byId = {}; MUSCLE_ATLAS.forEach(r => byId[r.id] = r);
+  const byId = {}; MUSCLE_Askr.forEach(r => byId[r.id] = r);
   const bodyImg = view === "front" ? MUSCLE_IMAGES.body_front : MUSCLE_IMAGES.body_back;
   const hots = MUSCLE_HOTS[view] || {};
   // smaller shapes drawn last (on top) so they win clicks inside larger ones
@@ -488,7 +488,7 @@ function MuscleMapView({ muscleStates }) {
   const [reader, setReader] = useState(null);
   const bodyRef = useRef(null), hiRef = useRef(null), statusRef = useRef(null);
   const idsRef = useRef(null), regRef = useRef({}), nameIdsRef = useRef({}), natRef = useRef(null), selRef = useRef(0), readyRef = useRef(false);
-  const D = (typeof window !== "undefined" && ATLAS_HITMAP_DATA) ? ATLAS_HITMAP_DATA : null;
+  const D = (typeof window !== "undefined" && Askr_HITMAP_DATA) ? Askr_HITMAP_DATA : null;
   const dims = D ? D[view] : { W: 760, H: 1140 };
   const W = dims.W, H = dims.H;
   // warm-only fatigue tint: fresh muscles stay natural, tired ones get a warm hint
@@ -694,8 +694,8 @@ function MuscleMapView({ muscleStates }) {
 }
 
 function RotatingBody({ onSelect, overallReadiness, muscleStates }) {
-  const frames = (typeof window !== "undefined" && window.ATLAS_BODY_FRAMES) ? window.ATLAS_BODY_FRAMES : null;
-  const masksMeta = (typeof window !== "undefined" && window.ATLAS_BODY_MASKS) ? window.ATLAS_BODY_MASKS : null;
+  const frames = (typeof window !== "undefined" && window.Askr_BODY_FRAMES) ? window.Askr_BODY_FRAMES : null;
+  const masksMeta = (typeof window !== "undefined" && window.Askr_BODY_MASKS) ? window.Askr_BODY_MASKS : null;
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [zoom, setZoom] = useState(1);
@@ -818,7 +818,7 @@ function RotatingBody({ onSelect, overallReadiness, muscleStates }) {
 function SvgBody({ onSelect, muscleStates, onReset, chamber = false, reduced = false, paintOverride = null, onSelectRaw = null, loadMode = false }) {
   const overrideRef = useRef(paintOverride);
   useEffect(() => { overrideRef.current = paintOverride; }, [paintOverride]);
-  const svgs = (typeof window !== "undefined" && ATLAS_BODY_SVGS) ? ATLAS_BODY_SVGS : null;
+  const svgs = (typeof window !== "undefined" && Askr_BODY_SVGS) ? Askr_BODY_SVGS : null;
   const [view, setView] = useState("front");
   const [demo, setDemo] = useState(false);
   const [hover, setHover] = useState(null);

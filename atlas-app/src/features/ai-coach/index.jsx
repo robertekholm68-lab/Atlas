@@ -433,7 +433,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
           </div>
         </Card>
 
-        {/* Målresa-kontext (ATLAS Mission): observation / hypotes / rekommendation, frågar innan förändring */}
+        {/* Målresa-kontext (Askr Mission): observation / hypotes / rekommendation, frågar innan förändring */}
         {missionSummary && (
           <Card style={{ background: `linear-gradient(135deg, ${T.bg.surface}, rgba(155,124,255,0.06))` }}>
             <CardLabel right={<span style={{ fontSize: 10.5, fontWeight: 700, color: STATUS_COLOR[missionSummary.status] || T.text.muted, background: `${STATUS_COLOR[missionSummary.status] || T.text.muted}22`, border: `1px solid ${STATUS_COLOR[missionSummary.status] || T.text.muted}55`, borderRadius: 999, padding: "1px 8px" }}>{STATUS_LABEL[missionSummary.status] || ""}</span>}>Målresa · {missionSummary.title}</CardLabel>
@@ -606,7 +606,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
             </div>
           )}
         </Card>
-        <div style={{ fontSize: 10.5, color: T.text.muted, marginTop: 4, lineHeight: 1.5 }}>ATLAS ger träningsvägledning utifrån din loggade data — inte medicinsk rådgivning. Lyssna på kroppen och sök vård vid smärta eller besvär.</div>
+        <div style={{ fontSize: 10.5, color: T.text.muted, marginTop: 4, lineHeight: 1.5 }}>Askr ger träningsvägledning utifrån din loggade data — inte medicinsk rådgivning. Lyssna på kroppen och sök vård vid smärta eller besvär.</div>
       </div>
 
       <Card>

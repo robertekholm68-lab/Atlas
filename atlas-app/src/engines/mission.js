@@ -1,4 +1,4 @@
-// ATLAS MISSION (Målresa) — deterministisk missionsmotor.
+// Askr MISSION (Målresa) — deterministisk missionsmotor.
 // Rena funktioner ovanpå det befintliga målsystemet. Läser mål via goalProgress/daysLeft.
 // Ger AI-coachen STRUKTURERAT underlag (observation/hypotes/rekommendation) — hittar aldrig på siffror.
 import { goalProgress, daysLeft } from "./index.js";

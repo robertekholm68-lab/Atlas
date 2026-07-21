@@ -124,7 +124,7 @@ export function getPositionOnce({ timeoutMs = 8000, maxAgeMs = 60000 } = {}) {
         ok: false,
         reason: err && err.code === 1 ? "nekad" : err && err.code === 3 ? "timeout" : "fel",
         note: err && err.code === 1
-          ? "Platsåtkomst är nekad. Tillåt plats för ATLAS i webbläsarens inställningar."
+          ? "Platsåtkomst är nekad. Tillåt plats för Askr i webbläsarens inställningar."
           : "Kunde inte få någon position just nu.",
       }),
       { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: maxAgeMs }

@@ -13,3 +13,4 @@ dist-mobile/
 
 # logs
 npm-debug.log*
+*.keystore

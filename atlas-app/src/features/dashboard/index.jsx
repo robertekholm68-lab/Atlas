@@ -232,7 +232,7 @@ function NutritionCard({ totals, targets = null, goals = null, demo = false, sug
       </div>
       {suggestion ? (
         <>
-          <div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>ATLAS föreslår ett startmål utifrån ditt mål och din vikt: <b style={{ color: T.text.primary }}>~{suggestion.kcal.toLocaleString("sv-SE")} kcal</b> och <b style={{ color: T.text.primary }}>{suggestion.protein} g protein</b>. En grov startpunkt — justera fritt i profilen.</div>
+          <div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>Askr föreslår ett startmål utifrån ditt mål och din vikt: <b style={{ color: T.text.primary }}>~{suggestion.kcal.toLocaleString("sv-SE")} kcal</b> och <b style={{ color: T.text.primary }}>{suggestion.protein} g protein</b>. En grov startpunkt — justera fritt i profilen.</div>
           {onAcceptSuggestion && <button onClick={onAcceptSuggestion} style={{ ...btn.primary, marginTop: 10, fontSize: 13 }}>Använd förslaget</button>}
         </>
       ) : (
@@ -245,7 +245,7 @@ function NutritionCard({ totals, targets = null, goals = null, demo = false, sug
   const suggested = g.source === "atlas_suggestion";
   return (
     <Card>
-      <CardLabel right={<span style={{ fontSize: 11, color: T.text.muted }}>{suggested ? "ATLAS-förslag · idag" : "idag"}</span>}>Kost</CardLabel>
+      <CardLabel right={<span style={{ fontSize: 11, color: T.text.muted }}>{suggested ? "Askr-förslag · idag" : "idag"}</span>}>Kost</CardLabel>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
         <Gauge value={cal} size={84} stroke={8} color={T.accent.secondary} sub="kcal" />
         <div style={{ flex: 1 }}>
@@ -719,7 +719,7 @@ function DashNutrition({ totals, targets = null, demo = false, suggestion = null
       </div>
       {suggestion ? (
         <>
-          <div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>ATLAS föreslår ett startmål utifrån ditt mål och din vikt: <b style={{ color: T.text.primary }}>~{suggestion.kcal.toLocaleString("sv-SE")} kcal</b> och <b style={{ color: T.text.primary }}>{suggestion.protein} g protein</b>. En grov startpunkt — justera fritt.</div>
+          <div style={{ fontSize: 12.5, color: T.text.secondary, lineHeight: 1.55 }}>Askr föreslår ett startmål utifrån ditt mål och din vikt: <b style={{ color: T.text.primary }}>~{suggestion.kcal.toLocaleString("sv-SE")} kcal</b> och <b style={{ color: T.text.primary }}>{suggestion.protein} g protein</b>. En grov startpunkt — justera fritt.</div>
           {onAcceptSuggestion && <button onClick={onAcceptSuggestion} style={{ ...btn.primary, marginTop: 10, fontSize: 13 }}>Använd förslaget</button>}
         </>
       ) : (
@@ -732,7 +732,7 @@ function DashNutrition({ totals, targets = null, demo = false, suggestion = null
   const rows = [["Protein", t.protein, hasProtein ? g.protein : null, T.accent.success], ["Kolhydrater", t.carbs, g.carbs, T.accent.primary], ["Fett", t.fat, g.fat, T.accent.warning]];
   const suggested = g.source === "atlas_suggestion";
   return (
-    <Card><CardLabel right={<span style={{ fontSize: 11, color: T.text.muted }}>{suggested ? "ATLAS-förslag · idag" : "Idag"}</span>}>Kostöversikt</CardLabel>
+    <Card><CardLabel right={<span style={{ fontSize: 11, color: T.text.muted }}>{suggested ? "Askr-förslag · idag" : "Idag"}</span>}>Kostöversikt</CardLabel>
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
         <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
           <svg width="100" height="100" style={{ transform: "rotate(-90deg)" }}>

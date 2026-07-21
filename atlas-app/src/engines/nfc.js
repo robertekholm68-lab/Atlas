@@ -41,7 +41,7 @@ export async function scanTags({ onTag, onError } = {}) {
   if (!nfcSupported()) throw new Error("unsupported");
   const reader = new window.NDEFReader();
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-  reader.onreading = e => { const tag = readMessage(e.message); if (tag && onTag) onTag(tag); else if (!tag && onError) onError("Taggen är inte en ATLAS-tagg."); };
+  reader.onreading = e => { const tag = readMessage(e.message); if (tag && onTag) onTag(tag); else if (!tag && onError) onError("Taggen är inte en Askr-tagg."); };
   reader.onreadingerror = () => { if (onError) onError("Kunde inte läsa taggen — håll telefonen stilla mot den."); };
   await reader.scan(ctrl ? { signal: ctrl.signal } : undefined);
   return () => { try { if (ctrl) ctrl.abort(); } catch (e) { } };

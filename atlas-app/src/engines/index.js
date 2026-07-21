@@ -1,4 +1,4 @@
-// ATLAS BERÄKNINGSMOTORER — rena funktioner, oberoende av rendering
+// Askr BERÄKNINGSMOTORER — rena funktioner, oberoende av rendering
 import { ADAPTIVE_EXERCISES, MODE_WEIGHTS } from "../data/coach.js";
 import { BODYWEIGHT, EXERCISES, HIIT_MULT, HIIT_MUSCLE_MULT, MAIN_LIFTS, STRENGTH_STD } from "../data/exercises.js";
 import { FOOD_DB, FOOD_INDEX, FOOD_KB, FOOD_SYN, NUTRITION_GOALS, PORTIONS } from "../data/foods.js";
@@ -989,7 +989,7 @@ function exerciseStrengthConfidence(sessions, exId, now = Date.now()) {
   return dataConfidence("strength", { strengthSessions: perf.length, spanDays });
 }
 
-// §4: EN källa för kostmål. Prioritet: användarens mål → accepterat ATLAS-förslag → inget.
+// §4: EN källa för kostmål. Prioritet: användarens mål → accepterat Askr-förslag → inget.
 // Hittar aldrig på kolhydrat/fett om användaren inte accepterat ett beräknat förslag. Demo behåller demo-målen.
 // ── Cold-start: föreslå ett startmål för kalorier/protein ur kostmål + kroppsvikt ──
 // Grovt, tydligt ett estimat, aldrig aggressivt, alltid justerbart. Returnerar null utan vikt.
@@ -1063,7 +1063,7 @@ function resolveNutritionTargets(profile, mode) {
   if (mode === "demo") return { kcal: NUTRITION_GOALS.kcal, protein: NUTRITION_GOALS.protein, carbs: NUTRITION_GOALS.carbs, fat: NUTRITION_GOALS.fat, source: "demo", hasKcal: true, hasProtein: true, hasMacros: true };
   const nt = (profile && profile.nutritionTargets) || {};
   let acc = (profile && profile.nutritionSuggestionAccepted && profile.nutritionSuggestion) ? profile.nutritionSuggestion : null;
-  // Håll ett accepterat ATLAS-förslag AKTUELLT: räkna om live om vikt eller kostmål ändrats sedan det
+  // Håll ett accepterat Askr-förslag AKTUELLT: räkna om live om vikt eller kostmål ändrats sedan det
   // accepterades, så gamla makron aldrig ligger kvar. Egna angivna siffror (nt) rörs aldrig av detta.
   if (acc) {
     const curW = profile && profile.weight, curGoal = profile && profile.nutritionGoal, b = acc.basis || {};

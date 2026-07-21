@@ -1,4 +1,4 @@
-// ATLAS 2.0 — lagring och härledda tillstånd.
+// Askr 2.0 — lagring och härledda tillstånd.
 //
 // EGEN NAMNRYMD (atlas.v3.*) under utvecklingen. Skälet är inte prydlighet utan
 // säkerhet: Robert har riktig loggad historik i den nuvarande appen, och en bugg

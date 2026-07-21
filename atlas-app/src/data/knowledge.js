@@ -1,4 +1,4 @@
-// DATA: ATLAS Kunskapsbank. EN strukturerad källa, två presentationer:
+// DATA: Askr Kunskapsbank. EN strukturerad källa, två presentationer:
 //  • läsbibliotek (rendreras som artiklar under Muskelfakta)
 //  • citerbar coach-källa (citableFacts) — coachen plockar korta, verifierade meningar deterministiskt.
 // Varje post har en SÄKERHETSNIVÅ. Coachen citerar bara "etablerad" som fakta; övrigt märks tydligt.
@@ -39,7 +39,7 @@ export const KNOWLEDGE = {
         fact: "Ungefär 10–20 hårda set per vecka är ett vanligt volymspann för brösttillväxt hos de flesta." },
       { category: "recovery", level: "tumregel",
         title: "Vila mellan bröstpass",
-        body: "Bröstet är en stor muskelgrupp och behöver oftast 48–72 timmar mellan tunga pass för att återhämta sig fullt. ATLAS räknar med en halveringstid på ca 48 timmar för belastningen — kroppskartan visar när du är redo igen.",
+        body: "Bröstet är en stor muskelgrupp och behöver oftast 48–72 timmar mellan tunga pass för att återhämta sig fullt. Askr räknar med en halveringstid på ca 48 timmar för belastningen — kroppskartan visar när du är redo igen.",
         fact: "Stora muskler som bröstet behöver ofta 48–72 timmar mellan tunga pass." },
       { category: "nutrition", level: "tumregel",
         title: "Protein för muskeltillväxt",
@@ -71,7 +71,7 @@ export const KNOWLEDGE = {
         fact: "Vadens optimala rep-spann är omdiskuterat; både lägre och högre reps fungerar om seten tas nära utmattning." },
       { category: "recovery", level: "tumregel",
         title: "Frekvens och återhämtning",
-        body: "Vaden belastas dagligen bara du går, och tål därför ofta högre träningsfrekvens än många andra muskler. ATLAS räknar med en halveringstid på ca 36 timmar — den återhämtar sig relativt snabbt, vilket gör 2–3 pass i veckan rimligt för de flesta.",
+        body: "Vaden belastas dagligen bara du går, och tål därför ofta högre träningsfrekvens än många andra muskler. Askr räknar med en halveringstid på ca 36 timmar — den återhämtar sig relativt snabbt, vilket gör 2–3 pass i veckan rimligt för de flesta.",
         fact: "Vaden belastas dagligen vid gång och tål ofta hög träningsfrekvens; den återhämtar sig relativt snabbt." },
       { category: "nutrition", level: "tumregel",
         title: "Kramp och vätska",
@@ -89,7 +89,7 @@ export const KNOWLEDGE = {
     entries: [
       { category: "function", level: "etablerad", title: "Vad muskeln gör", body: "Sternocleidomastoideus går från bröstben och nyckelben upp till skallbasen. Ena sidan roterar huvudet åt motsatt håll och böjer det åt sin sida; båda sidor tillsammans böjer huvudet framåt.", fact: "Sternocleidomastoideus böjer huvudet framåt och roterar det åt motsatt sida.", source: { name: "muscles.se", url: "https://muscles.se" } },
       { category: "training", level: "tumregel", title: "Så tränas den", body: "Halsen tränas sällan direkt, men inom brottning, boxning och kontaktidrott stärks den för att tåla belastning. Använd lätt motstånd, höga reps och långsamma, kontrollerade rörelser — aldrig ryckigt.", fact: "Direkt halsträning görs med lätt vikt, höga reps och långsamma rörelser." },
-      { category: "recovery", level: "tumregel", title: "Återhämtning", body: "Liten muskel som jobbar dagligen med att hålla huvudet — den återhämtar sig snabbt (halveringstid ca 24 timmar i ATLAS)." },
+      { category: "recovery", level: "tumregel", title: "Återhämtning", body: "Liten muskel som jobbar dagligen med att hålla huvudet — den återhämtar sig snabbt (halveringstid ca 24 timmar i Askr)." },
       { category: "injury", level: "omdiskuterat", title: "Nacksmärta", body: "Nackspänning och stelhet är mycket vanligt och oftast godartat, kopplat till hållning, stress och skärmtid. Men akut svår nacksmärta, särskilt med domningar, yrsel, svaghet eller efter trauma, ska bedömas av vård." },
     ],
   },
@@ -440,7 +440,7 @@ export const TOPICS = {
     lead: "Hormonerna svänger över cykeln och kan påverka energi och återhämtning — men mönstret är individuellt.",
     sections: [
       { level: "omdiskuterat", title: "Faserna i praktiken", body: "Många upplever mest ork och styrka i follikelfasen (efter mens fram till ägglossning) och en dipp premenstruellt (sena lutealfasen). Pragmatiskt: planera gärna tyngre pass när du känner dig stark och var snäll mot dig själv med lättare pass eller mer vila när energin är låg. Det finns ingen anledning att sluta träna under mens om du mår bra — rörelse kan tvärtom lindra besvär.", fact: "Energi och styrka toppar ofta i follikelfasen och kan dippa premenstruellt, men mönstret varierar mycket mellan individer.", source: { name: "muscles.se", url: "https://muscles.se" } },
-      { level: "tumregel", title: "Använd spårningen som fingervisning", body: "ATLAS cykelspårning (Profil → Menscykel) uppskattar din fas och justerar readiness lätt därefter. Se det som en påminnelse, inte en dom — din egen upplevelse i stunden väger alltid tyngst.", fact: "Cykelspårningen ger en fingervisning om fasen; den egna upplevelsen väger tyngst.", source: { name: "muscles.se", url: "https://muscles.se" } },
+      { level: "tumregel", title: "Använd spårningen som fingervisning", body: "Askr cykelspårning (Profil → Menscykel) uppskattar din fas och justerar readiness lätt därefter. Se det som en påminnelse, inte en dom — din egen upplevelse i stunden väger alltid tyngst.", fact: "Cykelspårningen ger en fingervisning om fasen; den egna upplevelsen väger tyngst.", source: { name: "muscles.se", url: "https://muscles.se" } },
     ],
   },
   kvinnor_jarn_reds: {

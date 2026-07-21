@@ -1,4 +1,4 @@
-// ATLAS-persistens — sparar användardata i localStorage så den överlever omladdning.
+// Askr-persistens — sparar användardata i localStorage så den överlever omladdning.
 // TVÅ NAMESPACES: demo (atlas.v2.demo.*) och riktig användare (atlas.v2.real.*) hålls helt åtskilda.
 // Aktivt läge lagras i atlas.mode ("demo" | "real" | saknas = första start). Ingen backend.
 import { useState, useEffect } from "react";

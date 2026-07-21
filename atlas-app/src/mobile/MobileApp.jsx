@@ -184,7 +184,7 @@ export function MobileApp() {
     <div style={{ background: C.bg, color: C.text, minHeight: "100vh", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", paddingBottom: screen === "home" ? 78 : 0, position: "relative" }}>
       {updateReady && (
         <div style={{ position: "sticky", top: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 14px", background: C.blue, color: "#08101c" }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>Ny version av ATLAS finns</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Ny version av Askr finns</span>
           <button onClick={() => window.location.reload()} style={{ padding: "6px 14px", borderRadius: 999, border: "none", background: "#08101c", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>Ladda om</button>
         </div>
       )}
@@ -390,7 +390,7 @@ function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setShee
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ ...hdr(19), color: C.lime }}>▲</span>
-          <span style={{ ...hdr(19), letterSpacing: 2.4 }}>ATLAS</span>
+          <span style={{ ...hdr(19), letterSpacing: 2.4 }}>Askr</span>
         </div>
         <button onClick={() => setSheet("menu")} aria-label="Meny" style={{ background: "none", border: "none", padding: 10, cursor: "pointer" }}>
           <div style={{ width: 20, height: 2, background: C.text, marginBottom: 5 }} />
@@ -419,7 +419,7 @@ function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setShee
         <div style={{ marginTop: 12, padding: "13px 14px", borderRadius: 14, border: `1px solid ${C.red}66`, background: "rgba(255,92,92,0.07)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Röstinmatningen är avstängd</div>
           <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
-            Appen avslutades förra gången mikrofonen användes, så ATLAS stängde av funktionen åt dig.
+            Appen avslutades förra gången mikrofonen användes, så Askr stängde av funktionen åt dig.
             Allt annat fungerar som vanligt. Slå på den igen under Signaler → Inmatning.
           </div>
         </div>
@@ -738,14 +738,14 @@ function Complete({ done, muscleStates, setScreen, setSheet, sessions = [], setS
   const trained = Object.entries(s.muscleLoads || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 4);
   return (
     <div style={{ padding: "18px 16px 96px" }}>
-      <Header title={s.title} sub="ATLAS · Återkoppling" right={<button onClick={() => setScreen("home")} style={ghostBtn}>✕</button>} />
+      <Header title={s.title} sub="Askr · Återkoppling" right={<button onClick={() => setScreen("home")} style={ghostBtn}>✕</button>} />
       <div style={{ textAlign: "center", marginTop: 18 }}>
         <div style={{ width: 64, height: 64, borderRadius: 40, background: "rgba(57,217,138,0.15)", border: `1px solid ${C.green}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", fontSize: 30, color: C.green }}>✓</div>
         <div style={{ textAlign: "center", marginTop: 14 }}>
           <div style={{ width: 54, height: 54, margin: "0 auto", borderRadius: 999, border: `2px solid ${C.lime}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.lime, fontSize: 26 }}>✓</div>
           <div style={{ ...hdr(24), marginTop: 12 }}>Passet är loggat</div>
         </div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>ATLAS har uppdaterat belastning och recovery.</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Askr har uppdaterat belastning och recovery.</div>
       </div>
 
       {post.lines.length > 0 && (
@@ -1302,7 +1302,7 @@ function BarcodeSheet({ onLog, onBack }) {
             <div style={{ fontSize: 17, fontWeight: 700, color: C.text }}>{result.name}</div>
             {result.brand && <div style={{ fontSize: 12.5, color: C.muted }}>{result.brand}</div>}
             <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>Per 100 g: {result.kcal} kcal · {result.protein} g P · {result.carbs} g K · {result.fat} g F</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Extern produktdata — ej verifierad av ATLAS (ODbL).</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Extern produktdata — ej verifierad av Askr (ODbL).</div>
           </div>
           <div style={{ marginBottom: 12 }}><StepBox label="Mängd (g)" value={grams} onMinus={() => setGrams(g => Math.max(10, g - 10))} onPlus={() => setGrams(g => g + 10)} /></div>
           <button onClick={() => logIt(result.brand ? `${result.name} (${result.brand})` : result.name, { ...result, q: "external" })} style={bigBtn}>Logga ({Math.round(result.kcal * grams / 100)} kcal)</button>
@@ -1678,7 +1678,7 @@ function InstallCard({ onDismiss }) {
     <div style={{ marginTop: 12, padding: "13px 14px", background: "rgba(77,163,255,0.10)", border: `1px solid ${C.blue}44`, borderRadius: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text }}>Lägg ATLAS på hemskärmen</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text }}>Lägg Askr på hemskärmen</div>
           <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5, marginTop: 4 }}>{adv.why}</div>
         </div>
         <button onClick={onDismiss} aria-label="Stäng" style={{ background: "none", border: "none", color: C.muted, fontSize: 17, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
@@ -1723,7 +1723,7 @@ function CapsSheet({ onClose }) {
         <div style={{ marginTop: 4 }}>Ändras inte tiden efter en omstart har uppdateringen inte landat.</div>
       </div>
       <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.55, marginBottom: 12 }}>
-        {ok} av {caps.length} funktioner är tillgängliga här. ATLAS är ett och samma bygge — det som saknas beror på webbläsaren, inte på appen.
+        {ok} av {caps.length} funktioner är tillgängliga här. Askr är ett och samma bygge — det som saknas beror på webbläsaren, inte på appen.
       </div>
       {caps.map(c => (
         <div key={c.id} style={{ display: "flex", gap: 10, padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -1832,7 +1832,7 @@ function PlacesSheet({ ctx, onClose }) {
     <>
       <SheetTitle>Mina gym</SheetTitle>
       <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>
-        Stå på gymmet och spara platsen en gång. Nästa gång du öppnar ATLAS där känner den igen stället.
+        Stå på gymmet och spara platsen en gång. Nästa gång du öppnar Askr där känner den igen stället.
         Koordinaterna stannar i telefonen och skickas ingenstans.
       </div>
 
@@ -1875,7 +1875,7 @@ function PlacesSheet({ ctx, onClose }) {
       {fel && <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{fel}</div>}
 
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.border}`, fontSize: 12, color: C.muted, lineHeight: 1.55 }}>
-        ATLAS kan bara kolla positionen när appen är öppen — webbappar får inte köra positionsbevakning
+        Askr kan bara kolla positionen när appen är öppen — webbappar får inte köra positionsbevakning
         i bakgrunden. Den kan alltså inte säga till av sig själv när du kommer fram.
       </div>
     </>
@@ -1962,7 +1962,7 @@ function ProgramSheet({ ctx, onClose }) {
       ) : (
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 18 }}>
           Inget program valt. Du kan träna fritt och logga pass ändå — men med ett
-          program vet ATLAS vad som ska komma härnäst.
+          program vet Askr vad som ska komma härnäst.
         </div>
       )}
 

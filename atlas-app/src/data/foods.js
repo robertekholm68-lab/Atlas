@@ -1,6 +1,6 @@
 // DATA: livsmedel, FOOD_INDEX, näringsmål, kost-hjälpvärden
 import { H } from "./tokens.js";
-import ATLAS_FOOD_DB from "../assets/data/slv_food_db.json";
+import Askr_FOOD_DB from "../assets/data/slv_food_db.json";
 
 const FOOD_DB = {
   sourceName: "Livsmedelsverkets Livsmedelsdatabas",
@@ -152,8 +152,8 @@ const CURATED_MICRO = {
   "slv_havregryn": { iron: 3.4, calcium: 43.0, magnesium: 110.0, potassium: 340.0, zinc: 2.6, salt: 0.0, vitD: 0.0, b12: 0.0, folate: 30.0, vitC: 0.0 },
 };
 const FOOD_INDEX = FOODS.map(f => CURATED_MICRO[f.id] ? { ...f, micro: CURATED_MICRO[f.id] } : f).concat(
-  (typeof window !== "undefined" && Array.isArray(ATLAS_FOOD_DB))
-    ? ATLAS_FOOD_DB.map(f => ({ id: f.id, name: f.name, group: f.group, kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat, fiber: f.fiber, micro: f.micro, source: "livsmedelsverket", ver: "verified" }))
+  (typeof window !== "undefined" && Array.isArray(Askr_FOOD_DB))
+    ? Askr_FOOD_DB.map(f => ({ id: f.id, name: f.name, group: f.group, kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat, fiber: f.fiber, micro: f.micro, source: "livsmedelsverket", ver: "verified" }))
     : []
 );
 

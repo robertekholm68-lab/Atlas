@@ -82,7 +82,7 @@ function AddFoodModal({ onAdd, onClose, history, initial }) {
           <>
             <button onClick={() => setSel(null)} style={{ background: "none", border: "none", color: T.accent.primary, cursor: "pointer", fontSize: 13, padding: 0, marginBottom: 10 }}>‹ Alla livsmedel</button>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>{sel.name}</div>
-            <div style={{ fontSize: 11, color: T.text.muted, marginBottom: 12 }}><span style={{ color: qualityColor(foodVerification(sel) === "verified" ? "exact" : "estimated") }}>●</span> {SOURCE_LABEL[foodSource(sel)] || "ATLAS"}{foodSource(sel) === "livsmedelsverket" ? ` · Livsmedelsdatabasen ${FOOD_DB.version}` : ""}</div>
+            <div style={{ fontSize: 11, color: T.text.muted, marginBottom: 12 }}><span style={{ color: qualityColor(foodVerification(sel) === "verified" ? "exact" : "estimated") }}>●</span> {SOURCE_LABEL[foodSource(sel)] || "Askr"}{foodSource(sel) === "livsmedelsverket" ? ` · Livsmedelsdatabasen ${FOOD_DB.version}` : ""}</div>
             <div style={{ marginBottom: 12 }}><Stepper label="Mängd" value={grams} step={10} min={10} unit="g" onChange={setGrams} /></div>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               {[["kcal", macro.kcal, T.accent.secondary], ["Protein", macro.protein + "g", T.accent.success], ["Kolh.", macro.carbs + "g", T.accent.warning], ["Fett", macro.fat + "g", T.accent.primary]].map(([l, v, c]) => (
@@ -169,12 +169,12 @@ function BarcodeScanner({ onAdd, onClose }) {
         <div style={{ fontSize: 17, fontWeight: 700 }}>{result.name}</div>
         {result.brand && <div style={{ fontSize: 12.5, color: T.text.secondary }}>{result.brand}</div>}
         <div style={{ fontSize: 12.5, color: T.text.secondary, marginTop: 8 }}>Per 100 g: {result.kcal} kcal · {result.protein} g P · {result.carbs} g K · {result.fat} g F</div>
-        <div style={{ fontSize: 11, color: T.text.muted, marginTop: 6 }}>Källa: Open Food Facts · Status: Extern produktdata — ej verifierad av ATLAS.</div>
+        <div style={{ fontSize: 11, color: T.text.muted, marginTop: 6 }}>Källa: Open Food Facts · Status: Extern produktdata — ej verifierad av Askr.</div>
       </div>
       <div style={{ marginBottom: 12 }}><Stepper label="Mängd" value={grams} step={10} min={10} unit="g" onChange={setGrams} /></div>
       <button onClick={() => logIt(result.brand ? `${result.name} (${result.brand})` : result.name, { ...result, q: "external" })} style={{ ...btn.primary, width: "100%" }}>Logga ({Math.round(result.kcal * grams / 100)} kcal)</button>
       <button onClick={() => logIt(result.brand ? `${result.name} (${result.brand})` : result.name, { ...result, q: "user_confirmed" })} style={{ background: "none", border: `1px solid ${T.accent.success}55`, color: T.accent.success, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, cursor: "pointer", width: "100%", marginTop: 8 }}>Jag har kollat värdena mot förpackningen</button>
-      <div style={{ fontSize: 10.5, color: T.text.muted, marginTop: 8 }}>Produktdata från Open Food Facts — community-tillhandahållen data, ej verifierad av ATLAS (ODbL).</div>
+      <div style={{ fontSize: 10.5, color: T.text.muted, marginTop: 8 }}>Produktdata från Open Food Facts — community-tillhandahållen data, ej verifierad av Askr (ODbL).</div>
       <button onClick={() => { setResult(null); setCode(""); }} style={{ background: "none", border: "none", color: T.accent.primary, cursor: "pointer", fontSize: 13, marginTop: 8 }}>‹ Skanna en till</button>
     </>}
 

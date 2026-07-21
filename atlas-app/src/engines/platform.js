@@ -64,13 +64,13 @@ export function installAdvice() {
   if (installed) return { installed: true, kind, needed: false, steps: [], why: null };
   if (kind === "ios") return {
     installed: false, kind, needed: true,
-    why: "På iPhone kan webbläsaren rensa lagrad data för sajter som inte används på ett tag. Lägger du till ATLAS på hemskärmen behandlas den som en app — historiken ligger kvar, och notiser kan fungera.",
-    steps: ["Tryck på Dela-ikonen i Safari (fyrkanten med pilen)", "Bläddra ner och välj \"Lägg till på hemskärmen\"", "Bekräfta med \"Lägg till\"", "Öppna ATLAS från hemskärmen härefter"],
+    why: "På iPhone kan webbläsaren rensa lagrad data för sajter som inte används på ett tag. Lägger du till Askr på hemskärmen behandlas den som en app — historiken ligger kvar, och notiser kan fungera.",
+    steps: ["Tryck på Dela-ikonen i Safari (fyrkanten med pilen)", "Bläddra ner och välj \"Lägg till på hemskärmen\"", "Bekräfta med \"Lägg till\"", "Öppna Askr från hemskärmen härefter"],
   };
   if (kind === "android") return {
     installed: false, kind, needed: true,
-    why: "Installerad som app får ATLAS egen ikon, startar utan webbläsarens ram och behåller din data tryggare.",
-    steps: ["Öppna webbläsarens meny (tre prickar)", "Välj \"Installera app\" eller \"Lägg till på startskärmen\"", "Bekräfta", "Öppna ATLAS från startskärmen härefter"],
+    why: "Installerad som app får Askr egen ikon, startar utan webbläsarens ram och behåller din data tryggare.",
+    steps: ["Öppna webbläsarens meny (tre prickar)", "Välj \"Installera app\" eller \"Lägg till på startskärmen\"", "Bekräfta", "Öppna Askr från startskärmen härefter"],
   };
   return { installed: false, kind, needed: false, steps: [], why: null };
 }

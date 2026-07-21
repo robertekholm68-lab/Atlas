@@ -1,4 +1,4 @@
-// ATLAS 2.0 — framsteg.
+// Askr 2.0 — framsteg.
 //
 // Veckovolym, nyckeltal, starkaste lyft, vikt. Allt härlett ur loggade pass.
 //

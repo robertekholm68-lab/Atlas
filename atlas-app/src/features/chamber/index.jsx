@@ -1,4 +1,4 @@
-// FEATURE: ATLAS Analyskammare — immersivt spatialt upplägg (lager-HTML/CSS, ingen Three.js).
+// FEATURE: Askr Analyskammare — immersivt spatialt upplägg (lager-HTML/CSS, ingen Three.js).
 // Generaliserad: ChamberRoom + ChamberTopBar + Chamber (body-centrerad) + ContentChamber (innehåll i rummet).
 import { useState, useEffect, useRef } from "react";
 import { SvgBody } from "../body-map/index.jsx";
@@ -29,7 +29,7 @@ export function NavRail({ active, setActive, mode, onSwitchMode }) {
         style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: W, background: "linear-gradient(180deg, #0d1119, #0a0d13)", borderRight: `1px solid ${T.bg.muted}`, display: "flex", flexDirection: "column", padding: "16px 10px", boxSizing: "border-box", overflow: "hidden", transition: "width .22s cubic-bezier(.2,.7,.3,1)", boxShadow: open ? "18px 0 44px -20px rgba(0,0,0,0.7)" : "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "4px 6px 18px", minWidth: 190 }}>
           <div style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, background: `linear-gradient(135deg, ${T.accent.primary}, ${T.accent.secondary})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: "#fff" }}>A</div>
-          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, opacity: open ? 1 : 0, transition: "opacity .2s" }}>ATLAS</span>
+          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, opacity: open ? 1 : 0, transition: "opacity .2s" }}>Askr</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
           {nav.map(([label, icon]) => (
@@ -308,7 +308,7 @@ export function AnalysisChamber({ muscleStates, overallReadiness, readinessInfo,
   const coachPeek = recommendation ? (recommendation.title || "Förslag redo") : "—";
   return (
     <Chamber
-      eyebrow="ATLAS · Analyskammare" title={name ? `Välkommen tillbaka, ${name}.` : "Välkommen till ATLAS."}
+      eyebrow="Askr · Analyskammare" title={name ? `Välkommen tillbaka, ${name}.` : "Välkommen till Askr."}
       onStartTraining={onStartTraining} mode={mode} name={name} panelMode={panelMode}
       muscleStates={muscleStates} openMuscle={openMuscle} onResetRecovery={onResetRecovery} overallReadiness={overallReadiness} showLegend
       leftPanels={[

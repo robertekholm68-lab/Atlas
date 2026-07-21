@@ -1,4 +1,4 @@
-// ATLAS 2.0 — mat.
+// Askr 2.0 — mat.
 //
 // Tre flikar enligt skiss 3: översikt, logga, recept.
 //

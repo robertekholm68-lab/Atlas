@@ -1,4 +1,4 @@
-// FEATURE: Goals + ATLAS Mission (Målresa)
+// FEATURE: Goals + Askr Mission (Målresa)
 // Målfliken har två sektioner: Målresor och Enskilda mål. Målresor byggs OVANPÅ det
 // befintliga målsystemet — delmål bär missionId (ingen duplicering), och att ta bort en
 // målresa frikopplar delmålen men raderar dem aldrig.
@@ -295,7 +295,7 @@ function CreateMissionWizard({ goals, onCreate, onClose }) {
       <>
         <label style={lbl}>Begränsningar (valfritt)</label>
         <textarea value={d.constraints} onChange={e => set("constraints", e.target.value)} placeholder="t.ex. återkommande vadbesvär, ont om tid vissa veckor." style={{ ...input, minHeight: 70, resize: "vertical" }} />
-        <div style={{ fontSize: 11.5, color: T.text.muted, marginTop: 8 }}>Detta är din egen notering. ATLAS ger träningsvägledning, inte medicinsk bedömning.</div>
+        <div style={{ fontSize: 11.5, color: T.text.muted, marginTop: 8 }}>Detta är din egen notering. Askr ger träningsvägledning, inte medicinsk bedömning.</div>
       </>
     ), valid: () => true },
     { q: "Vilka delmål ska kopplas?", body: (

@@ -1,4 +1,4 @@
-// ATLAS 2.0 — målresan som vy.
+// Askr 2.0 — målresan som vy.
 //
 // Två lägen: sätt ett mål, eller se var i resan du står. Utan mål visas ingen
 // fejkad tidsaxel — bara en inbjudan att sätta ett.
@@ -19,7 +19,7 @@ function Ny({ onSpara, onAvbryt }) {
     <div>
       <div style={hdr(19)}>Sätt ett mål</div>
       <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: "10px 0 20px" }}>
-        Med ett måldatum kan ATLAS dela in tiden i faser och säga var i resan du
+        Med ett måldatum kan Askr dela in tiden i faser och säga var i resan du
         står — inte bara vad kroppen tål idag.
       </div>
 

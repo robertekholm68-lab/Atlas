@@ -1,4 +1,4 @@
-// ATLAS varumärkesgrafik — kantigt A-märke och startsidans tre ikoner.
+// Askr varumärkesgrafik — kantigt A-märke och startsidans tre ikoner.
 //
 // Ritas som vektor i stället för bild: skalar skarpt på alla skärmar, kostar
 // ingenting i filstorlek, och färgen kan följa temat i stället för att vara
@@ -24,13 +24,13 @@ export function AtlasMark({ size = 34, color = LIME, style }) {
   );
 }
 
-/** Hela ordmärket: A + ATLAS + undertext. */
-export function AtlasLogo({ size = 34, color = "#FFFFFF", mark = LIME, tagline = "TRÄNA. FÖRSTÅ. ÅTERHÄMTA.", hfont, style }) {
+/** Hela ordmärket: A + Askr + undertext. */
+export function AtlasLogo({ size = 34, color = "#FFFFFF", mark = LIME, tagline = "FRÅGA KROPPEN.", hfont, style }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: size * 0.32, ...style }}>
       <AtlasMark size={size} color={mark} />
       <div>
-        <div style={{ fontFamily: hfont, fontSize: size * 0.92, fontWeight: 800, letterSpacing: size * 0.11, color, lineHeight: 1 }}>ATLAS</div>
+        <div style={{ fontFamily: hfont, fontSize: size * 0.92, fontWeight: 800, letterSpacing: size * 0.11, color, lineHeight: 1 }}>Askr</div>
         {tagline && (
           <div style={{ fontFamily: hfont, fontSize: size * 0.26, letterSpacing: size * 0.055, color: "#8A8F98", marginTop: size * 0.11 }}>{tagline}</div>
         )}

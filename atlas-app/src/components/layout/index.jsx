@@ -27,7 +27,7 @@ function Sidebar({ active, setActive, mode, onSwitchMode }) {
     <div style={{ width: 210, flexShrink: 0, background: T.bg.surface, borderRight: `1px solid ${T.bg.muted}`, display: "flex", flexDirection: "column", padding: "18px 14px", minHeight: "100vh", position: "sticky", top: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 8px 20px" }}>
         <div style={{ width: 30, height: 30, borderRadius: 9, background: `linear-gradient(135deg, ${T.accent.primary}, ${T.accent.secondary})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: "#fff" }}>A</div>
-        <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: 0.5 }}>ATLAS</span>
+        <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: 0.5 }}>Askr</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
         {nav.map(([label, icon]) => (
@@ -51,7 +51,7 @@ function Sidebar({ active, setActive, mode, onSwitchMode }) {
       <div style={{ marginTop: 10, padding: "14px 16px", background: "linear-gradient(135deg, rgba(255,209,102,0.09), rgba(155,124,255,0.06))", border: "1px solid rgba(255,209,102,0.4)", borderRadius: 14, cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: 0.5, color: "#FFD166" }}>ATLAS PRO</div>
+            <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: 0.5, color: "#FFD166" }}>Askr PRO</div>
             <div style={{ fontSize: 11, color: T.text.muted, marginTop: 2 }}>Peak Human Potential</div>
           </div>
           <span style={{ color: "#FFD166", fontSize: 16 }}>›</span>
@@ -94,7 +94,7 @@ function DesktopLayout({ mode, demo, onSwitchMode, trainingMetrics, nutritionTar
   else if (nav === "Profil") content = <ProfileView profile={profile} setProfile={setProfile} sessions={sessions} setSessions={setSessions} measurements={measurements} setMeasurements={setMeasurements} mode={mode} onSwitchMode={onSwitchMode} trainingMetrics={trainingMetrics} foodLog={foodLog} setFoodLog={setFoodLog} />;
 
   const cap = (node, h = "66vh") => <div style={{ maxHeight: h, overflowY: "auto", borderRadius: 16 }}>{node}</div>;
-  const eyebrow = "ATLAS · Analyskammare";
+  const eyebrow = "Askr · Analyskammare";
   const nm = profile && profile.name;
   const equipCard = (
     <Card pad={12}>
@@ -125,11 +125,11 @@ function DesktopLayout({ mode, demo, onSwitchMode, trainingMetrics, nutritionTar
               })}
             </div>
             {nav === "Muskelfakta" ? (
-              <ContentChamber eyebrow="ATLAS · Kroppen" title="Muskelfakta" showStart={false} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack}>
+              <ContentChamber eyebrow="Askr · Kroppen" title="Muskelfakta" showStart={false} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack}>
                 <MuscleMapView muscleStates={muscleStates} />
               </ContentChamber>
             ) : (
-              <Chamber eyebrow="ATLAS · Kroppen" title="Kroppen" panelMode={panelMode} onStartTraining={onStartTraining} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack} overallReadiness={overallReadiness}
+              <Chamber eyebrow="Askr · Kroppen" title="Kroppen" panelMode={panelMode} onStartTraining={onStartTraining} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack} overallReadiness={overallReadiness}
                 muscleStates={muscleStates} openMuscle={openMuscle} onResetRecovery={onResetRecovery}
                 leftPanels={[{ node: <RecoveryCard sessions={sessions} demo={demo} />, label: "Återhämtning" }, { node: <ConditioningCard sessions={sessions} systemicRecovery={systemicRecovery} />, label: "Kondition" }, ...(cycle ? [{ node: <CycleCard cycle={cycle} onLogPeriod={onLogPeriod} />, label: "Menscykel", peek: cycle.short }] : [])]}
                 rightPanels={[{ node: cap(<MuscleStatusList muscleStates={muscleStates} onSelect={openMuscle} title="Recovery by Muscle" />), label: "Muskelstatus" }, { node: <VolumeOverview sessions={sessions} />, depth: "far", label: "Volym" }]} />
@@ -150,7 +150,7 @@ function DesktopLayout({ mode, demo, onSwitchMode, trainingMetrics, nutritionTar
                   ? [{ node: <RecentSessions sessions={sessions} onSelect={openMuscle} />, label: "Senaste passen" }, { node: cap(<div><div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: T.text.muted, textTransform: "uppercase", marginBottom: 8 }}>Programmets muskelbelastning</div><LoadBody program={activeProgram} /></div>, "60vh"), foreground: true, label: "Programbelastning" }]
                   : [{ node: <RecentSessions sessions={sessions} onSelect={openMuscle} />, label: "Senaste passen" }, { node: cap(<ExerciseLibrary onStart={() => setModal("session")} onPreview={setPreviewExercise} previewId={previewExercise?.id} equip={equip} />), foreground: true, label: "Övningsbank" }]} />
             ) : (
-              <ContentChamber eyebrow="ATLAS · Träning" title="Program" showStart={false} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack}>
+              <ContentChamber eyebrow="Askr · Träning" title="Program" showStart={false} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack}>
                 <ProgramsView programs={programs} setPrograms={setPrograms} activeProgramId={activeProgramId} setActiveProgramId={setActiveProgramId} equip={equip} overallReadiness={overallReadiness} sessions={sessions} profileGoal={profileGoal} goalProfile={goalProfile} onStartProgram={onStartProgram} />
               </ContentChamber>
             )}
@@ -163,7 +163,7 @@ function DesktopLayout({ mode, demo, onSwitchMode, trainingMetrics, nutritionTar
                 return <button key={tgt} onClick={() => go(tgt)} style={{ border: "none", cursor: "pointer", borderRadius: 999, padding: "6px 18px", fontSize: 12.5, fontWeight: 600, background: on ? T.accent.primary : "transparent", color: on ? "#08101c" : T.text.secondary, transition: "background .15s" }}>{label}</button>;
               })}
             </div>
-            <ContentChamber eyebrow="ATLAS · Historik" title={nav === "Calendar" ? "Kalender" : "Framsteg"} showStart={false} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack}>
+            <ContentChamber eyebrow="Askr · Historik" title={nav === "Calendar" ? "Kalender" : "Framsteg"} showStart={false} mode={mode} name={nm} canNavBack={canNavBack} navBack={navBack}>
               {nav === "Calendar"
                 ? <CalendarView sessions={sessions} setSessions={setSessions} bodyweight={userBodyweight} activeProgram={activeProgram} />
                 : <ProgressView sessions={sessions} overallReadiness={overallReadiness} profile={profile} measurements={measurements} setMeasurements={setMeasurements} setProfile={setProfile} />}
@@ -194,7 +194,7 @@ function MobileLayout({ mode, demo, onSwitchMode, trainingMetrics, nutritionTarg
 
   const Dashboard = (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {sessions.length === 0 && <div style={{ background: "linear-gradient(135deg, rgba(77,163,255,0.10), rgba(155,124,255,0.06))", border: `1px solid ${T.bg.muted}`, borderRadius: 14, padding: "16px 16px", fontSize: 13.5, color: T.text.secondary, lineHeight: 1.55 }}><b style={{ color: T.text.primary }}>Välkommen till ATLAS.</b> Logga ditt första pass eller mätvärde för att börja bygga din personliga översikt.</div>}
+      {sessions.length === 0 && <div style={{ background: "linear-gradient(135deg, rgba(77,163,255,0.10), rgba(155,124,255,0.06))", border: `1px solid ${T.bg.muted}`, borderRadius: 14, padding: "16px 16px", fontSize: 13.5, color: T.text.secondary, lineHeight: 1.55 }}><b style={{ color: T.text.primary }}>Välkommen till Askr.</b> Logga ditt första pass eller mätvärde för att börja bygga din personliga översikt.</div>}
         <ReadinessCard readiness={overallReadiness} info={readinessInfo} why={readinessWhy} />
       <DashMission mission={primaryMission} analysis={primaryMissionAnalysis} />
       <TodaysPlan recommendation={recommendation} onStart={onStartTraining} />
@@ -255,7 +255,7 @@ function MobileLayout({ mode, demo, onSwitchMode, trainingMetrics, nutritionTarg
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           {canMobileBack && <button onClick={mobileBack} title="Tillbaka" aria-label="Tillbaka" style={{ ...btn.icon, width: 32, height: 32, fontSize: 18 }}>‹</button>}
           <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${T.accent.primary}, ${T.accent.secondary})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "#fff" }}>A</div>
-          <div><div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1 }}>{(profile && profile.name) ? `Hej, ${profile.name}` : "ATLAS"}</div><div style={{ fontSize: 11, color: T.text.muted }}>{overallReadiness == null ? <span>Logga ditt första pass</span> : <>Readiness <b style={{ color: readyColor }}>{overallReadiness}</b>/100</>}</div></div>
+          <div><div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1 }}>{(profile && profile.name) ? `Hej, ${profile.name}` : "Askr"}</div><div style={{ fontSize: 11, color: T.text.muted }}>{overallReadiness == null ? <span>Logga ditt första pass</span> : <>Readiness <b style={{ color: readyColor }}>{overallReadiness}</b>/100</>}</div></div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {onSwitchMode && <button onClick={() => onSwitchMode(mode === "demo" ? "real" : "demo")} style={{ background: T.bg.raised, border: `1px solid ${mode === "demo" ? T.accent.warning + "66" : T.bg.muted}`, color: mode === "demo" ? T.accent.warning : T.accent.primary, borderRadius: 999, padding: "5px 11px", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}>{mode === "demo" ? "◑ Min profil" : "◑ Demo"}</button>}

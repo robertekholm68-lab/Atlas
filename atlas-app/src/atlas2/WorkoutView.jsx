@@ -1,4 +1,4 @@
-// ATLAS 2.0 — pågående pass.
+// Askr 2.0 — pågående pass.
 //
 // Den enda vyn man faktiskt STÅR i, på ett gym, med svettiga händer och
 // telefonen i fickan mellan seten. Därav besluten:

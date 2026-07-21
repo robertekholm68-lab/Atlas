@@ -1,4 +1,4 @@
-// ATLAS 2.0 — importvyn.
+// Askr 2.0 — importvyn.
 //
 // Visar ALLTID vad som hittats innan något skrivs. Användaren ska kunna se
 // exakt vad som kommer in, och avgöra de fall appen inte kan avgöra själv.
@@ -22,14 +22,14 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
         <div style={hdr(19)}>Hämta din historik</div>
         {källor.length === 0 ? (
           <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6, marginTop: 14 }}>
-            Ingen data hittad från nuvarande ATLAS i den här webbläsaren. Historiken
+            Ingen data hittad från nuvarande Askr i den här webbläsaren. Historiken
             ligger kvar där den loggades — öppnar du 2.0 på samma enhet och i samma
             webbläsare som du använt appen, hittas den här.
           </div>
         ) : (
           <>
             <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: "12px 0 18px" }}>
-              ATLAS 2.0 har egen lagring och rör aldrig originalet. Din nuvarande app
+              Askr 2.0 har egen lagring och rör aldrig originalet. Din nuvarande app
               fungerar precis som förut efteråt.
             </div>
             {källor.map(k => (
@@ -118,7 +118,7 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
       <div style={hdr(20)}>Historiken är hämtad</div>
       <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.65, marginTop: 12 }}>
         {klart.pass} pass, {klart.vikter} viktmätningar och {klart.måltider} måltider
-        finns nu i ATLAS 2.0. Din nuvarande app är orörd och fungerar som förut.
+        finns nu i Askr 2.0. Din nuvarande app är orörd och fungerar som förut.
       </div>
       <button onClick={onClose} style={{ ...btnPrimary, marginTop: 22 }}>Till kroppskartan <span style={{ fontSize: 18 }}>→</span></button>
     </div>

@@ -1,4 +1,4 @@
-// FEATURE: ATLAS Program — bibliotek, rekommendationer, guidat flöde, detalj/preview, egen byggare.
+// FEATURE: Askr Program — bibliotek, rekommendationer, guidat flöde, detalj/preview, egen byggare.
 import { useState, useMemo } from "react";
 import { Card, Icon } from "../../components/common/index.jsx";
 import { T, btn } from "../../data/tokens.js";
@@ -145,7 +145,7 @@ function ProgramCoach({ program, sessions, readiness, onApply, onRestore }) {
   const a = useMemo(() => analyzeProgram({ program, sessions, readiness }), [program, sessions, readiness]);
   return (
     <Card pad={14}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><span style={{ color: T.accent.secondary }}>✦</span><div style={sub}>ATLAS-coach</div></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><span style={{ color: T.accent.secondary }}>✦</span><div style={sub}>Askr-coach</div></div>
       {a.adherence && <div style={{ fontSize: 12.5, color: T.text.secondary, marginBottom: 10, lineHeight: 1.5 }}>Följsamhet: {a.adherence.done}/{a.adherence.expected} pass (2 v){a.activities.length ? ` · kombinerar med ${a.activities.map(x => x.name).join(", ")}` : ""}. Jag ändrar aldrig ditt program utan att du godkänner först.</div>}
       {a.observations.length === 0 && a.proposals.length === 0 && <div style={{ fontSize: 12.5, color: T.accent.success }}>✓ Programmet ser balanserat ut och matchar din historik. Fortsätt så!</div>}
       {a.observations.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>{a.observations.map(o => (
@@ -461,7 +461,7 @@ export function ProgramsView({ programs = [], setPrograms, activeProgramId, setA
 
       {tab === "rek" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: T.text.secondary }}>ATLAS-coachen föreslår utifrån {profileGoal ? `mål (${goalSv(profileGoal)}), ` : ""}nivå, återhämtning ({overallReadiness || "–"}) och din historik ({sessions.length} pass). Alla alternativ går att välja — det här är bara de mest lämpliga.</div>
+          <div style={{ fontSize: 13, color: T.text.secondary }}>Askr-coachen föreslår utifrån {profileGoal ? `mål (${goalSv(profileGoal)}), ` : ""}nivå, återhämtning ({overallReadiness || "–"}) och din historik ({sessions.length} pass). Alla alternativ går att välja — det här är bara de mest lämpliga.</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
             {recs.slice(0, 6).map((r, i) => <ProgramCard key={r.template.id} program={r.template} badge={i === 0 ? { t: "Bäst för dig", c: T.accent.success } : r.recommended ? { t: "Rekommenderad", c: T.accent.primary } : null} onClick={() => view(r.template)} />)}
           </div>

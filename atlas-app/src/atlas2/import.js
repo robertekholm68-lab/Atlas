@@ -1,4 +1,4 @@
-// ATLAS 2.0 — import av befintlig historik.
+// Askr 2.0 — import av befintlig historik.
 //
 // LÄSER från atlas.v2.* (webben) och atlas.mobile.* (telefonen). SKRIVER bara
 // till atlas.v3.*. Originalen rörs aldrig — går något fel finns de kvar orörda,

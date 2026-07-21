@@ -1,4 +1,4 @@
-// ATLAS 2.0 — muskelkartan, anatomisk och ren.
+// Askr 2.0 — muskelkartan, anatomisk och ren.
 //
 // Vad som ändrades mot nuvarande appen: den renderade figuren låg som en
 // RASTERBILD med blå rymdgradient, gloria och en platta under fötterna

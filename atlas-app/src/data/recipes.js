@@ -130,7 +130,7 @@ export const MEALS = [
 
 ];
 
-// Färgtema för den genererade bild-identiteten (ATLAS mörka palett).
+// Färgtema för den genererade bild-identiteten (Askr mörka palett).
 export const RECIPE_THEMES = {
   green: ["#39D98A", "#1E7A55"], blue: ["#4DA3FF", "#1E5C99"], purple: ["#9B7CFF", "#5B45A6"],
   amber: ["#FFD166", "#A67C1E"], red: ["#FF6B6B", "#A63D3D"], teal: ["#4DD9C0", "#1E7A6B"],

@@ -52,12 +52,12 @@ describe("installationskortet i mobilen", () => {
     const ua = navigator.userAgent;
     Object.defineProperty(navigator, "userAgent", { value: "iPhone Safari", configurable: true });
     let el = await mount();
-    expect(/Lägg ATLAS på hemskärmen/.test(el.textContent)).toBe(true);
+    expect(/Lägg Askr på hemskärmen/.test(el.textContent)).toBe(true);
     await act(async () => { clickText(el, "Visa hur"); }); await new Promise(r => setTimeout(r, 120));
     expect(/Lägg till på hemskärmen/.test(el.textContent)).toBe(true);
     const x = [...el.querySelectorAll("button")].find(b => b.getAttribute("aria-label") === "Stäng");
     await act(async () => { x.dispatchEvent(new MouseEvent("click", { bubbles: true })); }); await new Promise(r => setTimeout(r, 150));
-    expect(/Lägg ATLAS på hemskärmen/.test(el.textContent)).toBe(false);
+    expect(/Lägg Askr på hemskärmen/.test(el.textContent)).toBe(false);
     expect(JSON.parse(localStorage.getItem("atlas.mobile.installHidden"))).toBe(true);
     Object.defineProperty(navigator, "userAgent", { value: ua, configurable: true });
   });

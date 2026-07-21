@@ -4,7 +4,7 @@
 import { EXERCISES } from "../data/exercises.js";
 
 const DAY = 86400000;
-export const GOAL_EVIDENCE = { measured: { label: "Mätdata", c: "#4DA3FF" }, estimate: { label: "ATLAS-estimat", c: "#687385" }, missing: { label: "Data saknas", c: "#687385" } };
+export const GOAL_EVIDENCE = { measured: { label: "Mätdata", c: "#4DA3FF" }, estimate: { label: "Askr-estimat", c: "#687385" }, missing: { label: "Data saknas", c: "#687385" } };
 
 // Fördefinierade mål (viktning 0–100 per del). "custom" låter användaren finjustera själv.
 export const GOAL_TYPES = {

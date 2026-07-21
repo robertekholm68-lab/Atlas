@@ -24,14 +24,14 @@ const T = {
 
 const WORKOUT_COLOR = { Novice: "#39D98A", Intermediate: "#4DA3FF", Advanced: "#FF5C5C", Helkropp: "#9B7CFF", Kettlebell: "#FFD166" };
 
-const SOURCE_LABEL = { livsmedelsverket: "Livsmedelsverket", off: "Open Food Facts", gs1: "GS1/Validoo", user: "Egen produkt", atlas: "ATLAS" };
+const SOURCE_LABEL = { livsmedelsverket: "Livsmedelsverket", off: "Open Food Facts", gs1: "GS1/Validoo", user: "Egen produkt", atlas: "Askr" };
 
 const QUALITY = {
   verified: { dot: "●", label: "Verifierad källa", desc: "Direkt från auktoritativ källa (Livsmedelsverket), oförändrat värde." },
-  calculated: { dot: "◑", label: "Beräknad", desc: "Uträknad av ATLAS från verifierade källvärden (t.ex. portion ur värde per 100 g)." },
-  external: { dot: "◐", label: "Extern produktdata", desc: "Produktdata från extern källa (Open Food Facts), ej verifierad av ATLAS." },
+  calculated: { dot: "◑", label: "Beräknad", desc: "Uträknad av Askr från verifierade källvärden (t.ex. portion ur värde per 100 g)." },
+  external: { dot: "◐", label: "Extern produktdata", desc: "Produktdata från extern källa (Open Food Facts), ej verifierad av Askr." },
   user_confirmed: { dot: "✓", label: "Användarbekräftad", desc: "Du har jämfört värdena mot förpackningen och bekräftat dem." },
-  ai_estimated: { dot: "○", label: "Uppskattad", desc: "ATLAS uppskattade näringen från en ofullständig måltidsbeskrivning (regelbaserat, ej verifierat)." },
+  ai_estimated: { dot: "○", label: "Uppskattad", desc: "Askr uppskattade näringen från en ofullständig måltidsbeskrivning (regelbaserat, ej verifierat)." },
   unverified: { dot: "○", label: "Ej verifierad", desc: "Uppgiften är inte tillräckligt kontrollerad." },
   // bakåtkompatibla alias
   exact: { dot: "●", label: "Verifierad källa", desc: "Direkt från auktoritativ källa." },

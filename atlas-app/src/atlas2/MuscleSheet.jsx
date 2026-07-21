@@ -1,4 +1,4 @@
-// ATLAS 2.0 — muskeldetalj.
+// Askr 2.0 — muskeldetalj.
 //
 // Klick på kartan → vad vet appen om just den här muskeln?
 //

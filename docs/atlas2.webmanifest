@@ -1,6 +1,6 @@
 {
-  "name": "ATLAS 2.0",
-  "short_name": "ATLAS",
+  "name": "Askr",
+  "short_name": "Askr",
   "start_url": "./atlas2.html",
   "scope": "./",
   "display": "standalone",

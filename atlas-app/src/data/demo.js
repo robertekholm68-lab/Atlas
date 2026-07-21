@@ -1,4 +1,4 @@
-// ATLAS DEMODATA — seedade exempel. FÅR EJ blandas med riktig användardata.
+// Askr DEMODATA — seedade exempel. FÅR EJ blandas med riktig användardata.
 import { computeSessionLoad, daysLeft, roundInc } from "../engines/index.js";
 import { ALL_TEMPLATES, copyProgram } from "../engines/programs.js";
 import { EXERCISES } from "./exercises.js";
@@ -24,7 +24,7 @@ const INITIAL_GOALS = [
   { id: "g6", title: "10 000 steg/dag", cat: "Kondition", start: 0, current: 0, target: 10000, unit: "steg", higher: true, noSource: true, deadline: "" },
 ];
 
-// DEMO: en Målresa (ATLAS Mission) — samlar delmål kring en personlig, betydelsefull resa.
+// DEMO: en Målresa (Askr Mission) — samlar delmål kring en personlig, betydelsefull resa.
 const INITIAL_MISSIONS = [
   {
     id: DEMO_MISSION_ID,

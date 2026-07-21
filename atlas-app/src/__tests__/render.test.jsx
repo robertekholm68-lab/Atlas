@@ -33,7 +33,7 @@ async function mount(width, mode, opts = {}) {
   return { el, real };
 }
 
-describe("ATLAS — första start + lägen renderar utan fel", () => {
+describe("Askr — första start + lägen renderar utan fel", () => {
   it("första start (inget läge valt) → läges-väljaren visas", async () => {
     const { el, real } = await mount(1280, null);
     expect(real).toEqual([]);
@@ -70,7 +70,7 @@ describe("ATLAS — första start + lägen renderar utan fel", () => {
     expect(el.textContent).not.toMatch(/null|NaN|Good morning, Robert/);
     expect(el.textContent).toMatch(/Jag behöver mer data innan jag kan bedöma din readiness/);
     expect(el.textContent).toMatch(/Analyskammare/);                       // ny spatial dashboard renderar
-    expect(el.textContent).toMatch(/Välkommen till ATLAS/);
+    expect(el.textContent).toMatch(/Välkommen till Askr/);
     expect(el.textContent).toMatch(/Jag behöver fler loggade pass innan jag kan bedöma din återhämtning/);
   });
 });

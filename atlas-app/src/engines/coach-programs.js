@@ -1,4 +1,4 @@
-// ENGINE: ATLAS coach för program — analyserar aktivt program mot loggad historik, återhämtning,
+// ENGINE: Askr coach för program — analyserar aktivt program mot loggad historik, återhämtning,
 // följsamhet, RPE/RIR, muskelvolym och andra aktiviteter (Muay Thai/löpning/lagsport).
 // Producerar OBSERVATIONER (märkta mätdata/feedback/estimat) och små REVERSIBLA FÖRSLAG som
 // kräver användarens godkännande. Ändrar aldrig ett aktivt program tyst.
@@ -8,7 +8,7 @@ import { weeklyVolume, groupSv, MUSCLE_GROUPS, WEEKDAYS, alternativesFor } from 
 const COMPOUND = ["Squat", "Hinge", "Lunge", "Horizontal Push", "Incline Push", "Vertical Push", "Horizontal Pull", "Vertical Pull"];
 const isCompound = e => e && COMPOUND.includes(e.pattern);
 const DAY = 86400000;
-export const EVIDENCE = { measured: { label: "Mätdata", c: "#4DA3FF" }, feedback: { label: "Din feedback", c: "#9B7CFF" }, estimate: { label: "ATLAS-estimat", c: "#687385" } };
+export const EVIDENCE = { measured: { label: "Mätdata", c: "#4DA3FF" }, feedback: { label: "Din feedback", c: "#9B7CFF" }, estimate: { label: "Askr-estimat", c: "#687385" } };
 
 function progSessions(program, sessions) {
   return (sessions || []).filter(s => s.programId === program.id).sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));

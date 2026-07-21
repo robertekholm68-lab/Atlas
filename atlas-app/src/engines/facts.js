@@ -1,4 +1,4 @@
-// ATLAS 2.0 — coachens ENDA faktakälla.
+// Askr 2.0 — coachens ENDA faktakälla.
 //
 // Konceptets lag: allt coachen får veta går genom den här funktionen. Nya fakta
 // läggs HÄR, aldrig direkt i en vy eller i LLM-vägen — annars glider den
@@ -14,7 +14,7 @@
 // fattades på den felaktiga uppgiften. Nu finns den, i motorlagret, där båda
 // apparna kan nå den.
 //
-// STATUS: ATLAS 2.0 läser härifrån. Nuvarande appens coach (features/ai-coach,
+// STATUS: Askr 2.0 läser härifrån. Nuvarande appens coach (features/ai-coach,
 // coachReply) läser fortfarande ctx direkt och måste kopplas om separat — det
 // är en större och känsligare ändring som förtjänar ett eget steg.
 

@@ -1,4 +1,4 @@
-// ATLAS onboarding — första-start-skärm + 7-stegs onboarding + legacy-migrering.
+// Askr onboarding — första-start-skärm + 7-stegs onboarding + legacy-migrering.
 import { useState } from "react";
 import { T, btn, overlay, modal } from "../../data/tokens.js";
 import { ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS } from "../../engines/index.js";
@@ -21,15 +21,15 @@ export function ModeSelect({ onPick }) {
     <div style={{ minHeight: "100vh", background: T.bg.app, color: T.text.primary, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, boxSizing: "border-box" }}>
       <div style={{ width: "100%", maxWidth: 460 }}>
         <div style={{ textAlign: "center", marginBottom: 26 }}>
-          <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1, color: T.text.primary }}>ATLAS</div>
+          <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 1, color: T.text.primary }}>Askr</div>
           <div style={{ fontSize: 13.5, color: T.text.muted, marginTop: 6 }}>Din träning, din kropp, din data. Välj hur du vill börja.</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Card primary title="Skapa min profil" cta="Kom igång →" onClick={() => onPick("real")}
-            desc="Starta ATLAS för verklig användning med en helt tom historik."
+            desc="Starta Askr för verklig användning med en helt tom historik."
             note="Ingen demodata kopieras. Readiness, trender och coachen bygger bara på det du själv loggar." />
           <Card title="Utforska demo" cta="Öppna demo" onClick={() => onPick("demo")}
-            desc="Se ATLAS med färdig exempeldata — träningspass, mätvärden och insikter."
+            desc="Se Askr med färdig exempeldata — träningspass, mätvärden och insikter."
             note="Tydligt märkt som Demo-läge. Exempelresultat visas aldrig som dina egna." />
         </div>
         <div style={{ textAlign: "center", fontSize: 11, color: T.text.muted, marginTop: 20, lineHeight: 1.5 }}>Du kan byta läge senare. Demo och riktig profil hålls åtskilda och blandas aldrig.</div>
@@ -121,7 +121,7 @@ export function OnboardingFlow({ draft, setDraft, onComplete, onExit }) {
           <div style={{ flex: 1 }}><Field label="Kalorimål" hint="valfritt"><NumInput value={d.calorieTarget} onChange={v => set({ calorieTarget: v })} placeholder="kcal" /></Field></div>
           <div style={{ flex: 1 }}><Field label="Proteinmål" hint="valfritt"><NumInput value={d.proteinTarget} onChange={v => set({ proteinTarget: v })} placeholder="g" /></Field></div>
         </div>
-        <div style={{ fontSize: 11, color: T.text.muted, marginTop: -6, marginBottom: 12 }}>Vet du inte dina siffror? Hoppa över — ATLAS kan föreslå senare.</div>
+        <div style={{ fontSize: 11, color: T.text.muted, marginTop: -6, marginBottom: 12 }}>Vet du inte dina siffror? Hoppa över — Askr kan föreslå senare.</div>
         <Field label="Loggningsstil"><Chips options={LOG_STYLES} value={d.loggingStyle} onToggle={v => set({ loggingStyle: v })} /></Field>
         <Field label="Coach-nivå"><Chips options={COACH_LEVELS} value={d.coachLevel} onToggle={v => set({ coachLevel: v })} /></Field>
       </>
@@ -130,7 +130,7 @@ export function OnboardingFlow({ draft, setDraft, onComplete, onExit }) {
       <>
         <Field label="Rörelser/övningar att undvika" hint="valfritt"><TextInput value={d.avoidMovements} onChange={v => set({ avoidMovements: v })} placeholder="t.ex. knäböj djupt, marklyft" /></Field>
         <Field label="Fritext" hint="valfritt"><TextInput value={d.injuryNotes} onChange={v => set({ injuryNotes: v })} placeholder="Skador, smärta, annat att ta hänsyn till" /></Field>
-        <div style={{ fontSize: 11, color: T.text.muted, lineHeight: 1.5 }}>ATLAS ställer inga diagnoser och ersätter inte professionell medicinsk rådgivning.</div>
+        <div style={{ fontSize: 11, color: T.text.muted, lineHeight: 1.5 }}>Askr ställer inga diagnoser och ersätter inte professionell medicinsk rådgivning.</div>
       </>
     ) },
     { title: "Hur vill du börja?", body: (
@@ -183,7 +183,7 @@ export function LegacyMigrationModal({ onDone }) {
   return (
     <div style={overlay}>
       <div style={{ ...modal, maxWidth: 500 }} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Äldre ATLAS-data upptäckt</div>
+        <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Äldre Askr-data upptäckt</div>
         <div style={{ fontSize: 13, color: T.text.secondary, lineHeight: 1.55, marginBottom: 12 }}>
           Jag hittade data från en tidigare version (v1) i den här webbläsaren. Ingenting importeras eller raderas automatiskt — du bestämmer. Originaldatan lämnas orörd tills en import lyckats.
         </div>

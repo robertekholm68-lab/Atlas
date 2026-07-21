@@ -115,7 +115,7 @@ describe("§13 demo-läckage: Real Mode innehåller inga demo-värden", () => {
     const el = document.createElement("div"); document.body.appendChild(el);
     createRoot(el).render(<Atlas />);
     await new Promise(r => setTimeout(r, 240));
-    expect(el.textContent).toMatch(/Äldre ATLAS-data upptäckt/);
+    expect(el.textContent).toMatch(/Äldre Askr-data upptäckt/);
     expect(el.textContent).toMatch(/Importera till min riktiga profil/);
   });
 });

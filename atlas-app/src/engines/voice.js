@@ -6,7 +6,7 @@
 //
 // Grundregel: rösten FÖRESLÅR, den sparar aldrig själv. En felhörd åtta som blir
 // åttio hamnar annars i loggen och förgiftar load, recovery och readiness — precis
-// den sortens påhittade siffra ATLAS är byggd för att inte visa. Därför går allt
+// den sortens påhittade siffra Askr är byggd för att inte visa. Därför går allt
 // via ett förslag som användaren bekräftar.
 
 import { platformKind, isStandalone, isInstalledAndroid } from "./platform.js";
@@ -153,7 +153,7 @@ export function voiceSupport() {
   if (typeof window === "undefined") return { ok: false, reason: "ingen-window", note: "" };
   if (isInstalledAndroid()) return {
     ok: false, reason: "android-installerad",
-    note: "Avstängd i den installerade appen — mikrofonen har dödat appen där och orsaken är inte fastställd. Öppna ATLAS i Chrome så fungerar rösten.",
+    note: "Avstängd i den installerade appen — mikrofonen har dödat appen där och orsaken är inte fastställd. Öppna Askr i Chrome så fungerar rösten.",
   };
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Rec) return {
@@ -162,11 +162,11 @@ export function voiceSupport() {
   };
   if (platformKind() === "ios" && isStandalone()) return {
     ok: false, reason: "ios-hemskarm",
-    note: "Apple har inte kopplat in mikrofonen för webbappar som ligger på hemskärmen — funktionen finns men är tyst. Öppna ATLAS i Safari om du vill prova rösten där.",
+    note: "Apple har inte kopplat in mikrofonen för webbappar som ligger på hemskärmen — funktionen finns men är tyst. Öppna Askr i Safari om du vill prova rösten där.",
   };
   if (platformKind() === "ios") return {
     ok: true, reason: "ios-safari",
-    note: "Fungerar i Safari, men inte om du lägger till ATLAS på hemskärmen.",
+    note: "Fungerar i Safari, men inte om du lägger till Askr på hemskärmen.",
   };
   return { ok: true, reason: "ok", note: "Säg vikt och reps, till exempel \"åttio åtta\"." };
 }
@@ -195,10 +195,10 @@ export async function micReady() {
       ok: false,
       reason: namn === "NotAllowedError" ? "nekad" : namn === "NotFoundError" ? "ingen-mikrofon" : "fel",
       note: namn === "NotAllowedError"
-        ? "Mikrofonen är inte tillåten. Tillåt mikrofon för ATLAS i appens eller webbläsarens inställningar."
+        ? "Mikrofonen är inte tillåten. Tillåt mikrofon för Askr i appens eller webbläsarens inställningar."
         : namn === "NotFoundError"
         ? "Ingen mikrofon hittades."
-        : "Mikrofonen går inte att använda här. Är ATLAS installerad som app kan den sakna mikrofonbehörighet — öppna den i webbläsaren i stället.",
+        : "Mikrofonen går inte att använda här. Är Askr installerad som app kan den sakna mikrofonbehörighet — öppna den i webbläsaren i stället.",
     };
   }
 }
@@ -267,7 +267,7 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
     klar = true; städa();
     const kod = (ev && ev.error) || "okänt";
     const text = kod === "not-allowed" || kod === "service-not-allowed"
-      ? "Mikrofonen är blockerad. Tillåt mikrofon för ATLAS i webbläsarens inställningar."
+      ? "Mikrofonen är blockerad. Tillåt mikrofon för Askr i webbläsarens inställningar."
       : kod === "no-speech" ? "Hörde ingenting."
       : kod === "network" ? "Taligenkänningen behöver nät just nu — den här telefonen kan inte tolka lokalt."
       : "Det gick inte att tolka ljudet.";
@@ -341,7 +341,7 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
     klar = true; städa();
     const kod = (ev && ev.error) || "okänt";
     onError && onError(kod,
-      kod === "not-allowed" || kod === "service-not-allowed" ? "Mikrofonen är blockerad. Tillåt mikrofon för ATLAS i webbläsarens inställningar."
+      kod === "not-allowed" || kod === "service-not-allowed" ? "Mikrofonen är blockerad. Tillåt mikrofon för Askr i webbläsarens inställningar."
       : kod === "no-speech" ? "Hörde ingenting."
       : kod === "network" ? "Taligenkänningen behöver nät just nu."
       : "Det gick inte att tolka ljudet.");

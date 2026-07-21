@@ -17,7 +17,7 @@ function rescueDownload() {
       const k = localStorage.key(i);
       if (k && (k.startsWith("atlas.") )) data[k] = localStorage.getItem(k);
     }
-    const payload = { app: "ATLAS", backupVersion: 1, createdAt: new Date().toISOString(), rescued: true, keys: Object.keys(data).length, data };
+    const payload = { app: "Askr", backupVersion: 1, createdAt: new Date().toISOString(), rescued: true, keys: Object.keys(data).length, data };
     const d = new Date(), p = n => String(n).padStart(2, "0");
     const name = `atlas-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
     const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
@@ -33,7 +33,7 @@ export class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null, saved: null, details: false }; }
   static getDerivedStateFromError(error) { return { error }; }
   componentDidCatch(error, info) {
-    try { console.error("ATLAS-fel:", error, info && info.componentStack); } catch (e) { }
+    try { console.error("Askr-fel:", error, info && info.componentStack); } catch (e) { }
   }
   reset = () => {
     this.setState({ error: null, saved: null, details: false });
@@ -49,7 +49,7 @@ export class ErrorBoundary extends React.Component {
         <div style={{ maxWidth: 560, margin: "0 auto", background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "22px 22px 20px" }}>
           <div style={{ fontSize: 10.5, letterSpacing: 1, color: AMBER, fontWeight: 700, marginBottom: 8 }}>NÅGOT GICK FEL</div>
           <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 10 }}>
-            {compact ? "Den här vyn kunde inte visas" : "ATLAS kunde inte visa sidan"}
+            {compact ? "Den här vyn kunde inte visas" : "Askr kunde inte visa sidan"}
           </div>
           <div style={{ fontSize: 13.5, color: MUTED, lineHeight: 1.6, marginBottom: 16 }}>
             <b style={{ color: TEXT }}>Din data är kvar.</b> Allt du loggat ligger sparat i webbläsaren — det är visningen som slutade fungera, inte lagringen.

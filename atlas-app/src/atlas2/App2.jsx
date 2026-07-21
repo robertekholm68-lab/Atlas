@@ -1,4 +1,4 @@
-// ATLAS 2.0 — nytt gränssnitt, samma sanning.
+// Askr 2.0 — nytt gränssnitt, samma sanning.
 //
 // Bygger på engines/ och data/ precis som nuvarande appen. Det som är nytt är
 // allt du SER; ingenting av det appen VET har skrivits om. Det är en medveten
@@ -116,9 +116,9 @@ function ModeChoice({ onPick }) {
 
       {legacy && (
         <div style={{ marginTop: 20, padding: 15, borderRadius: 14, border: `1px dashed ${C.border}` }}>
-          <div style={{ fontSize: 13, color: C.text, marginBottom: 5 }}>Data hittad från nuvarande ATLAS</div>
+          <div style={{ fontSize: 13, color: C.text, marginBottom: 5 }}>Data hittad från tidigare version</div>
           <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.55 }}>
-            {legacy.sessions} loggade pass ligger kvar i den gamla appen. ATLAS 2.0
+            {legacy.sessions} loggade pass ligger kvar i den gamla appen. Askr
             rör dem inte — överföringen byggs som ett eget, bekräftat steg.
           </div>
         </div>
@@ -248,7 +248,7 @@ export function Atlas2() {
         <div style={{ padding: "70px 24px", textAlign: "center" }}>
           <div style={hdr(20)}>Inget pågående pass</div>
           <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6, margin: "12px 0 22px" }}>
-            {activeProgram ? `Nästa pass i ${activeProgram.name} väntar.` : "Välj ett program först, så vet ATLAS vad som kommer härnäst."}
+            {activeProgram ? `Nästa pass i ${activeProgram.name} väntar.` : "Välj ett program först, så vet Askr vad som kommer härnäst."}
           </div>
           <button onClick={startaPass} style={btnPrimary}>
             {activeProgram ? "Starta pass" : "Välj program"} <span style={{ fontSize: 19 }}>→</span>
@@ -301,7 +301,7 @@ export function Atlas2() {
               <>
                 <div style={hdr(18)}>{sheet}</div>
                 <div style={{ fontSize: 13, color: C.muted, marginTop: 10, lineHeight: 1.6 }}>
-                  Den här vyn är inte byggd än i ATLAS 2.0.
+                  Den här vyn är inte byggd än.
                 </div>
                 <button onClick={() => setSheet(null)} style={{ ...btnGhost, marginTop: 18 }}>Stäng</button>
               </>

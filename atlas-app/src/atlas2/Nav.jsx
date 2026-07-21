@@ -1,4 +1,4 @@
-// ATLAS 2.0 — bottennavigering.
+// Askr 2.0 — bottennavigering.
 //
 // Fem flikar enligt skisserna. Ikonerna ritas som vektor i samma linjestil
 // genomgående: 1,7 px linje, rundade ändar, aldrig fyllda ytor. Aktiv flik

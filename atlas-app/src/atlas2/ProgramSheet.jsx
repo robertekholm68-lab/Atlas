@@ -1,4 +1,4 @@
-// ATLAS 2.0 — programväljaren.
+// Askr 2.0 — programväljaren.
 //
 // Utan den här kan Real Mode inte göra någonting: appen börjar medvetet utan
 // program, och då är det första man måste kunna göra att välja ett.
@@ -42,7 +42,7 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
         </div>
       ) : (
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: "10px 0 16px" }}>
-          Inget program valt. Med ett program vet ATLAS vad som ska komma härnäst
+          Inget program valt. Med ett program vet Askr vad som ska komma härnäst
           — utan ett kan appen bara berätta hur kroppen mår, inte vad du ska göra.
         </div>
       )}

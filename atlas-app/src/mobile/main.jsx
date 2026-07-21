@@ -12,8 +12,8 @@ createRoot(document.getElementById("root")).render(<ErrorBoundary><MobileApp /><
 // fungerar när det inte gör det. Därför: registrera ./sw.js, och rapportera utfallet
 // ärligt i appen (syns under "📱 Telefon") i stället för att dölja det.
 const setStatus = (state, detail) => {
-  window.__ATLAS_SW__ = { state, detail: detail || null };
-  window.dispatchEvent(new CustomEvent("atlas:sw-status", { detail: window.__ATLAS_SW__ }));
+  window.__Askr_SW__ = { state, detail: detail || null };
+  window.dispatchEvent(new CustomEvent("atlas:sw-status", { detail: window.__Askr_SW__ }));
 };
 
 setStatus("pending");

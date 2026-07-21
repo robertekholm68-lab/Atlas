@@ -1,5 +1,5 @@
 // MOTOR: datasäkerhet — backup till fil, återläsning och beständig lagring.
-// Bakgrund: hela ATLAS ligger i localStorage. Webbläsare kan rensa den lagringen —
+// Bakgrund: hela Askr ligger i localStorage. Webbläsare kan rensa den lagringen —
 // iOS gör det för sajter som inte använts på ett tag, och kvoterna är snålare där.
 // Därför: be om beständig lagring, och gör det enkelt att ta en riktig backup-fil.
 
@@ -8,7 +8,7 @@ export const BACKUP_VERSION = 1;
 
 function ls() { try { return typeof window !== "undefined" && window.localStorage ? window.localStorage : null; } catch (e) { return null; } }
 
-// Alla ATLAS-nycklar (båda lägena + mobilens namnrymd om den finns i samma webbläsare).
+// Alla Askr-nycklar (båda lägena + mobilens namnrymd om den finns i samma webbläsare).
 export function atlasKeys() {
   const s = ls(); if (!s) return [];
   const out = [];
@@ -25,7 +25,7 @@ export function buildBackup(now = Date.now()) {
   atlasKeys().forEach(k => { try { data[k] = s.getItem(k); } catch (e) { } });
   const sessions = countIn(data, "sessions"), food = countIn(data, "foodLog");
   return {
-    app: "ATLAS", backupVersion: BACKUP_VERSION, createdAt: new Date(now).toISOString(),
+    app: "Askr", backupVersion: BACKUP_VERSION, createdAt: new Date(now).toISOString(),
     keys: Object.keys(data).length, summary: { sessions, foodLog: food }, data,
   };
 }
@@ -48,10 +48,10 @@ export function backupFilename(now = Date.now()) {
 export function inspectBackup(text) {
   let obj;
   try { obj = JSON.parse(text); } catch (e) { return { ok: false, error: "Filen är inte giltig JSON." }; }
-  if (!obj || obj.app !== "ATLAS" || !obj.data || typeof obj.data !== "object")
-    return { ok: false, error: "Det här ser inte ut som en ATLAS-backup." };
+  if (!obj || obj.app !== "Askr" || !obj.data || typeof obj.data !== "object")
+    return { ok: false, error: "Det här ser inte ut som en Askr-backup." };
   if (obj.backupVersion > BACKUP_VERSION)
-    return { ok: false, error: "Backupen kommer från en nyare version av ATLAS än den du kör." };
+    return { ok: false, error: "Backupen kommer från en nyare version av Askr än den du kör." };
   const keys = Object.keys(obj.data);
   return {
     ok: true, obj, keys: keys.length, createdAt: obj.createdAt || null,
@@ -59,7 +59,7 @@ export function inspectBackup(text) {
   };
 }
 
-// Skriver tillbaka en backup. replace=true rensar befintliga ATLAS-nycklar först.
+// Skriver tillbaka en backup. replace=true rensar befintliga Askr-nycklar först.
 export function restoreBackup(obj, { replace = true } = {}) {
   const s = ls(); if (!s) return { ok: false, error: "Ingen lagring tillgänglig." };
   if (replace) atlasKeys().forEach(k => { try { s.removeItem(k); } catch (e) { } });

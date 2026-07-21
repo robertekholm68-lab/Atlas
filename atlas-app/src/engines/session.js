@@ -1,4 +1,4 @@
-// ATLAS Training Engine v1 — kanonisk sessionsmodell.
+// Askr Training Engine v1 — kanonisk sessionsmodell.
 // EN enda komplett sessionsstruktur som ALLA loggnings-vägar (Quick Log, Träningsläge, sport)
 // bygger via buildSession(). Rena funktioner — ingen rendering, inget beroende av persist/react.
 //

@@ -1,4 +1,4 @@
-// ATLAS 2.0 — coachen.
+// Askr 2.0 — coachen.
 //
 // Enligt konceptet är coachen ingen chattruta man besöker utan en närvarande
 // röst med tre roller: sammanfatta, peppa, förklara. Den här vyn är dess hem,

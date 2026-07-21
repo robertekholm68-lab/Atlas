@@ -15,7 +15,7 @@ for (let w = 8; w >= 0; w--) {
 }
 const S2 = [{ completedAt: now - 86400000, muscleLoads: { quadriceps: 120 }, sets: [{ exerciseId: "squat", weight: 110, reps: 5 }] }].concat(S);
 
-describe("ATLAS-motorerna matchar originalprototypen", () => {
+describe("Askr-motorerna matchar originalprototypen", () => {
   it("epley1RM", () => expect(epley1RM(100, 5)).toBe(ref.epley1RM));
   it("computeSessionLoad", () => expect(computeSessionLoad([{ exerciseId: "bench_press", weight: 100, reps: 5 }, { exerciseId: "squat", weight: 100, reps: 5 }], EXERCISES)).toEqual(ref.sessionLoad));
   it("computeRecovery", () => expect(computeRecovery(S2, "pectoralis_major", now)).toEqual(ref.recovery_pec));

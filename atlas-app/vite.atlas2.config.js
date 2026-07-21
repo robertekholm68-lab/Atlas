@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { viteSingleFile } from "vite-plugin-singlefile";
 import { resolve } from "path";
 
-// ATLAS 2.0 — eget byggmål. Nytt gränssnitt, samma motorer.
+// Askr 2.0 — eget byggmål. Nytt gränssnitt, samma motorer.
 // Egen entrépunkt betyder att 2.0 kan växa utan att röra den fungerande appen;
 // blir det fel är rollbacken att helt enkelt inte skeppa filen.
 const BUILD = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12);
@@ -50,8 +50,8 @@ self.addEventListener("fetch", (e) => {
 `;
 
 const MANIFEST = JSON.stringify({
-  name: "ATLAS 2.0",
-  short_name: "ATLAS",
+  name: "Askr",
+  short_name: "Askr",
   start_url: "./atlas2.html",
   scope: "./",
   display: "standalone",

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// ATLAS 2.0 — bevakar att det NYA gränssnittet ärver den GAMLA sanningen.
+// Askr 2.0 — bevakar att det NYA gränssnittet ärver den GAMLA sanningen.
 // Utseendet får ändras fritt; det här är reglerna som inte får ändras.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save } from "../atlas2/store.js";
@@ -7,7 +7,7 @@ import { C, orDash, DASH, statusColor } from "../atlas2/design.js";
 
 const DAG = 864e5;
 
-describe("ATLAS 2.0 — utan underlag hittas ingenting på", () => {
+describe("Askr 2.0 — utan underlag hittas ingenting på", () => {
   it("tom historik ger overall null, inte noll", () => {
     const r = bodyState([], Date.now());
     // En nolla påstår att beredskapen är mätt och blev noll. Null säger att vi
@@ -41,7 +41,7 @@ describe("ATLAS 2.0 — utan underlag hittas ingenting på", () => {
   });
 });
 
-describe("ATLAS 2.0 — med underlag härleds allt ur loggen", () => {
+describe("Askr 2.0 — med underlag härleds allt ur loggen", () => {
   const pass = (dagarSen, laster) => ({
     id: "s" + dagarSen, completedAt: Date.now() - dagarSen * DAG, muscleLoads: laster, sets: [],
   });
@@ -67,7 +67,7 @@ describe("ATLAS 2.0 — med underlag härleds allt ur loggen", () => {
   });
 });
 
-describe("ATLAS 2.0 — designsystemet", () => {
+describe("Askr 2.0 — designsystemet", () => {
   it("statusfärger är egna färger, aldrig accenten", () => {
     for (const s of ["ready", "recovering", "critical", "undertrained", "no_data"]) {
       expect(statusColor(s)).not.toBe(C.lime);
@@ -79,7 +79,7 @@ describe("ATLAS 2.0 — designsystemet", () => {
   });
 });
 
-describe("ATLAS 2.0 — egen namnrymd skyddar befintlig data", () => {
+describe("Askr 2.0 — egen namnrymd skyddar befintlig data", () => {
   let box;
   beforeEach(() => {
     box = {};
@@ -109,7 +109,7 @@ describe("ATLAS 2.0 — egen namnrymd skyddar befintlig data", () => {
   });
 });
 
-describe("ATLAS 2.0 — muskelkartans regioner", () => {
+describe("Askr 2.0 — muskelkartans regioner", () => {
   it("en region färgas efter den MINST återhämtade muskeln", async () => {
     const { regionState } = await import("../atlas2/BodyMap2.jsx");
     // Axelregionen är EN form men tre muskler i taxonomin. Är en av dem trött
@@ -137,7 +137,7 @@ describe("ATLAS 2.0 — muskelkartans regioner", () => {
   });
 });
 
-describe("ATLAS 2.0 — coachens faktakälla", () => {
+describe("Askr 2.0 — coachens faktakälla", () => {
   const pass = (dagarSen, laster, vol = 3000) => ({
     completedAt: Date.now() - dagarSen * 864e5, muscleLoads: laster, totalVolume: vol, sets: [],
   });
@@ -177,7 +177,7 @@ describe("ATLAS 2.0 — coachens faktakälla", () => {
   });
 });
 
-describe("ATLAS 2.0 — volym räknas ur seten", () => {
+describe("Askr 2.0 — volym räknas ur seten", () => {
   it("ett pass utan totalVolume får ändå rätt volym", async () => {
     const { sessionVolume } = await import("../atlas2/store.js");
     // buildSession sätter aldrig totalVolume. Läser man det fältet blir alla
@@ -199,7 +199,7 @@ describe("ATLAS 2.0 — volym räknas ur seten", () => {
   });
 });
 
-describe("ATLAS 2.0 — mat", () => {
+describe("Askr 2.0 — mat", () => {
   it("recept räknar näring ur ingredienserna, inte ur ett fält som saknas", async () => {
     const { RECIPES } = await import("../data/recipes.js");
     const { FOOD_INDEX } = await import("../data/foods.js");
@@ -223,7 +223,7 @@ describe("ATLAS 2.0 — mat", () => {
   });
 });
 
-describe("ATLAS 2.0 — import av befintlig historik", () => {
+describe("Askr 2.0 — import av befintlig historik", () => {
   let box;
   const D = 864e5;
   beforeEach(() => {
@@ -301,7 +301,7 @@ describe("mobilen — volymbuggen", () => {
   });
 });
 
-describe("ATLAS 2.0 — muskeldetalj", () => {
+describe("Askr 2.0 — muskeldetalj", () => {
   it("regionens delmuskler visas var för sig, inte som medelvärde", async () => {
     const { REGION_MAP } = await import("../atlas2/BodyMap2.jsx");
     // Ett medelvärde hade dolt att en delmuskel är sliten medan de andra är
@@ -317,7 +317,7 @@ describe("ATLAS 2.0 — muskeldetalj", () => {
   });
 });
 
-describe("ATLAS 2.0 — målresan", () => {
+describe("Askr 2.0 — målresan", () => {
   const V = 6048e5;
 
   it("faserna täcker hela blocket utan glapp eller överlapp", async () => {

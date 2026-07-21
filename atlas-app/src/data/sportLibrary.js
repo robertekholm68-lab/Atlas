@@ -1,4 +1,4 @@
-// ATLAS sport-ikonbibliotek (94 relief-vektorer) + metadata. Genererad från master-library v1.
+// Askr sport-ikonbibliotek (94 relief-vektorer) + metadata. Genererad från master-library v1.
 // SPORT_LIB: id → SVG-markup (viewBox 0 0 512 512, ingen fast width/height — renderas inline).
 
 export const SPORT_CATEGORIES = [

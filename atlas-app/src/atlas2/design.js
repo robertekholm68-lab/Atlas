@@ -1,4 +1,4 @@
-// ATLAS 2.0 — designsystemet, samlat.
+// Askr 2.0 — designsystemet, samlat.
 //
 // Här bor ALLA visuella beslut. Ingen komponent hittar på egna färger eller
 // storlekar; hittar du en hårdkodad hex utanför den här filen är det en bugg.
@@ -89,7 +89,7 @@ export const statCell = (i) => ({
 /**
  * Streck i stället för noll.
  *
- * Genomgående regel i ATLAS: en nolla påstår att något är mätt och blev noll.
+ * Genomgående regel i Askr: en nolla påstår att något är mätt och blev noll.
  * Ett streck säger att vi inte vet. Skillnaden är hela produktens själ.
  */
 export const DASH = "—";

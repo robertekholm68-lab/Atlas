@@ -64,7 +64,7 @@ const MUSCLE_HOTS = {"front": {"neck_front": {"d": ["M525,38 L512,59 L504,57 L49
 
 const MHOT_VB = "0 0 1024 1536";
 
-const MUSCLE_ATLAS = [
+const MUSCLE_Askr = [
   { id: "neck_front", name: "Hals & nacke (fram)", img: "neck_back", view: "front",
     facts: [["Funktion", "Böjer och roterar huvudet och stabiliserar nacken."],
       ["Delar", "Sternocleidomastoideus, scalenerna och främre halsmuskler."],
@@ -174,4 +174,4 @@ const GROUP_SOURCES = {   // dashboard group ← engine muscle ids (aggregated, 
 
 const GROUP_PRIMARY = { deltoids: "deltoid_lateral", external_obliques: "obliques", teres_major: "deltoid_posterior" };
 
-export { MUSCLE_PATHS, OUTLINES, VIEWBOX, SLUG2ID, AREAS, GEN, MUSCLES, VOLUME_LANDMARKS, MUSCLE_IMAGES, MSRC, MUSCLE_HOTS, MHOT_VB, MUSCLE_ATLAS, ACT, ACT_LABEL, ACT_RANK, MUSCLE_ADJUST, TRAP_CLIP_Y, GROUP_SV, NAME2MUSCLE, BODY_ZONES, GROUP_SOURCES, GROUP_PRIMARY };
+export { MUSCLE_PATHS, OUTLINES, VIEWBOX, SLUG2ID, AREAS, GEN, MUSCLES, VOLUME_LANDMARKS, MUSCLE_IMAGES, MSRC, MUSCLE_HOTS, MHOT_VB, MUSCLE_Askr, ACT, ACT_LABEL, ACT_RANK, MUSCLE_ADJUST, TRAP_CLIP_Y, GROUP_SV, NAME2MUSCLE, BODY_ZONES, GROUP_SOURCES, GROUP_PRIMARY };
