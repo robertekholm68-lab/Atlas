@@ -8,6 +8,7 @@
 
 import {
   computeRecovery, computeReadiness, computeSystemicFatigue,
+  computeNutrition, distinctNutritionDays,
 } from "../engines/index.js";
 import { MUSCLES } from "../data/muscles.js";
 import { nextWorkout } from "../engines/programs.js";
@@ -120,3 +121,50 @@ export function lastSessionLabel(sessions, nowMs = Date.now()) {
 }
 
 export { nextWorkout };
+
+// ── NÄRING ───────────────────────────────────────────────────────────────────
+// v3 saknade näringsmål, så matvyn kunde inte visa framsteg och coachen svarade
+// alltid att den inte kunde bedöma kost. Målet lagras under nyckeln
+// `atlas.v3.nutritionTargets` via load/save ovan. Fältnamnen är kcal/protein/
+// carbs/fat — aldrig `calories`, det är lag i hela kodbasen.
+
+// Samma "idag" som matvyn: lokal kalenderdag, inte ett rullande dygn.
+const sammaDag = (a, b) => {
+  const x = new Date(a), y = new Date(b);
+  return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
+};
+
+/**
+ * Dagens näring, summerad ur matloggen med SAMMA motorfunktion (computeNutrition)
+ * som matvyn använder — en sanning, inte två. Returnerar { kcal, protein, carbs,
+ * fat, estimated, total }. `total` är antalet loggade poster idag; noll betyder
+ * att inget loggats än idag.
+ */
+export function dagensNutrition(foodLog, now = Date.now()) {
+  const idag = (foodLog || []).filter(e => e && e.ts != null && sammaDag(e.ts, now));
+  return computeNutrition(idag);
+}
+
+/**
+ * Kost-kontexten coachen får. Här bor ÄRLIGHETSGRINDEN, samlad på ETT ställe så
+ * att coachen kan skilja tre tillstånd åt:
+ *
+ *   · inget mål satt            → nutritionTargets = null
+ *     (appen vet inte vad du vill — coachReply säger "inga kostmål inställda")
+ *   · mål satt, inget loggat idag → nutritionTotals = null, INTE nollor
+ *     (noll loggat ≠ noll ätet; en nolla hade ljugit om ett kraftigt underskott,
+ *      jfr "Falskt värde ≠ utelämnat värde" i CLAUDE.md — coachen visar då bara
+ *      målet, utan att påstå något om dagens intag)
+ *   · mål satt och loggat idag  → båda satta, coachen får räkna på riktigt
+ *
+ * Coachlogiken (coachReply) tolkar själv de tre utfallen; vi matar bara rätt
+ * data — en coach, inte två.
+ */
+export function nutritionCtx(foodLog, targets, now = Date.now()) {
+  const totals = dagensNutrition(foodLog, now);
+  return {
+    nutritionTargets: targets || null,
+    nutritionTotals: totals.total > 0 ? totals : null,
+    nutritionDays: distinctNutritionDays(foodLog, now),
+  };
+}

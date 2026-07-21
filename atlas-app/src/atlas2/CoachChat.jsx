@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect } from "react";
 import { C, HFONT, BFONT, hdr, label, card } from "./design.js";
 import { coachReply } from "../features/ai-coach/index.jsx";
-import { bodyState } from "./store.js";
+import { bodyState, nutritionCtx } from "./store.js";
 
 /** Startförslag. Korta, och formulerade som man faktiskt pratar. */
 const FÖRSLAG = [
@@ -21,7 +21,7 @@ const FÖRSLAG = [
   "Bröstet svarar inte",
 ];
 
-export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, onStart }) {
+export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, onStart }) {
   const [rader, setRader] = useState([]);
   const [text, setText] = useState("");
   const [ämne, setÄmne] = useState(null);
@@ -37,6 +37,11 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, onS
 
     const { states, overall, covered } = bodyState(sessions);
 
+    // Kost: näringsmål + dagens totaler ur v3, gatade på ett ställe (nutritionCtx).
+    // Ger coachen underlag att skilja "inget mål satt" från "mål satt men inget
+    // loggat idag" — utan mål/logg skickas null, aldrig påhittade nollor.
+    const kost = nutritionCtx(foodLog, nutritionTargets);
+
     // Readiness gatas på samma villkor som överallt annars: utan täckning
     // skickas null vidare, och coachen svarar då att den saknar underlag i
     // stället för att resonera kring en siffra som inte betyder något.
@@ -48,11 +53,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, onS
       profile,
       foodLog,
       goalProfile: goal ? { type: goal.typ } : null,
-      // Nutritionsmål hör hemma i matvyn och finns inte i v3 än. Skickas som
-      // null så att coachen säger det rakt ut i stället för att gissa.
-      nutritionTotals: null,
-      nutritionTargets: null,
-      nutritionDays: 0,
+      ...kost,   // nutritionTargets, nutritionTotals, nutritionDays
       measurements: [],
       cycle: null,
       supplements: [],
