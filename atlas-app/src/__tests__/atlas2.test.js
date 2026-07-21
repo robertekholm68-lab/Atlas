@@ -387,3 +387,25 @@ describe("ATLAS 2.0 — målresan", () => {
     expect(coachFacts({ sessions: [], goal: m }, nu).målresa.namn).toBe("Styrka");
   });
 });
+
+describe("§13 buildCoachFacts finns i motorlagret", () => {
+  it("går att importera från engines, inte bara från atlas2", async () => {
+    // Projektfilen påstod i flera sessioner att den fanns här. Den gjorde inte
+    // det. Det här testet ser till att påståendet inte kan bli falskt igen.
+    const m = await import("../engines/facts.js");
+    expect(typeof m.buildCoachFacts).toBe("function");
+    expect(m.buildCoachFacts).toBe(m.coachFacts);
+  });
+
+  it("målresans motor ligger också i engines", async () => {
+    const m = await import("../engines/journey.js");
+    expect(typeof m.skapaMål).toBe("function");
+    expect(typeof m.resa).toBe("function");
+  });
+
+  it("gamla importvägen fungerar fortfarande", async () => {
+    const gammal = await import("../atlas2/facts.js");
+    const ny = await import("../engines/facts.js");
+    expect(gammal.coachFacts).toBe(ny.coachFacts);
+  });
+});
