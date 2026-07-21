@@ -15,6 +15,20 @@ const öppnaMeny = async (el) => {
 };
 
 const roots = [];
+
+// Real Mode startar utan program sedan demo-läckaget stängdes (2026-07-21).
+// Testerna måste därför välja ett program innan ett pass kan startas — samma
+// väg en riktig användare går.
+const väljProgram = async (el) => {
+  await click(el, "Välj program");
+  const knappar = [...el.querySelectorAll("button")];
+  const mall = knappar.find(b => /Full Body/.test(b.textContent));
+  if (!mall) throw new Error("hittade ingen programmall");
+  await act(async () => { mall.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await new Promise(x => setTimeout(x, 80));
+  await click(el, "Tillbaka till hem");
+};
+
 const mount = async () => {
   const el = document.createElement("div"); document.body.appendChild(el);
   const r = createRoot(el); roots.push({ r, el });
@@ -107,6 +121,7 @@ describe("mobilen — data som sägs sparas ska sparas", () => {
 
   it("pågående pass överlever att appen stängs och öppnas igen", async () => {
     const el = await mount();
+    await väljProgram(el);
     await click(el, "Starta");
     expect(LS("live")).toBeTruthy();
     const namn = LS("live").name;
@@ -153,6 +168,7 @@ describe("mobilen — det ska gå att lämna ett pass", () => {
 
   it("utan loggade set tar tillbaka-knappen dig direkt hem", async () => {
     const el = await mount();
+    await väljProgram(el);
     await click(el, "Starta");
     expect(/Aktivt pass/.test(el.textContent)).toBe(true);
     const back = el.querySelector('[aria-label="Tillbaka"]');
@@ -165,6 +181,7 @@ describe("mobilen — det ska gå att lämna ett pass", () => {
 
   it("med loggade set frågar den i stället för att kasta tyst", async () => {
     const el = await mount();
+    await väljProgram(el);
     await click(el, "Starta");
     const ring = [...el.querySelectorAll("button")].find(b => b.textContent.trim() === "○");
     await act(async () => { ring.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
@@ -178,6 +195,7 @@ describe("mobilen — det ska gå att lämna ett pass", () => {
 
   it("pausat pass ligger kvar på startsidan och går att återuppta", async () => {
     const el = await mount();
+    await väljProgram(el);
     await click(el, "Starta");
     const ring = [...el.querySelectorAll("button")].find(b => b.textContent.trim() === "○");
     await act(async () => { ring.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
@@ -192,6 +210,7 @@ describe("mobilen — det ska gå att lämna ett pass", () => {
 
   it("'Träna' återupptar det pausade passet i stället för att skriva över det", async () => {
     const el = await mount();
+    await väljProgram(el);
     await click(el, "Starta");
     const startedAt = LS("live").startedAt;
     const back = el.querySelector('[aria-label="Tillbaka"]');

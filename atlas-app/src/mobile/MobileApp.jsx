@@ -19,7 +19,7 @@ import { ALL_TEMPLATES, copyProgram, nextWorkout, workoutExercises } from "../en
 import { Icon } from "../components/common/index.jsx";
 import { coachReply } from "../features/ai-coach/index.jsx";
 import { SvgBody } from "../features/body-map/index.jsx";
-import { DEMO_SESSIONS } from "../data/demo.js";
+import { DEMO_SESSIONS, DEMO_PROGRAM as DEMO_PROG, DEMO_PROGRAMS } from "../data/demo.js";
 
 // ── Lokal lagring (egen namnrymd, krockar inte med webben) ──
 const LS = k => `atlas.mobile.${k}`;
@@ -28,7 +28,6 @@ function save(k, v) { try { localStorage.setItem(LS(k), JSON.stringify(v)); } ca
 
 // Demoprogram (samma motor som webben) så gym-flödet är körbart direkt.
 const PPL = ALL_TEMPLATES.find(t => t.family === "ppl" && t.level === "Intermediate") || ALL_TEMPLATES[0];
-const DEMO_PROGRAM = copyProgram(PPL, { name: "Min PPL", active: true });
 
 // Designspråk 2026-07-20: nära svart, EN accent (lime), statusfärger endast för data.
 // blue/purple behålls som NYCKLAR men pekar på accenten — ett fyrtiotal gamla
@@ -58,6 +57,15 @@ export function MobileApp() {
   const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
   const [cues, setCues] = useState(() => load("cues", DEFAULT_CUES));
   const [places, setPlaces] = useState(() => load("places", []));
+
+  // Program: sparat läge, demo-gatat. Tidigare låg ett hårdkodat DEMO_PROGRAM här
+  // som användes ÄVEN i Real Mode, också av coachen — demodata rakt in i den
+  // riktiga profilen. Real Mode börjar nu utan program, precis som webbappen.
+  const [programs, setPrograms] = useState(() => load("programs", null) || []);
+  const [activeProgramId, setActiveProgramId] = useState(() => load("activeProgramId", null));
+  useEffect(() => { save("programs", programs); }, [programs]);
+  useEffect(() => { save("activeProgramId", activeProgramId); }, [activeProgramId]);
+  const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
   // Dog appen förra gången mikrofonen användes? Stäng då av röstinmatningen själv.
   // En processkrasch går inte att fånga, men spåret den lämnade går att läsa.
   const [röstKrasch, setRöstKrasch] = useState(false);
@@ -135,7 +143,7 @@ export function MobileApp() {
   // subjektiv daglig check-in nudgar readiness (±6)
   if (overall != null && checkin) overall = Math.max(0, Math.min(100, overall + (checkin === "high" ? 6 : checkin === "low" ? -6 : 0)));
 
-  const nw = nextWorkout(DEMO_PROGRAM, sessions);
+  const nw = activeProgram ? nextWorkout(activeProgram, sessions) : null;
 
   const startWorkout = () => {
     // Finns ett pågående pass: gå tillbaka in i det i stället för att tyst kasta bort det.
@@ -156,7 +164,7 @@ export function MobileApp() {
         logged: [],
       };
     });
-    setLive({ programId: DEMO_PROGRAM.id, workoutId: nw.workout.id, name: nw.workout.name, startedAt: Date.now(), idx: 0, items });
+    setLive({ programId: activeProgram.id, workoutId: nw.workout.id, name: nw.workout.name, startedAt: Date.now(), idx: 0, items });
     setScreen("workout");
   };
 
@@ -183,9 +191,11 @@ export function MobileApp() {
         setMode(m);
         setProfile({ name: prof.name || "", weight: prof.weight ?? null, sex: prof.sex || null });
         setSessions(m === "demo" ? DEMO_SESSIONS.slice() : []);
+        setPrograms(m === "demo" ? DEMO_PROGRAMS.slice() : []);
+        setActiveProgramId(m === "demo" ? DEMO_PROG.id : null);
         if (prof.weight) setWeights([{ id: `w_${Date.now()}`, ts: Date.now(), kg: prof.weight }]);
       }} />}
-      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym, röstKrasch, sessions}}
+      {mode && screen === "home" && <Home {...{ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, places, setPlaces, profile, live, atGym, röstKrasch, sessions, activeProgram}}
         onResume={() => setScreen("workout")}
         onDiscard={() => setLive(null)} />}
       {mode && screen === "workout" && live && <Workout {...{ live, setLive, finishWorkout, setSheet, cues, bodyweight }}
@@ -195,7 +205,7 @@ export function MobileApp() {
 
       {mode && screen === "home" && <TabBar setSheet={setSheet} startWorkout={startWorkout} />}
 
-      {sheet && <Sheet name={sheet} onClose={() => setSheet(null)} ctx={{ sessions, setSessions, queue, setQueue, checkin, setCheckin, checkins, setCheckins, foodLog, setFoodLog, cues, setCues, installHidden, setInstallHidden, weights, setWeights, notes, setNotes, profile, setProfile, mode, muscleStates, overall, nw, DEMO_PROGRAM, setSheet }} />}
+      {sheet && <Sheet name={sheet} onClose={() => setSheet(null)} ctx={{ sessions, setSessions, queue, setQueue, checkin, setCheckin, checkins, setCheckins, foodLog, setFoodLog, cues, setCues, installHidden, setInstallHidden, weights, setWeights, notes, setNotes, profile, setProfile, mode, muscleStates, overall, nw, programs, setPrograms, activeProgramId, setActiveProgramId, activeProgram, setSheet }} />}
     </div>
   );
 }
@@ -318,7 +328,7 @@ function ModePicker({ onPick }) {
     </div>
   );
 }
-function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null, röstKrasch = false, sessions = [] }) {
+function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null, röstKrasch = false, sessions = [], activeProgram = null }) {
   // Designspråk 2026-07-20: kartan dominerar, EN primärhandling, tre genvägar.
   // Åtta snabbknappar i rad var själva plottret — resten bor i menyn nu.
 
@@ -419,10 +429,13 @@ function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setShee
 
       {!live && (
         <>
-          <button onClick={startWorkout} style={{ ...bigBtn, marginTop: 14 }}>
-            {besked.tom ? "Starta första passet" : "Starta pass"} <span style={{ marginLeft: 6 }}>→</span>
+          <button onClick={activeProgram ? startWorkout : () => setSheet("program")} style={{ ...bigBtn, marginTop: 14 }}>
+            {!activeProgram ? "Välj program" : besked.tom ? "Starta första passet" : "Starta pass"} <span style={{ marginLeft: 6 }}>→</span>
           </button>
-          {nw && <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 8 }}>Föreslaget: {nw.workout.name}</div>}
+          {/* Utan program hittar vi inte på ett förslag — vi säger vad som saknas. */}
+          <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 8 }}>
+            {nw ? `Föreslaget: ${nw.workout.name}` : activeProgram ? "Programmet har inga pass kvar den här veckan." : "Inget program valt än."}
+          </div>
         </>
       )}
 
@@ -817,6 +830,7 @@ function Sheet({ name, onClose, ctx }) {
         {name === "caps" && <CapsSheet onClose={onClose} />}
         {name === "places" && <PlacesSheet ctx={ctx} onClose={onClose} />}
         {name === "menu" && <MenuSheet ctx={ctx} onClose={onClose} />}
+        {name === "program" && <ProgramSheet ctx={ctx} onClose={onClose} />}
         {name === "progress" && <ProgressSheet ctx={ctx} />}
         {name === "weight" && <SimpleSheet title="Registrera vikt" label="Vikt i kilogram" placeholder="t.ex. 82,4" kind="weight" ctx={ctx} />}
         {name === "food" && <FoodSheet ctx={ctx} onClose={onClose} />}
@@ -938,7 +952,7 @@ function CoachSheet({ ctx }) {
     });
   };
   useEffect(() => () => { stoppa.current && stoppa.current(); }, []);
-  const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.DEMO_PROGRAM, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); if (taladeFråga) { speak(shortSpoken(r.text)); setTaladeFråga(false); } };
+  const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.activeProgram, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); if (taladeFråga) { speak(shortSpoken(r.text)); setTaladeFråga(false); } };
   return (
     <div>
       <SheetTitle>Coachen</SheetTitle>
@@ -995,58 +1009,106 @@ function ProgressSheet({ ctx }) {
   }
 
   const thisVol = vol(wk), prevVol = vol(prevWk);
-  const diff = prevVol > 0 ? Math.round((thisVol - prevVol) / prevVol * 100) : null;
-  const firstW = weights[0], lastW = weights[weights.length - 1];
-  const wDiff = weights.length >= 2 ? Math.round((lastW.kg - firstW.kg) * 10) / 10 : null;
+
+  // Veckovolym de senaste 8 veckorna, äldst först. Räknas ur loggade pass —
+  // aldrig utfyllt, aldrig utjämnat.
+  const veckor = [];
+  for (let v = 7; v >= 0; v--) {
+    const till = now - v * WEEK, från = till - WEEK;
+    const pass = done.filter(x => x.completedAt >= från && x.completedAt < till);
+    veckor.push({ ton: vol(pass) / 1000, pass: pass.length });
+  }
+  const maxTon = Math.max(...veckor.map(v => v.ton), 0.1);
+
+  // Kurva ritas först vid tre pass. Två punkter är ingen utveckling, det är brus.
+  const nogUnderlag = done.length >= 3;
+
+  const snittPass = (done.length / Math.max(1, Math.ceil((now - Math.min(...done.map(x => x.completedAt))) / WEEK))).toFixed(1);
+
+  // Starkaste lyft: bästa vikt per övning, med förändring mot första noteringen.
+  const perÖvning = {};
+  done.forEach(sess => (sess.sets || []).forEach(st => {
+    if (!st.exerciseId || !st.weight) return;
+    const o = perÖvning[st.exerciseId] || (perÖvning[st.exerciseId] = { max: 0, först: null, ts: 0 });
+    if (st.weight > o.max) o.max = st.weight;
+    if (o.först === null || sess.completedAt < o.ts) { o.först = st.weight; o.ts = sess.completedAt; }
+  }));
+  const lyft = Object.entries(perÖvning)
+    .map(([id, o]) => ({ namn: (EXERCISES.find(e => e.id === id) || {}).name || id, max: o.max, diff: o.max - (o.först || o.max) }))
+    .sort((a, b) => b.max - a.max).slice(0, 5);
+
+  const vikt = weights.slice().sort((a, b) => a.ts - b.ts);
+  const viktDiff = vikt.length >= 2 ? (vikt[vikt.length - 1].kg - vikt[0].kg) : null;
 
   return (
     <div>
       <SheetTitle>Framsteg</SheetTitle>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <Stat v={done.length} l="pass totalt" />
-        <Stat v={wk.length} l="senaste veckan" />
-        <Stat v={thisVol >= 1000 ? `${(thisVol / 1000).toFixed(1)}t` : thisVol} l="volym 7 dgr" />
+
+      <div style={{ ...hdr(12), color: C.muted, letterSpacing: 1.6, marginBottom: 8 }}>Total volym per vecka</div>
+      {nogUnderlag ? (
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 110, padding: "0 2px 6px", borderBottom: `1px solid ${C.border}` }}>
+          {veckor.map((v, i) => (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: "100%", height: Math.max(2, (v.ton / maxTon) * 92), background: v.ton ? C.lime : C.border, borderRadius: 3, opacity: v.ton ? (0.45 + 0.55 * (v.ton / maxTon)) : 1 }} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ height: 110, border: `1px dashed ${C.border}`, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16 }}>
+          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+            Minst tre loggade pass krävs för att visa en utveckling.<br />Du har {done.length}.
+          </div>
+        </div>
+      )}
+      {nogUnderlag && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: C.muted, marginTop: 5 }}><span>8 v sedan</span><span>Denna vecka</span></div>}
+
+      <div style={{ display: "flex", marginTop: 18, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        {[["Pass/vecka", snittPass, null],
+          ["Denna vecka", `${(thisVol / 1000).toFixed(1)} ton`, prevVol ? (thisVol >= prevVol ? "upp" : "ner") : null],
+          ["Pass totalt", done.length, null]].map(([l, v, riktning], i) => (
+          <div key={l} style={{ flex: 1, textAlign: "center", padding: "13px 4px", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.2, color: C.muted, textTransform: "uppercase", fontFamily: HFONT }}>{l}</div>
+            <div style={{ fontSize: 19, fontWeight: 800, marginTop: 3, fontFamily: HFONT }}>
+              {v} {riktning && <span style={{ fontSize: 13, color: riktning === "upp" ? C.green : C.red }}>{riktning === "upp" ? "↑" : "↓"}</span>}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {diff !== null && (
-        <Card style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>MOT FÖRRA VECKAN</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: diff > 0 ? C.green : diff < 0 ? C.yellow : C.text }}>
-            {diff > 0 ? "+" : ""}{diff}% volym
-          </div>
-        </Card>
+      {lyft.length > 0 && (
+        <>
+          <div style={{ ...hdr(12), color: C.muted, letterSpacing: 1.6, margin: "18px 0 8px" }}>Starkaste lyft</div>
+          {lyft.map(l => (
+            <div key={l.namn} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 2px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
+              <span>{l.namn}</span>
+              <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+                <span style={{ fontWeight: 700 }}>{l.max} kg</span>
+                {l.diff > 0 && <span style={{ fontSize: 12, color: C.green }}>+{l.diff} kg</span>}
+              </span>
+            </div>
+          ))}
+        </>
       )}
 
-      <Card style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>VIKT</div>
-        {weights.length === 0
-          ? <div style={{ fontSize: 13, color: C.muted }}>Ingen vikt registrerad ännu. Logga via ⚖ på startsidan.</div>
-          : <>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{lastW.kg} kg</div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-                {wDiff === null ? `Registrerad ${fmt(lastW.ts)}` : `${wDiff > 0 ? "+" : ""}${wDiff} kg sedan ${fmt(firstW.ts)}`}
-              </div>
-            </>}
-      </Card>
-
-      <div style={{ fontSize: 12, color: C.muted, margin: "4px 0 8px" }}>SENASTE PASSEN</div>
-      {done.slice(-5).reverse().map(x => (
-        <div key={x.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
-          <span>{x.title || "Pass"}</span>
-          <span style={{ color: C.muted }}>{fmt(x.completedAt)}</span>
+      {vikt.length > 0 && (
+        <div style={{ marginTop: 18, padding: 15, borderRadius: 15, border: `1px solid ${C.border}`, background: C.card2 }}>
+          <div style={{ ...hdr(12), color: C.muted, letterSpacing: 1.6, marginBottom: 6 }}>Kroppsvikt</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <span style={{ ...hdr(26) }}>{vikt[vikt.length - 1].kg} kg</span>
+            {viktDiff !== null && viktDiff !== 0 && (
+              <span style={{ fontSize: 13, color: viktDiff < 0 ? C.green : C.muted }}>{viktDiff > 0 ? "+" : ""}{viktDiff.toFixed(1)} kg sedan {fmt(vikt[0].ts)}</span>
+            )}
+          </div>
+          {vikt.length === 1 && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>En mätning. Väg dig igen om en vecka så syns en trend.</div>}
         </div>
-      ))}
+      )}
 
       {notes.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>SENASTE ANTECKNING</div>
-          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{notes[notes.length - 1].text}</div>
-        </div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 16 }}>{notes.length} anteckningar sparade.</div>
       )}
     </div>
   );
 }
-
 function SimpleSheet({ title, label, placeholder, kind, ctx, multiline }) {
   const [v, setV] = useState("");
   const [saved, setSaved] = useState(null);
@@ -1804,6 +1866,7 @@ function MenuSheet({ ctx, onClose }) {
   // går för att svara på "kör jag verkligen senaste versionen?".
   const gå = mål => ctx.setSheet && ctx.setSheet(mål);
   const rader = [
+    ["clipboard", "Program", "program"],
     ["target", "Check-in", "checkin"],
     ["bell", "Signaler", "cues"],
     ["flag", "Mina gym", "places"],
@@ -1833,6 +1896,73 @@ function MenuSheet({ ctx, onClose }) {
       ))}
       {bygge && <div style={{ fontSize: 10.5, color: C.muted, marginTop: 14, textAlign: "center" }}>Bygge {bygge}</div>}
     </>
+  );
+}
+
+
+function ProgramSheet({ ctx, onClose }) {
+  // Skiss 7. Aktivt program överst, mallar under. Real Mode börjar UTAN program —
+  // det är rätt: appen ska inte låtsas att du följer något du inte valt.
+  const aktiv = ctx.activeProgram;
+  const [visaAlla, setVisaAlla] = useState(false);
+  const mallar = visaAlla ? ALL_TEMPLATES : ALL_TEMPLATES.slice(0, 6);
+
+  const välj = (mall) => {
+    const kopia = copyProgram(mall, { name: mall.name, active: true });
+    ctx.setPrograms(ps => [...ps.filter(x => x.id !== kopia.id), kopia]);
+    ctx.setActiveProgramId(kopia.id);
+  };
+
+  const veckaAv = (() => {
+    if (!aktiv) return null;
+    const första = (ctx.sessions || []).filter(x => x && x.programId === aktiv.id).map(x => x.completedAt).filter(Boolean).sort()[0];
+    if (!första) return null;
+    return Math.floor((Date.now() - första) / (7 * 86400000)) + 1;
+  })();
+
+  return (
+    <div>
+      <SheetTitle>Program</SheetTitle>
+
+      {aktiv ? (
+        <div style={{ padding: 16, borderRadius: 16, border: `1px solid ${C.lime}`, background: "rgba(212,255,63,0.05)", marginBottom: 18 }}>
+          <div style={{ ...hdr(17) }}>{aktiv.name}</div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5 }}>
+            {veckaAv ? `Vecka ${veckaAv} · ` : ""}{aktiv.daysPerWeek} pass i veckan · {(aktiv.workouts || []).length} olika pass
+          </div>
+          {ctx.nw && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>Nästa: {ctx.nw.workout.name}</div>}
+          <button onClick={onClose} style={{ ...bigBtn, marginTop: 13 }}>Tillbaka till hem →</button>
+          <button onClick={() => ctx.setActiveProgramId(null)} style={{ width: "100%", marginTop: 8, padding: 11, borderRadius: 999, border: "none", background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer" }}>
+            Sluta följa programmet
+          </button>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 18 }}>
+          Inget program valt. Du kan träna fritt och logga pass ändå — men med ett
+          program vet ATLAS vad som ska komma härnäst.
+        </div>
+      )}
+
+      <div style={{ ...hdr(12.5), color: C.muted, letterSpacing: 1.6, marginBottom: 10 }}>{aktiv ? "Byt program" : "Välj program"}</div>
+
+      {mallar.map(t => (
+        <button key={t.id} onClick={() => välj(t)} style={{ width: "100%", textAlign: "left", padding: 15, marginBottom: 9, borderRadius: 15, border: `1px solid ${C.border}`, background: C.card, color: C.text, cursor: "pointer" }}>
+          <div style={{ ...hdr(14.5) }}>{t.name}</div>
+          {t.desc && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, margin: "5px 0 8px" }}>{t.desc}</div>}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: t.desc ? 0 : 8 }}>
+            {[t.level, `${t.daysPerWeek} pass/vecka`, t.sessionDuration ? `${t.sessionDuration} min` : null].filter(Boolean).map(x => (
+              <span key={x} style={{ fontSize: 10.5, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 999, padding: "3px 9px" }}>{x}</span>
+            ))}
+          </div>
+        </button>
+      ))}
+
+      {!visaAlla && ALL_TEMPLATES.length > 6 && (
+        <button onClick={() => setVisaAlla(true)} style={{ ...ghostBtnLg, width: "100%", marginTop: 4 }}>
+          Visa alla {ALL_TEMPLATES.length} program
+        </button>
+      )}
+    </div>
   );
 }
 
