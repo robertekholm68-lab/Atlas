@@ -1,3 +1,4 @@
+import { useState } from "react";
 // Askr varumärkesgrafik — kantigt A-märke och startsidans tre ikoner.
 //
 // Ritas som vektor i stället för bild: skalar skarpt på alla skärmar, kostar
@@ -25,10 +26,23 @@ export function AtlasMark({ size = 34, color = LIME, style }) {
 }
 
 /** Hela ordmärket: A + Askr + undertext. */
+/** Bildmärket med vektorfallback. */
+function LogoMark({ size, fallbackColor }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return <AtlasMark size={size} color={fallbackColor} />;
+  return (
+    <img src={new URL("askr-mark.webp", document.baseURI).href} alt="" onError={() => setOk(false)}
+      style={{ width: size * 1.15, height: size * 1.15, display: "block", flex: "none" }} />
+  );
+}
+
 export function AtlasLogo({ size = 34, color = "#FFFFFF", mark = LIME, tagline = "FRÅGA KROPPEN.", hfont, style }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: size * 0.32, ...style }}>
-      <AtlasMark size={size} color={mark} />
+      {/* Märket är en bild, inte en vektor: metallytan och den glödande
+          ryggraden går inte att återge i SVG utan att tappa det som gör den.
+          Faller tillbaka till vektormärket om filen saknas. */}
+      <LogoMark size={size} fallbackColor={mark} />
       <div>
         <div style={{ fontFamily: hfont, fontSize: size * 0.92, fontWeight: 800, letterSpacing: size * 0.11, color, lineHeight: 1 }}>Askr</div>
         {tagline && (
