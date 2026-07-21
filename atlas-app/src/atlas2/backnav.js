@@ -1,34 +1,41 @@
 // Askr 2.0 — OS-bakåtknappen mot webbhistoriken.
 //
-// VARFÖR en egen modul: `flik` och `sheet` bor bara i React-tillstånd. I den
-// INSTALLERADE PWA:n finns ingen adressrad, så ett bakåtsvep lämnar HELA appen
-// även när ett ark ligger öppet mitt i ett pass. Android-skalet fångar
-// OS-knappen själv; webben måste koppla samma sak till pushState/popstate.
+// VARFÖR en egen modul: hela navigeringen (`step`, `flik`, `sheet`) bor i
+// React-tillstånd. I den INSTALLERADE PWA:n finns ingen adressrad, så ett
+// bakåtsvep lämnar HELA appen — även mitt i onboarding eller med ett ark öppet.
+// Android-skalet fångar OS-knappen själv; webben måste koppla samma sak till
+// pushState/popstate.
 //
 // Här bor det RENA beslutet — "vad ska ett bakåttryck göra givet vyn" — så att
 // det går att testa utan att montera React eller mocka history. Själva
-// kopplingen (pushState, popstate-lyssnaren) bor i App2.jsx.
+// kopplingen (pushState, popstate-lyssnaren, vaktposten) bor i App2.jsx.
 
-// Ett läge har ett internt bakåtmål när ett ark är öppet ELLER man står på en
-// annan flik än hem. Då ska bakåt fångas i appen i stället för att kasta ut
-// användaren.
-export function harBakåtmål({ sheet, flik }) {
-  return !!sheet || flik !== "hem";
-}
-
-// Vad ett bakåttryck ska göra. Prioritetsordningen är exakt kravets:
+// Vad ett bakåttryck ska göra, givet hela navigeringstillståndet. Prioritet:
 //
-//   1. Öppet ark  → stäng arket, inget annat ligger ovanpå det.
-//   2. Annan flik → gå till hem.
-//   3. Hem, inget ark → lämna appen som vanligt.
+//   onboarding "mode"      → tillbaka till "start"      ("till-start")
+//   onboarding "start"     → lämna appen               ("lämna")
+//   i appen, öppet ark     → stäng arket                ("stäng-ark")
+//   i appen, annan flik    → gå till hem                ("till-hem")
+//   i appen, hem utan ark  → lämna appen                ("lämna")
 //
-// Passet är AVSIKTLIGT inget eget fall. Att gå till hem behåller live-passet —
-// det sparas löpande i `atlas.v3.live` vid varje set — så "tillbaka" PAUSAR
-// passet och kastar det aldrig. Det är samma skydd som mobilens avbryt-dialog
-// ger (loggade set går aldrig förlorade), fast utan dialog eftersom ingenting
-// faktiskt kastas när man navigerar bort.
-export function backAction({ sheet, flik }) {
+// `step` defaultar till "app" så att anropare som bara bryr sig om flik/ark
+// (och de gamla testerna) får appbeteendet utan att skicka step.
+//
+// Passet är AVSIKTLIGT inget eget fall: att gå till hem behåller live-passet
+// (sparas löpande i `atlas.v3.live`), så "tillbaka" pausar passet och kastar det
+// aldrig — samma skydd som mobilens avbryt-dialog, utan dialog eftersom inget
+// går förlorat.
+export function backAction({ step = "app", sheet, flik } = {}) {
+  if (step === "mode") return "till-start";
+  if (step === "start") return "lämna";
+  // I appen (step "app" eller okänt):
   if (sheet) return "stäng-ark";
   if (flik !== "hem") return "till-hem";
   return "lämna";
+}
+
+// Har läget ett internt bakåtmål (dvs. ska bakåt fångas i appen i stället för
+// att lämna den)? Sant för allt utom "lämna".
+export function harBakåtmål(state) {
+  return backAction(state) !== "lämna";
 }

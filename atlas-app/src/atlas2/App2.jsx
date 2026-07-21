@@ -261,37 +261,47 @@ export function Atlas2() {
   useEffect(() => { if (hydrated) save("nutritionTargets", nutritionTargets); }, [hydrated, nutritionTargets]);
 
   // ── OS-bakåtknappen mot webbhistoriken ────────────────────────────────────
-  // popstate-lyssnaren registreras EN gång och läser flik/sheet ur en ref, så
-  // att den alltid ser aktuellt tillstånd utan att bindas om vid varje byte.
-  const navRef = useRef({ sheet, flik });
-  useEffect(() => { navRef.current = { sheet, flik }; }, [sheet, flik]);
+  // popstate-lyssnaren läser HELA navigeringen (step/flik/sheet) ur en ref så att
+  // den alltid ser aktuellt tillstånd utan att bindas om vid varje byte.
+  const navRef = useRef({ step, sheet, flik });
+  useEffect(() => { navRef.current = { step, sheet, flik }; }, [step, sheet, flik]);
 
+  // EN enda vaktpost i historiken hålls så länge vi är i ett "guardat" steg
+  // (onboarding "mode" eller appen). `guardRef` speglar om vaktposten ligger
+  // uppe. Fram-och-tillbaka mellan flikar bygger ALDRIG upp historik — bakåt
+  // behöver aldrig tryckas tio gånger för att komma ut.
+  const guardRef = useRef(false);
+  const tryckVakt = () => { window.history.pushState({ askr: true }, ""); guardRef.current = true; };
+
+  // Lägg vaktposten när vi kliver in i ett guardat steg (mode/app) och den inte
+  // redan finns. "start" är oguardat — där ska bakåt lämna appen direkt.
   useEffect(() => {
-    if (step !== "app") return;   // ingen historikvakt under onboarding
-    // EN enda vaktpost i historiken. Vi trycker in den när appen startar och en
-    // ny bara EFTER att ett bakåttryck konsumerat den (se onPop). Därför bygger
-    // fram-och-tillbaka mellan flikar ALDRIG upp historik — bakåt behöver aldrig
-    // tryckas tio gånger för att komma ut.
-    window.history.pushState({ askr: true }, "");
+    if ((step === "mode" || step === "app") && !guardRef.current) tryckVakt();
+  }, [step]);
+
+  // Lyssnaren registreras EN gång för hela livscykeln (onboarding → app).
+  useEffect(() => {
     const onPop = () => {
+      guardRef.current = false;   // webbläsaren har just poppat vår vaktpost
       const åtgärd = backAction(navRef.current);
-      if (åtgärd === "stäng-ark") {
-        setSheet(null);
-        window.history.pushState({ askr: true }, "");   // återställ vaktposten
-      } else if (åtgärd === "till-hem") {
-        // Behåller live-passet — det ligger kvar i state och atlas.v3.live — så
-        // detta pausar ett pågående pass i stället för att kasta det.
-        setFlik("hem");
-        window.history.pushState({ askr: true }, "");
+      if (åtgärd === "stäng-ark") { setSheet(null); tryckVakt(); }
+      else if (åtgärd === "till-hem") {
+        // Behåller live-passet (ligger kvar i state och atlas.v3.live) — detta
+        // pausar ett pågående pass i stället för att kasta det.
+        setFlik("hem"); tryckVakt();
+      } else if (åtgärd === "till-start") {
+        // Backa ett onboarding-steg. "start" är oguardat → ingen ny vaktpost;
+        // nästa bakåt lämnar appen.
+        setStep("start");
       } else {
-        // Hem utan ark: låt bakåt lämna appen. Vaktposten är redan borttagen av
-        // webbläsaren, så ett extra steg bakåt tar oss ut ur appen.
+        // Lämna appen. Vaktposten är redan borttagen av webbläsaren, så ett extra
+        // steg bakåt tar oss ut.
         window.history.back();
       }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [step]);
+  }, []);
 
   const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
 

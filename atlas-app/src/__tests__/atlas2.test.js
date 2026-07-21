@@ -537,6 +537,19 @@ describe("Askr 2.0 — OS-bakåtknappen (beslutet)", () => {
     expect(backAction({ sheet: null, flik: "pass" })).toBe("till-hem");
     expect(backAction({ sheet: null, flik: "pass" })).not.toBe("lämna");
   });
+
+  it("onboarding: bakåt backar mode → start, och start lämnar appen", () => {
+    expect(backAction({ step: "mode" })).toBe("till-start");
+    expect(harBakåtmål({ step: "mode" })).toBe(true);
+    expect(backAction({ step: "start" })).toBe("lämna");
+    expect(harBakåtmål({ step: "start" })).toBe(false);
+  });
+
+  it("i appen vinner ark > flik > lämna, oavsett step", () => {
+    expect(backAction({ step: "app", sheet: "import", flik: "coachen" })).toBe("stäng-ark");
+    expect(backAction({ step: "app", sheet: null, flik: "coachen" })).toBe("till-hem");
+    expect(backAction({ step: "app", sheet: null, flik: "hem" })).toBe("lämna");
+  });
 });
 
 describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
@@ -587,6 +600,29 @@ describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
     await new Promise(x => setTimeout(x, 40));
   };
   const harMeny = el => el.querySelectorAll('[aria-label="Meny"]').length > 0;   // bara hem har meny-knappen
+
+  // Färsk montering UTAN preset → appen börjar i onboarding-steget "start".
+  const mountFräsch = async () => {
+    const { Atlas2 } = await import("../atlas2/App2.jsx");
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => { r.render(createElement(Atlas2)); });
+    for (let i = 0; i < 60 && !/kom igång/i.test(el.textContent); i++) {
+      await act(async () => { await new Promise(x => setTimeout(x, 10)); });
+    }
+    return el;
+  };
+
+  it("bakåt backar ett onboarding-steg (mode → start) i stället för att lämna appen", async () => {
+    const el = await mountFräsch();
+    expect(/kom igång/i.test(el.textContent)).toBe(true);              // steg "start"
+    await klick(el, b => /kom igång/i.test(b.textContent));
+    expect(/hur vill du börja/i.test(el.textContent)).toBe(true);      // steg "mode"
+    await pop();
+    // Bakåt tog oss TILLBAKA till start, inte ut ur appen.
+    expect(/kom igång/i.test(el.textContent)).toBe(true);
+    expect(/hur vill du börja/i.test(el.textContent)).toBe(false);
+  });
 
   it("bakåt stänger ett öppet ark och lämnar appen orörd i övrigt", async () => {
     const el = await mount();
