@@ -1,4 +1,25 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { background: #0b0f17; color: #e8ecf4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+
+/* Designspråket 2026-07-21: nära svart, vit text.
+   Färgerna här måste följa data/tokens.js — den här filen sätter grundytan som
+   allt annat ritas på, och glöms den kvar lyser gammal palett igenom bakom
+   appen även när komponenterna är rätt. */
+body {
+  background: #0A0A0A;
+  color: #FFFFFF;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Kondenserad grotesk för rubriker. Roboto Condensed finns på Android,
+   Arial Narrow på äldre system; stacken faller tillbaka snyggt. */
+h1, h2, h3, .atlas-hdr {
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif-condensed, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }

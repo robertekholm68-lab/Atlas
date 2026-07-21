@@ -3,13 +3,22 @@
 
 // Designspråk 2026-07-21: mörk neutral kropp mot nära svart bakgrund, så att
 // muskelfärgerna — det enda som bär information — får lysa utan konkurrens.
-const BASE_FILL = "#252A31", BASE_STROKE = "#161A1F", OUTLINE_STROKE = "#454E5A";
+// Kroppens grundfärg. Mörkare sedan designspråket 2026-07-21: en mörk kropp gör att
+// de färgade musklerna lyser i stället för att smälta ihop med grundtonen.
+const BASE_FILL = "#1A1D22", BASE_STROKE = "#0E1013", OUTLINE_STROKE = "#3A424D";
+
+// Kondenserad grotesk i versaler för rubriker — samma stack som mobilen.
+const HFONT = "'Roboto Condensed','Arial Narrow',sans-serif-condensed,sans-serif";
+const hdr = (size = 22) => ({ fontFamily: HFONT, fontSize: size, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.6, lineHeight: 1.05 });
 
 const T = {
-  bg: { app: "#090B10", surface: "#11151D", raised: "#171C26", muted: "#202632" },
-  text: { primary: "#F4F7FA", secondary: "#A7B0BE", muted: "#687385" },
-  accent: { primary: "#4DA3FF", secondary: "#9B7CFF", success: "#39D98A", warning: "#FFD166", danger: "#FF5C5C" },
-  status: { critical: "#FF4D4D", recovering: "#FF9F43", nearly_ready: "#FFD166", ready: "#39D98A", undertrained: "#4DA3FF", no_data: "#5E6673" },
+  bg: { app: "#0A0A0A", surface: "#141414", raised: "#181818", muted: "#232323" },
+  text: { primary: "#FFFFFF", secondary: "#8A8F98", muted: "#5E6673" },
+  // EN accent: lime. secondary pekar på samma färg så att gamla anropsställen blir
+  // rätt i stället för att lysa i en avvikande ton. Statusfärgerna nedan är DATA
+  // och får aldrig bytas mot accenten — de betyder något.
+  accent: { primary: "#D4FF3F", secondary: "#D4FF3F", success: "#39D98A", warning: "#FFD166", danger: "#FF5C5C" },
+  status: { critical: "#FF5C5C", recovering: "#FFD166", nearly_ready: "#9BE85C", ready: "#39D98A", undertrained: "#5B9DD9", no_data: "#5E6673" },
   statusLabel: { critical: "Critical", recovering: "Recovering", nearly_ready: "Nearly Ready", ready: "Ready", undertrained: "Undertrained", no_data: "No Data" },
 };
 
@@ -53,4 +62,4 @@ const input = { background: T.bg.raised, border: `1px solid ${T.bg.muted}`, bord
 
 const stepBtn = { width: 40, height: 40, borderRadius: 8, border: "none", background: T.bg.muted, color: T.text.primary, fontSize: 22, fontWeight: 700, cursor: "pointer", flexShrink: 0 };
 
-export { BASE_FILL, T, WORKOUT_COLOR, SOURCE_LABEL, QUALITY, now, H, STATE_COL, btn, overlay, modal, lbl, input, stepBtn };
+export { BASE_FILL, HFONT, hdr, T, WORKOUT_COLOR, SOURCE_LABEL, QUALITY, now, H, STATE_COL, btn, overlay, modal, lbl, input, stepBtn };

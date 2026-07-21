@@ -834,17 +834,22 @@ function SvgBody({ onSelect, muscleStates, onReset, chamber = false, reduced = f
     const ov = overrideRef.current;                      // belastningsläge (separata färger) om satt
     w.querySelectorAll("[data-muscle]").forEach(gp => {
       const grp = gp.getAttribute("data-muscle"), paths = gp.querySelectorAll("path");
-      gp.style.filter = "none"; gp.style.transition = "fill-opacity .6s ease";
+      // Glöd runt aktiva muskler (designspråket 2026-07-21): ger figuren djup och
+      // gör att en belastad muskel läser på håll, i ett gym, med svettiga ögon.
+      // Glöden följer muskelns EGEN statusfärg — den bär alltså information, den
+      // är inte dekoration. Muskler utan underlag får ingen glöd alls.
+      gp.style.transition = "fill-opacity .6s ease, filter .6s ease";
       let col, op;
       if (ov) {
         const r = ov(grp);
-        if (!r) { paths.forEach(p => { p.style.fillOpacity = "0"; }); return; }
+        if (!r) { gp.style.filter = "none"; paths.forEach(p => { p.style.fillOpacity = "0"; }); return; }
         col = r.color; op = r.op;
       } else {
         const st = stateFor(grp);
-        if (!st || st.status === "no_data" || st.recoveryScore == null) { paths.forEach(p => { p.style.fillOpacity = "0"; }); return; }
+        if (!st || st.status === "no_data" || st.recoveryScore == null) { gp.style.filter = "none"; paths.forEach(p => { p.style.fillOpacity = "0"; }); return; }
         const f = Math.max(0, Math.min(1, 1 - st.recoveryScore / 100)); col = STATE_COL[st.status] || "#8894a4"; op = (0.4 + f * 0.42).toFixed(2);
       }
+      gp.style.filter = `drop-shadow(0 0 5px ${col}55) drop-shadow(0 0 12px ${col}22)`;
       paths.forEach(p => { const g = p.dataset.grad && w.querySelector("#" + p.dataset.grad); if (g) g.querySelectorAll("stop").forEach(s => s.setAttribute("stop-color", col)); p.style.fillOpacity = op; });
     });
   };

@@ -164,7 +164,7 @@ function AtlasApp({ mode, onSwitchMode }) {
   if (mode === "real" && !(onboarding && onboarding.completed)) return <OnboardingFlow draft={onboarding} setDraft={setOnboarding} onComplete={finishOnboarding} onExit={() => onSwitchMode(null)} />;
 
   return (
-    <div style={{ background: `radial-gradient(1200px 800px at 78% -5%, rgba(77,163,255,0.06), rgba(9,11,16,0) 60%), radial-gradient(900px 700px at 0% 100%, rgba(155,124,255,0.05), rgba(9,11,16,0) 55%), ${T.bg.app}`, color: T.text.primary, fontFamily: "'Inter', -apple-system, system-ui, sans-serif", minHeight: "100vh" }}>
+    <div style={{ background: `radial-gradient(1100px 750px at 72% -8%, rgba(212,255,63,0.045), rgba(10,10,10,0) 62%), ${T.bg.app}`, color: T.text.primary, fontFamily: "'Inter', -apple-system, system-ui, sans-serif", minHeight: "100vh" }}>
       <style>{`
         * { box-sizing: border-box; }
         button:focus-visible { outline: 2px solid ${T.accent.primary}; outline-offset: 2px; }

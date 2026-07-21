@@ -402,7 +402,7 @@ function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setShee
       )}
 
       {/* KARTAN — appens mittpunkt. Ska dominera skärmen. */}
-      <div style={{ marginTop: 8, height: 380 }}>
+      <div style={{ marginTop: 8, height: 380, background: "radial-gradient(ellipse 60% 45% at 50% 42%, rgba(212,255,63,0.05), transparent 70%)" }}>
         <SvgBody muscleStates={muscleStates} onSelect={() => { }} reduced />
       </div>
 
