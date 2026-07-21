@@ -830,3 +830,51 @@ describe("Askr 2.0 — id-policy: slump vid skapande, hash bara vid migrering", 
     expect(migrera({ foodLog: [utanId] }, ID).foodLog[0].id).toMatch(/^f_/);
   });
 });
+
+describe("Askr 2.0 — tillgänglighet: ark som dialog", () => {
+  const roots = [];
+  let box;
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    box = {};
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: { getItem: k => (k in box ? box[k] : null), setItem: (k, v) => { box[k] = String(v); }, removeItem: k => { delete box[k]; }, clear: () => { box = {}; } },
+    });
+  });
+  afterEach(async () => {
+    await act(async () => { roots.splice(0).forEach(({ r, el }) => { try { r.unmount(); } catch (e) {} el.remove(); }); });
+    delete globalThis.localStorage;
+  });
+
+  const mount = async () => {
+    localStorage.setItem("atlas.v3.mode", JSON.stringify("demo"));
+    const { Atlas2 } = await import("../atlas2/App2.jsx");
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => { r.render(createElement(Atlas2)); });
+    for (let i = 0; i < 60 && el.querySelectorAll('[aria-label="Meny"]').length === 0; i++) {
+      await act(async () => { await new Promise(x => setTimeout(x, 10)); });
+    }
+    return el;
+  };
+  const klick = async (el, sel) => { await act(async () => { el.querySelector(sel).dispatchEvent(new MouseEvent("click", { bubbles: true })); }); await new Promise(x => setTimeout(x, 40)); };
+
+  it("ett öppet ark exponeras som role=dialog med aria-modal och etikett", async () => {
+    const el = await mount();
+    await klick(el, '[aria-label="Meny"]');
+    const dlg = el.querySelector('[role="dialog"]');
+    expect(dlg).toBeTruthy();
+    expect(dlg.getAttribute("aria-modal")).toBe("true");
+    expect(dlg.getAttribute("aria-label")).toBeTruthy();   // "Historik"
+  });
+
+  it("Escape stänger arket (tangentbord, inte bara bakgrundsklick)", async () => {
+    const el = await mount();
+    await klick(el, '[aria-label="Meny"]');
+    expect(el.querySelector('[role="dialog"]')).toBeTruthy();
+    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    await new Promise(x => setTimeout(x, 40));
+    expect(el.querySelector('[role="dialog"]')).toBeFalsy();
+  });
+});

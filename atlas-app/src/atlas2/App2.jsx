@@ -303,7 +303,35 @@ export function Atlas2() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // Synlig tangentbordsfokus GENOMGÅENDE (även onboarding-skärmarna, som ligger
+  // utanför app-roten). Injiceras en gång i head. :focus-visible → bara vid
+  // tangentbord, inte musklick, så accenten inte blinkar vid varje tap.
+  useEffect(() => {
+    const ID = "askr-a11y-focus";
+    if (document.getElementById(ID)) return;
+    const st = document.createElement("style");
+    st.id = ID;
+    st.textContent = `:focus-visible{outline:2px solid ${C.lime};outline-offset:2px;border-radius:6px}`;
+    document.head.appendChild(st);
+  }, []);
+
+  // ── Ark som dialog: fokus in vid öppning + Escape stänger ─────────────────
+  // Tillgänglighet: ett öppet ark ska ta emot fokus (skärmläsare/tangentbord)
+  // och gå att stänga med Escape, inte bara med bakgrundsklick (som kräver mus).
+  const arkRef = useRef(null);
+  useEffect(() => {
+    if (!sheet) return;
+    if (arkRef.current) { try { arkRef.current.focus(); } catch (e) {} }
+    const onKey = e => { if (e.key === "Escape") setSheet(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheet]);
+
   const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
+  // Läsbar etikett för arket (aria-label på dialogen).
+  const arkEtikett = s =>
+    s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "import" ? "Historik"
+    : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj" : "Ark";
 
   const pickMode = m => {
     setMode(m); save("mode", m);
@@ -372,12 +400,13 @@ export function Atlas2() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BFONT, maxWidth: 480, margin: "0 auto" }}>
+    <div className="askr-app" style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BFONT, maxWidth: 480, margin: "0 auto" }}>
       {vy()}
       <BottomNav aktiv={flik} onChange={setFlik} />
       {sheet && (
         <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
+          <div ref={arkRef} role="dialog" aria-modal="true" aria-label={arkEtikett(sheet)} tabIndex={-1}
+            onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
             {sheet === "mal" ? (
               <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />

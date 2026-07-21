@@ -23,7 +23,8 @@ function Falt({ etikett, enhet, värde, sätt }) {
       <div style={{ ...label(), marginBottom: 6 }}>{etikett}</div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, background: C.card2, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 13px" }}>
         <input value={värde} onChange={e => sätt(e.target.value)} inputMode="numeric" placeholder="—"
-          style={{ flex: 1, minWidth: 0, background: "none", border: "none", color: C.text, fontFamily: HFONT, fontSize: 18, fontWeight: 700, outline: "none" }} />
+          aria-label={`${etikett} (${enhet})`}
+          style={{ flex: 1, minWidth: 0, background: "none", border: "none", color: C.text, fontFamily: HFONT, fontSize: 18, fontWeight: 700 }} />
         <span style={{ fontSize: 11.5, color: C.muted }}>{enhet}</span>
       </div>
     </div>
