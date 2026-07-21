@@ -17,6 +17,7 @@ import { ProgramSheet } from "./ProgramSheet.jsx";
 import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
+import { GoalSheet } from "./GoalSheet.jsx";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
@@ -203,6 +204,8 @@ export function Atlas2() {
   const [live, setLive] = useState(() => load("live", null));
   const [klart, setKlart] = useState(null);
   const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
+  const [mål, setMål] = useState(() => load("goal", null));
+  useEffect(() => { save("goal", mål); }, [mål]);
   useEffect(() => { save("foodLog", foodLog); }, [foodLog]);
   const profile = load("profile", {}) || {};
 
@@ -259,7 +262,8 @@ export function Atlas2() {
     );
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights}
-        profile={profile} onStart={startaPass} />
+        profile={profile} goal={mål} onStart={startaPass}
+        onOpenGoal={() => setSheet("mal")} />
     );
     if (flik === "framsteg") return (
       <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} />
@@ -280,7 +284,9 @@ export function Atlas2() {
         <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
-            {typeof sheet === "string" && sheet.startsWith("muskel:") ? (
+            {sheet === "mal" ? (
+              <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />
+            ) : typeof sheet === "string" && sheet.startsWith("muskel:") ? (
               <MuscleSheet regionId={sheet.slice(7)} sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
               <ImportSheet sessions={sessions} setSessions={setSessions}

@@ -316,3 +316,74 @@ describe("ATLAS 2.0 — muskeldetalj", () => {
     });
   });
 });
+
+describe("ATLAS 2.0 — målresan", () => {
+  const V = 6048e5;
+
+  it("faserna täcker hela blocket utan glapp eller överlapp", async () => {
+    const { skapaMål, faser } = await import("../atlas2/journey.js");
+    const start = new Date(2026, 0, 1).getTime();
+    const m = skapaMål({ typ: "strength", startDatum: start, målDatum: start + 16 * V });
+    const fs = faser(m);
+    expect(fs.length).toBe(4);
+    expect(fs[0].från).toBe(start);
+    expect(fs[fs.length - 1].till).toBe(m.målDatum);
+    // Varje fas ska börja exakt där föregående slutade.
+    fs.slice(1).forEach((f, i) => expect(f.från).toBe(fs[i].till));
+  });
+
+  it("fasindelningen håller för både korta och långa block", async () => {
+    const { skapaMål, faser } = await import("../atlas2/journey.js");
+    // Andelar, inte fasta veckor — annars går modellen sönder vid ytterlägena.
+    [5, 40].forEach(v => {
+      const m = skapaMål({ typ: "muscle", startDatum: 0, målDatum: v * V });
+      const fs = faser(m);
+      expect(fs.length).toBe(4);
+      expect(fs.every(f => f.veckor >= 1)).toBe(true);
+    });
+  });
+
+  it("mål utan måldatum ger ingen resa, inte en tom attrapp", async () => {
+    const { resa } = await import("../atlas2/journey.js");
+    expect(resa(null)).toBe(null);
+    expect(resa({ namn: "X", startDatum: 0 })).toBe(null);
+  });
+
+  it("passerat måldatum sägs rakt ut", async () => {
+    const { skapaMål, resa, resansText } = await import("../atlas2/journey.js");
+    const start = Date.now() - 20 * V;
+    const m = skapaMål({ typ: "muscle", startDatum: start, målDatum: start + 10 * V });
+    const r = resa(m, [], Date.now());
+    expect(r.passerat).toBe(true);
+    expect(r.veckorKvar).toBe(0);
+    expect(resansText(r)).toMatch(/passerat/i);
+  });
+
+  it("följsamhet visas inte under första veckan", async () => {
+    const { skapaMål, resa } = await import("../atlas2/journey.js");
+    const nu = Date.now();
+    const m = skapaMål({ typ: "muscle", startDatum: nu - 2 * 864e5, målDatum: nu + 12 * V });
+    // Två dagar in säger "0 %" ingenting sant om följsamheten.
+    expect(resa(m, [], nu).följsamhet).toBe(null);
+  });
+
+  it("följsamhet räknas mot förväntat antal pass", async () => {
+    const { skapaMål, resa } = await import("../atlas2/journey.js");
+    const nu = Date.now();
+    const start = nu - 4 * V;
+    const m = skapaMål({ typ: "muscle", startDatum: start, målDatum: nu + 8 * V, passPerVecka: 3 });
+    const sessions = Array.from({ length: 12 }, (_, i) => ({ completedAt: start + i * 2 * 864e5 }));
+    const r = resa(m, sessions, nu);
+    expect(r.passFörväntade).toBe(12);
+    expect(r.följsamhet).toBe(100);
+  });
+
+  it("coachen får ett målblock först när ett mål finns", async () => {
+    const { coachFacts } = await import("../atlas2/facts.js");
+    expect(coachFacts({ sessions: [] }).målresa.namn).toBe(null);
+    const { skapaMål } = await import("../atlas2/journey.js");
+    const nu = Date.now();
+    const m = skapaMål({ typ: "strength", namn: "Styrka", startDatum: nu, målDatum: nu + 12 * V });
+    expect(coachFacts({ sessions: [], goal: m }, nu).målresa.namn).toBe("Styrka");
+  });
+});

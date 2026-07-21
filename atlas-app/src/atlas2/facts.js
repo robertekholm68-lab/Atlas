@@ -14,6 +14,7 @@
 
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "./store.js";
 import { MUSCLES } from "../data/muscles.js";
+import { resa as byggResa, nästaDelmål } from "./journey.js";
 
 /** Tillitsnivå ur antal observationer. Trubbig med flit — hellre försiktig. */
 function tillit(n, tröskel = 3) {
@@ -82,7 +83,22 @@ export function coachFacts(ctx = {}, now = Date.now()) {
     tillit: tillit(vikter.length),
   };
 
-  const block = { kropp, träning, program, vikt };
+  // ── målresan ───────────────────────────────────────────────────────────
+  // Det enda blocket som handlar om FRAMTIDEN. Utan mål är det tomt — coachen
+  // ska inte låtsas att det finns en riktning när användaren inte satt någon.
+  const r = ctx.goal ? byggResa(ctx.goal, sessions, now) : null;
+  const målresa = r ? {
+    namn: r.mål.namn,
+    fas: r.aktivFas ? r.aktivFas.namn : null,
+    fasFokus: r.aktivFas ? r.aktivFas.fokus : null,
+    veckorKvar: r.veckorKvar,
+    passerat: r.passerat,
+    följsamhet: r.följsamhet,
+    nästaDelmål: nästaDelmål(r.mål, now),
+    tillit: tillit(r.passLoggade),
+  } : { namn: null, tillit: tillit(0) };
+
+  const block = { kropp, träning, program, vikt, målresa };
 
   // Tilliten är PER PÅSTÅENDE, inte ett globalt minimum över allt.
   //

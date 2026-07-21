@@ -24,8 +24,8 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, onStart }) {
-  const facts = coachFacts({ sessions, activeProgram, weights });
+export function CoachView({ sessions, activeProgram, weights, profile, goal, onStart, onOpenGoal }) {
+  const facts = coachFacts({ sessions, activeProgram, weights, goal });
   const rek = recommendation(facts);
   const { states } = bodyState(sessions);
   const namn = (profile && profile.name) || null;
@@ -63,6 +63,32 @@ export function CoachView({ sessions, activeProgram, weights, profile, onStart }
           <button onClick={onStart} style={{ ...btnPrimary, marginTop: 15 }}>{rek.knapp} <span style={{ fontSize: 19 }}>→</span></button>
         )}
       </div>
+
+      {/* Målresan: det enda som handlar om framtiden. Utan mål visas en
+          inbjudan, inte en fejkad tidsaxel. */}
+      <button onClick={onOpenGoal} style={{ ...card, marginTop: 12, width: "100%", textAlign: "left", cursor: "pointer", color: C.text, display: "block" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={label(C.lime)}>Målresa</div>
+            {facts.målresa.namn ? (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>{facts.målresa.namn}</div>
+                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
+                  {facts.målresa.passerat
+                    ? "Måldatumet har passerat"
+                    : `${facts.målresa.fas ? facts.målresa.fas + " · " : ""}${facts.målresa.veckorKvar} veckor kvar`}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.55, maxWidth: 270 }}>
+                Inget mål satt. Med ett måldatum kan jag säga var i resan du står,
+                inte bara vad kroppen tål idag.
+              </div>
+            )}
+          </div>
+          <span style={{ color: C.muted, fontSize: 20, flexShrink: 0 }}>›</span>
+        </div>
+      </button>
 
       {rek.skäl.length > 0 && (
         <div style={{ ...card, marginTop: 12 }}>
