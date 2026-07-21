@@ -38,7 +38,14 @@ function Start({ onNext }) {
           <img key={k} src={bild(k)} alt="" onError={() => setBildOk(b => ({ ...b, [k]: false }))}
             style={{
               width: sex ? "78%" : "50%", height: "100%", objectFit: "cover",
-              objectPosition: k === "m" ? "70% top" : "30% top",
+              // RYGG MOT RYGG. Båda originalbilderna är vända åt vänster, så
+              // kvinnan speglas för att vändas utåt åt höger. Då möts ryggarna
+              // i mitten i stället för att figurerna tittar mot varandra.
+              transform: k === "f" ? "scaleX(-1)" : "none",
+              // Bilderna är beskurna till figuren, så högerkanten ÄR ryggen.
+              // Den läggs mot mitten; för kvinnan hamnar den till vänster i
+              // och med speglingen, vilket är samma sömn.
+              objectPosition: "right top",
               transition: "width .35s ease", filter: "contrast(1.12) brightness(0.9)",
             }} />
         ) : null)}

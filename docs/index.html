@@ -32,9 +32,22 @@
   .mark{width:15px; height:15px; border-radius:3px; background:var(--lime); flex:none; transform:translateY(1px)}
   .name{font-family:var(--h); font-weight:800; font-size:27px; letter-spacing:.02em}
 
+  /* Rygg mot rygg. Båda bilderna är vända åt vänster i original, så kvinnan
+     speglas och vänds utåt. Bilderna är beskurna till bålens kant, vilket gör
+     att ryggarna möts exakt i sömmen. */
+  .par{position:relative; height:clamp(230px,58vw,300px); margin:22px -20px 0; display:flex; justify-content:center; overflow:hidden}
+  .par img{width:50%; height:100%; object-fit:cover; object-position:right top; filter:contrast(1.12) brightness(.9)}
+  .par img.spegel{transform:scaleX(-1)}
+  .par::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(90deg,var(--bg) 0%,transparent 16%,transparent 84%,var(--bg) 100%),
+      linear-gradient(180deg,rgba(10,10,10,.35) 0%,transparent 20%,transparent 52%,rgba(10,10,10,.9) 88%,var(--bg) 100%);
+  }
+
   h1{
     font-family:var(--h); font-weight:800; font-size:clamp(42px,13vw,62px);
-    line-height:.95; letter-spacing:-.01em; margin:30px 0 0; text-transform:uppercase;
+    line-height:.95; letter-spacing:-.01em; margin:4px 0 0; text-transform:uppercase;
   }
   h1 em{font-style:normal; color:var(--lime); display:block}
   .lede{color:var(--text2); font-size:16px; margin:20px 0 0; max-width:44ch}
@@ -94,6 +107,11 @@
     <span class="mark" aria-hidden="true"></span>
     <span class="name">Askr</span>
   </header>
+
+  <div class="par">
+    <img src="./startsida-man.webp" alt="" />
+    <img class="spegel" src="./startsida-kvinna.webp" alt="" />
+  </div>
 
   <h1>Fråga<em>kroppen.</em></h1>
 

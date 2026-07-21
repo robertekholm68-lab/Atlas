@@ -1,5 +1,5 @@
 
-const CACHE = "atlas2-202607211340";
+const CACHE = "atlas2-202607211412";
 self.addEventListener("install", () => { self.skipWaiting(); });
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
