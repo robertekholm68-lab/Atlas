@@ -54,6 +54,14 @@ const NAMN = {
 // Otränad muskel: syns som anatomi men läser inte som ett värde.
 const GRUNDTON = "#2E333B";
 
+// Den detaljerade anatomibilden ligger UNDER muskelformerna. Den låg tidigare
+// som 750 kB base64 inne i SVG:n tillsammans med en blå bakgrund — men den
+// bakgrunden kom aldrig från bilden, den kom från CSS i gamla vyn. Bilden
+// själv är 73 % genomskinlig: bara kroppen, ingen platta, ingen gloria.
+// Här ligger den som extern webp (39 kB), avmättad och mörkad så att de
+// färgade musklerna får bära informationen.
+const bildUrl = vy => new URL(`figur-${vy === "front" ? "fram" : "bak"}.webp`, document.baseURI).href;
+
 /** Regionens tillstånd = den av dess muskler som är MINST återhämtad. */
 function regionState(regionId, states) {
   const ids = MAP[regionId] || [regionId];
@@ -68,10 +76,18 @@ function regionState(regionId, states) {
 
 function Figur({ vy, states, onSelect, rör, setRör }) {
   const data = REGIONS[vy];
+  const [bildOk, setBildOk] = useState(true);
   if (!data) return null;
   return (
-    <svg viewBox={data.viewBox} style={{ width: "100%", height: "100%", display: "block" }}
-      role="img" aria-label={vy === "front" ? "Muskelkarta framifrån" : "Muskelkarta bakifrån"}>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      {/* Anatomin. Saknas filen faller vyn tillbaka på enbart muskelformerna —
+          färre detaljer, men fortfarande läsbar och fortfarande sann. */}
+      {bildOk && (
+        <img src={bildUrl(vy)} alt="" onError={() => setBildOk(false)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+      )}
+      <svg viewBox={data.viewBox} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        role="img" aria-label={vy === "front" ? "Muskelkarta framifrån" : "Muskelkarta bakifrån"}>
       {data.regions.map(r => {
         const st = regionState(r.id, states);
         const färg = st ? statusColor(st.status) : GRUNDTON;
@@ -84,14 +100,18 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
             <title>{NAMN[r.id] || r.id}{st ? ` — ${Math.round(st.readiness)}%` : " — ingen data"}</title>
             {r.d.map((d, i) => (
               <path key={i} d={d} fill={färg}
-                fillOpacity={st ? (aktiv ? 0.96 : 0.82) : (aktiv ? 0.8 : 0.6)}
-                stroke="#0F1216" strokeWidth={aktiv ? 2.5 : 1}
-                style={{ transition: "fill .5s, fill-opacity .25s" }} />
+                // Otränade muskler ritas nästan inte alls — anatomibilden under
+                // räcker för att visa att de finns. Det som lyser är det som
+                // faktiskt har underlag.
+                fillOpacity={st ? (aktiv ? 0.9 : 0.72) : (aktiv ? 0.28 : 0)}
+                stroke={aktiv && st ? färg : "none"} strokeWidth={1.5}
+                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "screen" }} />
             ))}
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }
 

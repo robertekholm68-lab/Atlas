@@ -300,3 +300,19 @@ describe("mobilen — volymbuggen", () => {
     expect((s.sets || []).length).toBe(1);
   });
 });
+
+describe("ATLAS 2.0 — muskeldetalj", () => {
+  it("regionens delmuskler visas var för sig, inte som medelvärde", async () => {
+    const { REGION_MAP } = await import("../atlas2/BodyMap2.jsx");
+    // Ett medelvärde hade dolt att en delmuskel är sliten medan de andra är
+    // utvilade — samma resonemang som färgningen på kartan.
+    expect(REGION_MAP.deltoids.length).toBe(3);
+  });
+
+  it("varje regionnamn är på svenska", async () => {
+    const { REGIONNAMN, REGION_MAP } = await import("../atlas2/BodyMap2.jsx");
+    Object.keys(REGION_MAP).forEach(id => {
+      expect(REGIONNAMN[id], `${id} saknar svenskt namn`).toBeTruthy();
+    });
+  });
+});

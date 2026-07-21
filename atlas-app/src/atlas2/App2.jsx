@@ -16,6 +16,7 @@ import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
+import { MuscleSheet } from "./MuscleSheet.jsx";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
@@ -151,7 +152,7 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
       {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot svärtan
           och det enda som lyser är muskler med faktiskt underlag. */}
       <div style={{ marginTop: 12 }}>
-        <BodyMap2 muscleStates={states} onSelect={() => onOpen("map")} height={300} />
+        <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} height={300} />
       </div>
 
       <div style={{ textAlign: "center", fontSize: besked.empty ? 15.5 : 17.5, fontWeight: 600, lineHeight: 1.45, margin: "12px 6px 0", color: C.text }}>
@@ -279,7 +280,9 @@ export function Atlas2() {
         <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
           <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
-            {sheet === "import" ? (
+            {typeof sheet === "string" && sheet.startsWith("muskel:") ? (
+              <MuscleSheet regionId={sheet.slice(7)} sessions={sessions} onClose={() => setSheet(null)} />
+            ) : sheet === "import" ? (
               <ImportSheet sessions={sessions} setSessions={setSessions}
                 setWeights={setWeights} setFoodLog={setFoodLog}
                 onClose={() => setSheet(null)} />
