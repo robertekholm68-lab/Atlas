@@ -121,7 +121,7 @@ function BodyMapCard({ muscleStates, selectedId, onSelect, mode = "recovery", la
 
       <div style={{ flex: 1, position: "relative", display: "flex" }}>
         <div onWheel={onWheel} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-          style={{ flex: 1, overflow: "hidden", cursor: dragging ? "grabbing" : "grab", userSelect: "none", display: "flex", justifyContent: "center", alignItems: "center", padding: "4px 0 10px", background: "radial-gradient(ellipse 55% 65% at 50% 42%, rgba(77,163,255,0.10), rgba(9,11,16,0) 70%)" }}>
+          style={{ flex: 1, overflow: "hidden", cursor: dragging ? "grabbing" : "grab", userSelect: "none", display: "flex", justifyContent: "center", alignItems: "center", padding: "4px 0 10px", background: "radial-gradient(ellipse 55% 65% at 50% 42%, rgba(212,255,63,0.07), rgba(10,10,10,0) 70%)" }}>
           <div style={{ transform: `translate(${offset.x}px,${offset.y}px) scale(${scale})`, transformOrigin: "center center", transition: dragging ? "none" : "transform 0.15s", height: "100%", display: "flex", alignItems: "center" }}>
             {/* soft drop shadow under the figure for depth */}
             <svg viewBox={GEN[view].vb} preserveAspectRatio="xMidYMid meet"
@@ -797,7 +797,7 @@ function RotatingBody({ onSelect, overallReadiness, muscleStates }) {
             {frames.map((src, i) => (
               <img key={i} src={src} alt={labels[i]} draggable={false} style={{ ...imgStyle, opacity: i === idx ? 1 : 0, transition: "opacity 4.6s ease-in-out", filter: "drop-shadow(0 36px 50px rgba(0,0,0,0.6))" }} />
             ))}
-            <div style={{ ...imgStyle, background: "linear-gradient(105deg, rgba(255,255,255,0) 38%, rgba(200,225,255,0.5) 50%, rgba(255,255,255,0) 62%)", mixBlendMode: "soft-light", animation: "atlasSheen 13s ease-in-out infinite", pointerEvents: "none" }} />
+            <div style={{ ...imgStyle, background: "linear-gradient(105deg, rgba(255,255,255,0) 38%, rgba(255,255,255,0.42) 50%, rgba(255,255,255,0) 62%)", mixBlendMode: "soft-light", animation: "atlasSheen 13s ease-in-out infinite", pointerEvents: "none" }} />
           </div>
         </div>
         <div style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 7, zIndex: 3 }}>
@@ -911,10 +911,10 @@ function SvgBody({ onSelect, muscleStates, onReset, chamber = false, reduced = f
         {[68, 108, 148, 184].map((r, i) => <circle key={i} cx="200" cy="176" r={r} fill="none" stroke="#4a6a90" strokeOpacity="0.2" strokeWidth="0.6" strokeDasharray={i % 2 ? "2 5" : ""} />)}
       </svg>
       <div style={{ flex: 1, position: "relative", minHeight: 0, zIndex: 1 }}>
-        <div ref={wrapRef} style={{ position: "absolute", inset: "6px 0 0", animation: reduced ? "none" : "atlasBreathe2 6.5s ease-in-out infinite", display: "flex", alignItems: "center", justifyContent: "center", filter: "drop-shadow(0 26px 34px rgba(0,0,0,0.6)) contrast(1.07) brightness(1.03) saturate(1.03)" }} />
+        <div ref={wrapRef} style={{ position: "absolute", inset: "6px 0 0", animation: reduced ? "none" : "atlasBreathe2 6.5s ease-in-out infinite", display: "flex", alignItems: "center", justifyContent: "center", filter: "drop-shadow(0 30px 40px rgba(0,0,0,0.75)) contrast(1.12) brightness(1.02) saturate(1.06)" }} />
         {hover && <div style={{ position: "absolute", left: Math.max(6, hover.x + 14), top: Math.max(2, hover.y - 6), pointerEvents: "none", zIndex: 6, fontSize: 12.5, fontWeight: 300, letterSpacing: 0.4, color: T.text.secondary, background: "rgba(8,12,18,0.74)", border: `1px solid ${T.bg.muted}66`, padding: "3px 9px", borderRadius: 7, whiteSpace: "nowrap" }}>{hover.name}</div>}
         {!chamber && <div style={{ position: "absolute", inset: "6px 0 0", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-          <div style={{ width: "30%", height: "88%", background: "linear-gradient(105deg, rgba(255,255,255,0) 40%, rgba(210,230,255,0.5) 50%, rgba(255,255,255,0) 60%)", mixBlendMode: "soft-light", animation: reduced ? "none" : "atlasSheen2 9s ease-in-out infinite" }} />
+          <div style={{ width: "30%", height: "88%", background: "linear-gradient(105deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.42) 50%, rgba(255,255,255,0) 60%)", mixBlendMode: "soft-light", animation: reduced ? "none" : "atlasSheen2 9s ease-in-out infinite" }} />
         </div>}
         <div style={{ position: "absolute", bottom: chamber ? "2%" : "4.5%", left: "50%", transform: "translateX(-50%)", width: chamber ? "30%" : "34%", height: chamber ? 18 : 22, borderRadius: "50%", background: chamber ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.55)", filter: "blur(9px)", pointerEvents: "none" }} />
         {!chamber && <div style={{ position: "absolute", bottom: "4%", left: "50%", transform: "translateX(-50%)", width: "52%", height: 54, borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(77,163,255,0.35), rgba(77,163,255,0) 70%)", filter: "blur(8px)", pointerEvents: "none" }} />}

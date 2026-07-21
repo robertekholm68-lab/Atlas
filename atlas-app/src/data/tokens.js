@@ -1,7 +1,9 @@
 // DATA: design-tokens, hjälpvärden
 
 
-const BASE_FILL = "#39414d", BASE_STROKE = "#20262f", OUTLINE_STROKE = "#5a6472";
+// Designspråk 2026-07-21: mörk neutral kropp mot nära svart bakgrund, så att
+// muskelfärgerna — det enda som bär information — får lysa utan konkurrens.
+const BASE_FILL = "#252A31", BASE_STROKE = "#161A1F", OUTLINE_STROKE = "#454E5A";
 
 const T = {
   bg: { app: "#090B10", surface: "#11151D", raised: "#171C26", muted: "#202632" },
@@ -31,7 +33,7 @@ const now = Date.now();
 
 const H = h => h * 3600000;
 
-const STATE_COL = { ready: "#2FE39A", nearly_ready: "#7CE84A", recovering: "#FFA92E", critical: "#FF3B4D", undertrained: "#3AA0FF", no_data: "#8894a4" };
+const STATE_COL = { ready: "#39D98A", nearly_ready: "#9BE85C", recovering: "#FFD166", critical: "#FF5C5C", undertrained: "#5B9DD9", no_data: "#5E6673" };
 
 const btn = {
   primary: { background: `linear-gradient(180deg, #62b0ff, ${T.accent.primary})`, color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", boxShadow: "0 6px 16px -6px rgba(77,163,255,0.6), inset 0 1px 0 rgba(255,255,255,0.25)" },
