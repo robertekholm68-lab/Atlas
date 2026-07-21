@@ -15,6 +15,13 @@ const BUILD = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 12);
 // Network-first för dokumentet: annars fastnar man på en gammal version. Bilder
 // och övrigt går cache-first så att anatomifigurerna inte hämtas om vid varje
 // start.
+//
+// Dokumentet hämtas med { cache: "no-cache" }: en ren fetch(e.request) lyder
+// webbläsarens HTTP-cache, och GitHub Pages serverar med max-age=600. Då kunde
+// en ny publicering döljas i upp till 10 minuter (man såg gammalt app-skal tills
+// man HÅRD-laddade om). "no-cache" revaliderar mot servern varje navigering —
+// oförändrad HTML ger 304 (småbytes), ny HTML slår igenom direkt. Offlinestödet
+// är orört: .catch() faller fortfarande tillbaka på cachen, sedan atlas2.html.
 const SW = `
 const CACHE = "atlas2-${BUILD}";
 self.addEventListener("install", () => { self.skipWaiting(); });
@@ -31,7 +38,8 @@ self.addEventListener("fetch", (e) => {
   const doc = e.request.mode === "navigate" || e.request.destination === "document";
   if (doc) {
     e.respondWith(
-      fetch(e.request).then((res) => {
+      // no-cache: revalidera dokumentet mot servern, kringgå HTTP-cachens max-age.
+      fetch(e.request, { cache: "no-cache" }).then((res) => {
         const kopia = res.clone();
         caches.open(CACHE).then(c => { try { c.put(e.request, kopia); } catch (x) {} });
         return res;
