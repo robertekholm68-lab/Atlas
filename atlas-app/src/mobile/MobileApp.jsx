@@ -593,7 +593,10 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
 
         {rest > 0 && (
           <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderRadius: 12, background: "rgba(155,124,255,0.10)", border: `1px solid ${C.purple}55` }}>
-            <div><div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase" }}>Vila</div><div style={{ fontSize: 22, fontWeight: 800, color: C.purple }}>{fmtTime(rest)}</div></div>
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: C.muted, textTransform: "uppercase", fontFamily: HFONT }}>Vila</div>
+              <div style={{ ...hdr(40), color: C.lime, marginTop: 2 }}>{fmtTime(rest)}</div>
+            </div>
             <button onClick={() => setRest(0)} style={ghostBtn}>Hoppa över</button>
           </div>
         )}
@@ -640,7 +643,10 @@ function Complete({ done, muscleStates, setScreen, setSheet, sessions = [], setS
       <Header title={s.title} sub="ATLAS · Återkoppling" right={<button onClick={() => setScreen("home")} style={ghostBtn}>✕</button>} />
       <div style={{ textAlign: "center", marginTop: 18 }}>
         <div style={{ width: 64, height: 64, borderRadius: 40, background: "rgba(57,217,138,0.15)", border: `1px solid ${C.green}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", fontSize: 30, color: C.green }}>✓</div>
-        <div style={{ fontSize: 24, fontWeight: 800, marginTop: 12 }}>Passet är registrerat</div>
+        <div style={{ textAlign: "center", marginTop: 14 }}>
+          <div style={{ width: 54, height: 54, margin: "0 auto", borderRadius: 999, border: `2px solid ${C.lime}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.lime, fontSize: 26 }}>✓</div>
+          <div style={{ ...hdr(24), marginTop: 12 }}>Passet är loggat</div>
+        </div>
         <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>ATLAS har uppdaterat belastning och recovery.</div>
       </div>
 
@@ -678,10 +684,13 @@ function Complete({ done, muscleStates, setScreen, setSheet, sessions = [], setS
         </Card>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <Stat v={`${done.durationMin} min`} l="Tid" />
-        <Stat v={sets.length} l="Arbetsset" />
-        <Stat v={`${(volume / 1000).toFixed(1)} t`} l="Volym" />
+      <div style={{ display: "flex", marginTop: 16, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        {[["Tid", `${done.durationMin} min`], ["Arbetsset", sets.length], ["Volym", `${(volume / 1000).toFixed(1)} ton`]].map(([l, v], i) => (
+          <div key={l} style={{ flex: 1, textAlign: "center", padding: "13px 4px", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 1.2, color: C.muted, textTransform: "uppercase", fontFamily: HFONT }}>{l}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 3, fontFamily: HFONT }}>{v}</div>
+          </div>
+        ))}
       </div>
 
       <div style={{ marginTop: 14, borderRadius: 16, border: `1px solid ${C.border}`, background: "radial-gradient(circle at 50% 22%, rgba(255,92,92,0.06), transparent 62%)", padding: "8px" }}>
@@ -861,7 +870,15 @@ function CoachSheet({ ctx }) {
   const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.DEMO_PROGRAM, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); if (taladeFråga) { speak(shortSpoken(r.text)); setTaladeFråga(false); } };
   return (
     <div>
-      <SheetTitle>Fråga coachen</SheetTitle>
+      <SheetTitle>Coachen</SheetTitle>
+      <div style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>Svarar utifrån din loggade historik.</div>
+      {!a && !q && (
+        <div style={{ display: "grid", gap: 7, marginBottom: 10 }}>
+          {["Vad ska jag träna idag?", "Får min rygg tillräckligt?", "Hur ligger jag till den här veckan?"].map(f => (
+            <button key={f} onClick={() => setQ(f)} style={{ padding: "12px 13px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13.5, textAlign: "left", cursor: "pointer" }}>{f}</button>
+          ))}
+        </div>
+      )}
       <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && ask()} placeholder="Din fråga…" style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14 }} />
       {röstPå && (
         <button onClick={lyssna} style={{
@@ -872,7 +889,14 @@ function CoachSheet({ ctx }) {
       )}
       {fel && <div style={{ marginTop: 8, fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{fel}</div>}
       <button onClick={ask} style={{ ...bigBtn, marginTop: 10 }}>Fråga</button>
-      {a && <div style={{ marginTop: 14, padding: "12px 14px", background: C.card2, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{a}</div>}
+      {a && (
+        <div style={{ marginTop: 14, paddingLeft: 12, borderLeft: `2px solid ${C.lime}` }}>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{a}</div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>
+            Bygger på: {(ctx.sessions || []).length} loggade pass
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1017,7 +1041,15 @@ function FoodSheet({ ctx, onClose }) {
   if (mode === "scan") return <BarcodeSheet onLog={addEntry} onBack={() => setMode("log")} />;
   return (
     <div>
-      <SheetTitle>Logga mat</SheetTitle>
+      <SheetTitle>Dagens intag</SheetTitle>
+      {/* Stora siffran är dagens FAKTISKA intag. Mobilen har inget satt kaloriemål,
+          och då visas inget mål — "av 2 300" utan grund vore en påhittad siffra. */}
+      <div style={{ textAlign: "center", margin: "6px 0 14px" }}>
+        <div style={{ ...hdr(38) }}>{today.length ? kcalToday.toLocaleString("sv-SE") : "\u2014"}</div>
+        <div style={{ fontSize: 11, letterSpacing: 1.6, color: C.muted, textTransform: "uppercase", fontFamily: HFONT, marginTop: 3 }}>
+          {today.length ? `kcal idag · ${proteinToday} g protein` : "Inget loggat idag"}
+        </div>
+      </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && quickLog()} placeholder="t.ex. kyckling & ris" style={{ flex: 1, background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14 }} />
         <button onClick={quickLog} style={{ ...bigBtn, width: "auto", padding: "0 18px", marginTop: 0 }}>Logga</button>
@@ -1353,7 +1385,7 @@ function CuesSheet({ ctx, onClose }) {
       <button onClick={() => { playBeep({ times: 2 }); if (cues.voice) speak("Vilan är slut"); }} style={{ ...ghostBtnLg, width: "100%", marginTop: 14 }}>Testa signalen</button>
 
       <div style={{ marginTop: 22, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-        <div style={{ fontSize: 12, letterSpacing: 0.6, textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>Inmatning</div>
+        <div style={{ ...hdr(12.5), color: C.muted, letterSpacing: 1.6, marginBottom: 10 }}>Inmatning</div>
         <Row
           label="Röstinmatning"
           desc={röst.ok
@@ -1613,7 +1645,7 @@ function TabBar({ setSheet, startWorkout }) {
 }
 function Stat({ v, l }) { return <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 8px", textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 800 }}>{v}</div><div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{l}</div></div>; }
 function Pill({ children, color }) { return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 999, background: C.card2, border: `1px solid ${C.border}`, fontSize: 12.5 }}>{color && <span style={{ width: 7, height: 7, borderRadius: 4, background: color }} />}{children}</span>; }
-function Badge({ children, onClick }) { return <button onClick={onClick} style={{ padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.blue}55`, background: "rgba(77,163,255,0.12)", color: C.blue, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{children}</button>; }
+function Badge({ children, onClick }) { return <button onClick={onClick} style={{ padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.lime}55`, background: "rgba(212,255,63,0.10)", color: C.lime, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{children}</button>; }
 function QuickBtn({ children, onClick }) { return <button onClick={onClick} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{children}</button>; }
 
 function PlacesSheet({ ctx, onClose }) {
@@ -1733,7 +1765,7 @@ function MenuSheet({ ctx, onClose }) {
   );
 }
 
-function SheetTitle({ children }) { return <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 8 }}>{children}</div>; }
+function SheetTitle({ children }) { return <div style={{ ...hdr(19), marginBottom: 10 }}>{children}</div>; }
 function StepBox({ label, value, onMinus, onPlus }) {
   const step = { width: 48, height: 48, borderRadius: 999, border: `1px solid ${C.border}`, background: C.card2, color: C.blue, fontSize: 26, fontWeight: 700, cursor: "pointer", lineHeight: "1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none" };
   return (
