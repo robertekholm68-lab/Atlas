@@ -18,6 +18,7 @@ import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
 import { GoalSheet } from "./GoalSheet.jsx";
+import { NutritionSheet } from "./NutritionSheet.jsx";
 import { backAction } from "./backnav.js";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
@@ -213,8 +214,12 @@ export function Atlas2() {
   const [klart, setKlart] = useState(null);
   const [foodLog, setFoodLog] = useState(() => load("foodLog", []));
   const [mål, setMål] = useState(() => load("goal", null));
+  // Näringsmål i v3. Måste ligga i state (inte läsas direkt ur load vid varje
+  // render) så att matvyn och coachen uppdateras direkt när målet ändras.
+  const [nutritionTargets, setNutritionTargets] = useState(() => load("nutritionTargets", null));
   useEffect(() => { save("goal", mål); }, [mål]);
   useEffect(() => { save("foodLog", foodLog); }, [foodLog]);
+  useEffect(() => { save("nutritionTargets", nutritionTargets); }, [nutritionTargets]);
   const profile = load("profile", {}) || {};
 
   useEffect(() => { save("sessions", sessions); }, [sessions]);
@@ -303,17 +308,15 @@ export function Atlas2() {
     );
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights}
-        profile={profile} foodLog={foodLog} goal={mål} onStart={startaPass}
-        onOpenGoal={() => setSheet("mal")} />
+        profile={profile} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
+        onStart={startaPass} onOpenGoal={() => setSheet("mal")} />
     );
     if (flik === "framsteg") return (
       <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} />
     );
-    // Pass och Mat är inte byggda än. Att säga det rakt ut är bättre än en
-    // halvfärdig vy som ser färdig ut.
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
-        nutritionTargets={load("nutritionTargets", null)} />
+        nutritionTargets={nutritionTargets} onSätta={() => setSheet("kost")} />
     );
   };
 
@@ -327,6 +330,9 @@ export function Atlas2() {
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
             {sheet === "mal" ? (
               <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />
+            ) : sheet === "kost" ? (
+              <NutritionSheet mål={nutritionTargets} setMål={setNutritionTargets}
+                weights={weights} profile={profile} onClose={() => setSheet(null)} />
             ) : typeof sheet === "string" && sheet.startsWith("muskel:") ? (
               <MuscleSheet regionId={sheet.slice(7)} sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (

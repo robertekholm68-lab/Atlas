@@ -2,7 +2,7 @@
 // Askr 2.0 — bevakar att det NYA gränssnittet ärver den GAMLA sanningen.
 // Utseendet får ändras fritt; det här är reglerna som inte får ändras.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save } from "../atlas2/store.js";
+import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save, dagensNutrition, nutritionCtx } from "../atlas2/store.js";
 import { C, orDash, DASH, statusColor } from "../atlas2/design.js";
 import { backAction, harBakåtmål } from "../atlas2/backnav.js";
 import { createRoot } from "react-dom/client";
@@ -610,5 +610,72 @@ describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
       await klick(el, b => new RegExp(`^${namn}$`, "i").test(b.textContent.trim()));
     }
     expect(window.history.length).toBe(längd);
+  });
+});
+
+describe("Askr 2.0 — näringsmål i v3", () => {
+  const NU = new Date(2026, 6, 21, 12, 0).getTime();
+  // Fritextpost med kcal/protein direkt (ingen FOOD_INDEX-uppslagning behövs).
+  const post = (dagarSen, extra = {}) => ({ kcal: 500, protein: 40, carbs: 50, fat: 15, ts: NU - dagarSen * 864e5, ...extra });
+
+  it("dagens totaler summeras till kcal-fält, aldrig calories", () => {
+    const t = dagensNutrition([post(0), post(0), post(3)], NU);
+    expect(t.kcal).toBe(1000);      // två poster idag; den tre dagar gamla räknas inte
+    expect(t.protein).toBe(80);
+    expect(t.total).toBe(2);
+    expect(t.calories).toBeUndefined();
+  });
+
+  it("utan mål hittas ingenting på — targets och totals är null", () => {
+    const ctx = nutritionCtx([], null, NU);
+    expect(ctx.nutritionTargets).toBe(null);
+    expect(ctx.nutritionTotals).toBe(null);
+    expect(ctx.nutritionDays).toBe(0);
+  });
+
+  it("mål satt men inget loggat idag ger totals=null, INTE nollor", () => {
+    // Noll loggat ≠ noll ätet. En nolla hade fått coachen att påstå ett kraftigt
+    // underskott. Gårdagens post räknas inte som idag.
+    const ctx = nutritionCtx([post(1)], { kcal: 2200, protein: 170 }, NU);
+    expect(ctx.nutritionTargets).toEqual({ kcal: 2200, protein: 170 });
+    expect(ctx.nutritionTotals).toBe(null);
+  });
+
+  it("mål satt och loggat idag ger riktiga totaler i samma fältnamn", () => {
+    const ctx = nutritionCtx([post(0), post(0)], { kcal: 2200, protein: 170 }, NU);
+    expect(ctx.nutritionTotals.kcal).toBe(1000);
+    expect(ctx.nutritionTotals.protein).toBe(80);
+    expect(ctx.nutritionDays).toBeGreaterThan(0);
+  });
+});
+
+describe("Askr 2.0 — coachen skiljer kosttillstånd", () => {
+  const NU = Date.now();
+  const post = () => ({ kcal: 600, protein: 45, ts: NU });
+  const fråga = async (foodLog, targets) => {
+    const { coachReply } = await import("../features/ai-coach/index.jsx");
+    // Samma gating som CoachChat gör: nutritionCtx matar rätt data, coachen tolkar.
+    return coachReply("Hur mycket protein?", {
+      sessions: [], muscleStates: {}, overallReadiness: null,
+      ...nutritionCtx(foodLog, targets, NU),
+    });
+  };
+
+  it("inget mål satt: coachen säger rakt ut att den saknar kostmål", async () => {
+    const r = await fråga([], null);
+    expect(r.text).toMatch(/inga kostmål/i);
+  });
+
+  it("mål satt men inget loggat idag: coachen anger målet utan att fejka dagens intag", async () => {
+    const r = await fråga([], { protein: 170, kcal: 2200 });
+    expect(r.text).not.toMatch(/inga kostmål/i);   // ett ANNAT svar än utan mål
+    expect(r.text).toMatch(/proteinmål/i);
+    expect(r.text).not.toMatch(/idag/i);           // ingen påhittad dagssiffra, inget 0-underskott
+  });
+
+  it("mål satt och loggat idag: coachen räknar mot dagens intag", async () => {
+    const r = await fråga([post()], { protein: 170, kcal: 2200 });
+    expect(r.text).toMatch(/proteinmål/i);
+    expect(r.text).toMatch(/idag/i);               // dagens siffra vägs in
   });
 });

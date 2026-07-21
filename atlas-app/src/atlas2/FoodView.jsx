@@ -12,7 +12,7 @@ import { useState, useMemo } from "react";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
-import { computeNutrition } from "../engines/index.js";
+import { dagensNutrition } from "./store.js";
 
 const idag = ts => {
   const d = new Date(ts), n = new Date();
@@ -60,8 +60,10 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, mål, onLogga }) {
-  const t = computeNutrition(dagensLogg);
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
+  // Samma summering (dagensNutrition → computeNutrition) som coachen läser — en
+  // sanning, inte två.
+  const t = totaler;
   const kvar = mål && mål.kcal ? mål.kcal - t.kcal : null;
 
   return (
@@ -79,11 +81,13 @@ function Oversikt({ dagensLogg, mål, onLogga }) {
         <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}>
           <span style={{ color: C.muted }}>Återstående </span>
           <span style={{ color: kvar >= 0 ? C.lime : C.critical, fontWeight: 700 }}>{Math.round(kvar)} kcal</span>
+          {onSätta && <button onClick={onSätta} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", marginLeft: 8, textDecoration: "underline" }}>Ändra mål</button>}
         </div>
       ) : (
         <div style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
-          Inget kalorimål satt. Sätt ett i profilen så visas hur mycket som återstår —
-          appen hittar inte på ett åt dig.
+          Inget kalorimål satt. {onSätta
+            ? <button onClick={onSätta} style={{ background: "none", border: "none", color: C.lime, fontSize: 12.5, cursor: "pointer", textDecoration: "underline", padding: 0 }}>Sätt ett mål</button>
+            : "Sätt ett i profilen"} så visas hur mycket som återstår — appen hittar inte på ett åt dig.
         </div>
       )}
 
@@ -250,9 +254,10 @@ function Recept({ onLägg }) {
 
 /* ── VYN ── */
 
-export function FoodView({ foodLog = [], setFoodLog, nutritionTargets }) {
+export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta }) {
   const [flik, setFlik] = useState("oversikt");
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
+  const totaler = dagensNutrition(foodLog);
   const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
 
   return (
@@ -270,7 +275,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets }) {
         ))}
       </div>
 
-      {flik === "oversikt" && <Oversikt dagensLogg={dagens} mål={nutritionTargets} onLogga={() => setFlik("logga")} />}
+      {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets} onLogga={() => setFlik("logga")} onSätta={onSätta} />}
       {flik === "logga" && <Logga onLägg={lägg} />}
       {flik === "recept" && <Recept onLägg={lägg} />}
     </div>
