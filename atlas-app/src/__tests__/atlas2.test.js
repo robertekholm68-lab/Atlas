@@ -445,3 +445,35 @@ describe("Motorn tål ofullständiga pass", () => {
     expect(() => computeRecovery([{ completedAt: Date.now() }], "quadriceps", Date.now())).not.toThrow();
   });
 });
+
+describe("Släpande muskel kräver underlag", () => {
+  const nu = Date.now();
+  const pass = (dagarSedan) => ({
+    completedAt: nu - dagarSedan * 864e5,
+    muscleLoads: { pectoralis_major: 300 },
+    sets: [{ exerciseId: "bench_press", weight: 60, reps: 8 }],
+  });
+
+  it("uttalar sig inte om veckovolym efter ett enda pass", async () => {
+    const { laggingMuscleAdvice } = await import("../engines/index.js");
+    const t = laggingMuscleAdvice([pass(2)], "pectoralis_major");
+    // Ett pass säger ingenting om veckovolym.
+    expect(t).toMatch(/för lite loggad träning/i);
+    expect(t).not.toMatch(/under minsta effektiva volym/i);
+  });
+
+  it("ger fortfarande de generella råden", async () => {
+    const { laggingMuscleAdvice } = await import("../engines/index.js");
+    const t = laggingMuscleAdvice([pass(2)], "pectoralis_major");
+    // Principerna gäller oavsett data — det är bara diagnosen som utelämnas.
+    expect(t).toMatch(/progressiv överbelastning/i);
+  });
+
+  it("uttalar sig när underlaget räcker", async () => {
+    const { laggingMuscleAdvice } = await import("../engines/index.js");
+    const sessions = [2, 5, 9, 13, 17, 21].map(pass);
+    const t = laggingMuscleAdvice(sessions, "pectoralis_major");
+    expect(t).not.toMatch(/för lite loggad träning/i);
+    expect(t).toMatch(/set\/vecka/i);
+  });
+});

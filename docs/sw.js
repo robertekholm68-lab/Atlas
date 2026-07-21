@@ -1,5 +1,5 @@
 
-const CACHE = "atlas-mobile-202607211200";
+const CACHE = "atlas-mobile-202607211214";
 self.addEventListener("install", () => { self.skipWaiting(); });
 // Receptbilder ligger som separata filer bredvid appen. De hämtas en gång och
 // ligger sedan kvar i cachen även när en ny appversion rullas ut.

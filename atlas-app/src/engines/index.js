@@ -96,11 +96,27 @@ function laggingMuscleAdvice(sessions, muscleId, now = Date.now()) {
     if (hit) days.add(startOfLocalDay(s.completedAt));
   });
   const freq = days.size;
+
+  // Hur mycket loggad träning finns att döma på? Ett enda pass säger ingenting
+  // om VECKOvolym — då påstod funktionen tidigare "~1 set/vecka, under minsta
+  // effektiva volym" och ordinerade ändringar utifrån det. Den som just börjat
+  // logga, eller loggar sporadiskt, fick en diagnos byggd på ingenting.
+  const loggade = (sessions || []).filter(x => x && x.completedAt);
+  const spann = loggade.length
+    ? (Math.max(...loggade.map(x => x.completedAt)) - Math.min(...loggade.map(x => x.completedAt))) / 864e5
+    : 0;
+  const nogUnderlag = loggade.length >= 4 && spann >= 14;
+
   const tips = [];
-  if (lm && sets < lm.mev) tips.push(`Volymen är låg — ~${sets} set/vecka ligger under minsta effektiva volym (~${lm.mev}). Lägg till 3–5 hårda set i veckan och bygg gradvis uppåt.`);
+  if (!nogUnderlag) {
+    // Råden nedan gäller oavsett data. Det enda som utelämnas är påståendet om
+    // just DIN volym — för det vet appen inte än.
+    tips.push(`Jag har för lite loggad träning för att bedöma din veckovolym för ${groupSv.toLowerCase()} — det kräver ett par veckors loggning. Tills dess är det här generella råd, inte en bedömning av dig.`);
+  }
+  else if (lm && sets < lm.mev) tips.push(`Volymen är låg — ~${sets} set/vecka ligger under minsta effektiva volym (~${lm.mev}). Lägg till 3–5 hårda set i veckan och bygg gradvis uppåt.`);
   else if (lm && sets > lm.mrv) tips.push(`Du kör hög volym (~${sets} set/vecka, över taket ~${lm.mrv}). Mer är inte alltid bättre — testa en lättare vecka (deload) och se om ${groupSv.toLowerCase()} svarar bättre utvilad.`);
   else tips.push(`Volymen ser rimlig ut (~${sets} set/vecka${vs ? `, ${vs.label}` : ""}). Då sitter nyckeln oftare i frekvens, närhet till failure och progression än i ännu mer volym.`);
-  if (freq <= 1) tips.push("Dela upp volymen på 2 pass i veckan i stället för allt på ett — samma mängd, oftare stimulans, ger ofta bättre svar.");
+  if (nogUnderlag && freq <= 1) tips.push("Dela upp volymen på 2 pass i veckan i stället för allt på ett — samma mängd, oftare stimulans, ger ofta bättre svar.");
   tips.push("Prioritera den när du är fräsch: lägg övningen först i passet, inte sist när du är trött.");
   tips.push("Träna nära failure (1–3 reps kvar i tanken) och lägg till lite vikt eller reps över tid — progressiv överbelastning är motorn.");
   tips.push("Har du kört samma övning länge? Byt vinkel eller variant, och använd fullt rörelseomfång med kontrollerad excentrik och fokus på just den muskeln.");
