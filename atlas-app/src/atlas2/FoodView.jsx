@@ -12,7 +12,7 @@ import { useState, useMemo } from "react";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
-import { dagensNutrition } from "./store.js";
+import { dagensNutrition, nyId } from "./store.js";
 
 const idag = ts => {
   const d = new Date(ts), n = new Date();
@@ -161,7 +161,7 @@ function Logga({ onLägg }) {
           ))}
         </div>
 
-        <button onClick={() => { onLägg({ foodId: vald.id, name: vald.name, grams: gram, ts: Date.now() }); setVald(null); setSök(""); }}
+        <button onClick={() => { onLägg({ id: nyId("f_"), foodId: vald.id, name: vald.name, grams: gram, ts: Date.now() }); setVald(null); setSök(""); }}
           style={{ ...btnPrimary, marginTop: 20 }}>Lägg till <span style={{ fontSize: 19 }}>+</span></button>
       </div>
     );
@@ -241,7 +241,7 @@ function Recept({ onLägg }) {
               {n.saknas ? " · ofullständig näring" : ""}
             </div>
           </div>
-          <button onClick={() => onLägg({ name: r.name, kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat, ts: Date.now(), recipeId: r.id })}
+          <button onClick={() => onLägg({ id: nyId("f_"), name: r.name, kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat, ts: Date.now(), recipeId: r.id })}
             style={{ padding: "8px 15px", borderRadius: 999, border: `1px solid ${C.lime}`, background: "transparent", color: C.lime, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>
             Logga
           </button>

@@ -16,11 +16,17 @@ import { nextWorkout } from "../engines/programs.js";
 const NS = "atlas.v3.";
 const key = k => NS + k;
 
-export function load(k, fallback) {
-  try { const r = localStorage.getItem(key(k)); return r ? JSON.parse(r) : fallback; }
+// ASYNKRONT API — localStorage är rygg TILLS VIDARE. Sömmen är async med flit:
+// en framtida rygg (IndexedDB eller enhetssynk) är oundvikligen asynkron, och
+// då ska den kunna bytas utan att röra en enda vy. Ingen nätverks- eller
+// inloggningskod byggs här — bara formen. Vyerna hydreras EN gång via load()
+// och skriver via save(); ingen läser localStorage direkt (utom importsteget,
+// som medvetet läser de GAMLA namnrymderna).
+export async function load(k, fallback) {
+  try { const r = localStorage.getItem(key(k)); return r != null ? JSON.parse(r) : fallback; }
   catch (e) { return fallback; }
 }
-export function save(k, v) {
+export async function save(k, v) {
   try { localStorage.setItem(key(k), JSON.stringify(v)); } catch (e) {}
 }
 
@@ -168,3 +174,123 @@ export function nutritionCtx(foodLog, targets, now = Date.now()) {
     nutritionDays: distinctNutritionDays(foodLog, now),
   };
 }
+
+// ── SYNK-FORM (ingen server, ingen inloggning, ingen nätverkskod) ────────────
+// Förbereder framtida enhetssynk genom att ge varje post fyra fält:
+//   id         — stabil identitet för merge/dedup
+//   userId     — vem posten hör till (anonymt lokalt-id nu, kopplas till konto sen)
+//   deviceId   — vilken enhet posten skapades på (sync-proveniens)
+//   updatedAt  — postens ändringstid; det en framtida last-write-wins läser
+// Här byggs BARA formen. Inget skickas någonstans.
+
+// Deterministisk sträng-hash, base36. Samma sträng ger samma hash på alla
+// enheter och vid varje körning — det är HELA poängen: en post utan id (t.ex. en
+// gammal vikt { ts, kg }) måste få SAMMA id oavsett var migreringen körs, annars
+// dubblas den vid framtida synk.
+//
+// ~64 bitar (två oberoende 32-bitars FNV-1a-varianter sammanfogade), INTE 32.
+// En 32-bitars hash kolliderar med några få procents sannolikhet redan vid
+// ~20 000 poster (en mångårig matloggare), och en kollision skulle tyst släppa
+// en post vid synk — just den sortens ofelbar-om-fel vi inte får ta. Vid 64
+// bitar är risken försumbar även för en tung användare.
+function hash64(s) {
+  let a = 0x811c9dc5, b = 0xcbf29ce4;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x85ebca77) >>> 0;
+  }
+  return a.toString(36) + b.toString(36);
+}
+
+// Per typ: postens händelsetid (blir updatedAt vid migrering) och en
+// INNEHÅLLSbaserad id-nyckel för poster som saknar id. Sessioner och mål har
+// redan egna id ur motorn — bara vikt och matlogg saknar och får ett här.
+const EVENT_TIME = { session: r => r.completedAt, weight: r => r.ts, food: r => r.ts, goal: r => r.startDatum };
+const ID_FROM_CONTENT = {
+  session: r => "s_" + hash64([r.completedAt, r.title || "", (r.sets || []).length].join("|")),
+  weight:  r => "w_" + hash64([r.ts, r.kg].join("|")),
+  food:    r => "f_" + hash64([r.ts, r.foodId || r.name || "", r.grams != null ? r.grams : "", r.kcal != null ? r.kcal : "", r.recipeId || ""].join("|")),
+  goal:    r => "g_" + hash64([r.startDatum, r.målDatum, r.typ || ""].join("|")),
+};
+
+// Slumpat, stabilt id för NYA poster. Sätts vid SKAPANDET och överlever
+// redigering: rättar användaren ett värde byter posten inte identitet, så synken
+// ser en ÄNDRING och inte radering + ny post. Innehållshashen ovan är däremot
+// BARA till för att ge redan befintlig data (utan id) ett id vid migrering.
+export function nyId(prefix = "r_") {
+  try { if (typeof crypto !== "undefined" && crypto.randomUUID) return prefix + crypto.randomUUID().slice(0, 12); } catch (e) {}
+  return prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+
+/**
+ * Stämpla EN post med de fyra synkfälten. Fyller bara det som SAKNAS — befintliga
+ * värden rörs aldrig. Därför är den idempotent: en redan stämplad post kommer ut
+ * oförändrad. `updatedAt` sätts till postens händelsetid (completedAt/ts/…), inte
+ * "nu": det gör migreringen körbar hur många gånger som helst utan att ändra
+ * något, OCH ger en migrerad post rätt ålder för en framtida merge.
+ *
+ * `idGen` körs BARA vid migrering (befintlig data utan id → innehållshash). På
+ * SKRIVVÄGEN skickas ingen idGen: då hittas inget id på ur innehållet, och en
+ * post som redan har ett id (slumpat vid skapandet, eller hashat vid migrering)
+ * behåller det oförändrat även när innehållet redigeras.
+ */
+export function stämplaPost(rec, typ, identitet, idGen) {
+  if (!rec || typeof rec !== "object") return rec;
+  const id = identitet || {};
+  const ev = EVENT_TIME[typ] ? EVENT_TIME[typ](rec) : null;
+  return {
+    ...rec,
+    id: rec.id != null ? rec.id : (idGen ? idGen(rec, typ) : rec.id),
+    userId: rec.userId != null ? rec.userId : id.userId,
+    deviceId: rec.deviceId != null ? rec.deviceId : id.deviceId,
+    updatedAt: rec.updatedAt != null ? rec.updatedAt : (ev != null ? ev : 0),
+  };
+}
+
+export const stämplaLista = (arr, typ, identitet, idGen) =>
+  Array.isArray(arr) ? arr.map(r => stämplaPost(r, typ, identitet, idGen)) : arr;
+
+// Innehållshash — ENDAST migrering av befintlig data utan id.
+const migreringsIdGen = (rec, typ) => (ID_FROM_CONTENT[typ] ? ID_FROM_CONTENT[typ](rec) : undefined);
+
+/**
+ * Migrera hela datamängden: stämpla varje pass, vikt, matloggspost och målet, och
+ * ge poster utan id ett INNEHÅLLSbaserat id (så samma gamla post får samma id på
+ * olika enheter). Ren funktion av (data, identitet) — idempotent:
+ * migrera(migrera(x)) === migrera(x). Programmen lämnas orörda tills vidare.
+ */
+export function migrera(data, identitet) {
+  const d = data || {};
+  return {
+    ...d,
+    sessions: stämplaLista(d.sessions, "session", identitet, migreringsIdGen),
+    weights: stämplaLista(d.weights, "weight", identitet, migreringsIdGen),
+    foodLog: stämplaLista(d.foodLog, "food", identitet, migreringsIdGen),
+    goal: d.goal ? stämplaPost(d.goal, "goal", identitet, migreringsIdGen) : d.goal,
+  };
+}
+
+// Enhets-/användaridentitet. Genereras EN gång per installation och lagras under
+// egna atlas.v3.*-nycklar. userId är anonymt nu och kopplas till ett riktigt
+// konto den dag inloggning byggs; deviceId stannar enhetslokalt som proveniens.
+// Cachas i minnet så att stämplingen på skrivvägen kan vara synkron.
+let _identitet = null;
+function slumpId(prefix) {
+  try { if (typeof crypto !== "undefined" && crypto.randomUUID) return prefix + crypto.randomUUID().slice(0, 12); } catch (e) {}
+  return prefix + Math.random().toString(36).slice(2, 14);
+}
+export async function identitet() {
+  if (_identitet) return _identitet;
+  let userId = await load("userId", null);
+  let deviceId = await load("deviceId", null);
+  if (!userId) { userId = slumpId("u_"); await save("userId", userId); }
+  if (!deviceId) { deviceId = slumpId("d_"); await save("deviceId", deviceId); }
+  _identitet = { userId, deviceId };
+  return _identitet;
+}
+// Synkron åtkomst till redan hämtad identitet (för stämpling på skrivvägen efter
+// hydrering). null innan identitet() körts.
+export const identitetSync = () => _identitet;
+// Endast för test: nollställ minnescachen.
+export const _nollställIdentitet = () => { _identitet = null; };
