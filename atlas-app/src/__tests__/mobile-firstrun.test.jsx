@@ -33,6 +33,9 @@ afterEach(unmountAll);
 describe("mobilen — första start", () => {
   it("ny användare möter ett val, inte någon annans exempeldata", async () => {
     const el = await mount();
+    // Startsidan först (2026-07-21). Lägesvalet ligger bakom Kom igång — men det
+    // MÅSTE finnas där, och exempeldata får inte möta en oinvigd.
+    await click(el, "Kom igång");
     expect(/Riktig profil/.test(el.textContent)).toBe(true);
     expect(/Demo/.test(el.textContent)).toBe(true);
     expect(/Hej, Robert/.test(el.textContent)).toBe(false);
@@ -40,8 +43,9 @@ describe("mobilen — första start", () => {
 
   it("riktig profil startar tom — inga påhittade pass", async () => {
     const el = await mount();
+    await click(el, "Kom igång");        // startsidan (2026-07-21)
     await click(el, "Riktig profil");
-    await click(el, "Kom igång");
+    await click(el, "Kom igång");        // "om dig"-steget
     expect(LS("mode")).toBe("real");
     expect(LS("sessions")).toEqual([]);
   });
@@ -59,6 +63,7 @@ describe("mobilen — första start", () => {
 
   it("demoläget säger tydligt att siffrorna inte är dina", async () => {
     const el = await mount();
+    await click(el, "Kom igång");   // startsidan (2026-07-21)
     expect(/Inget av det är dina siffror/.test(el.textContent)).toBe(true);
   });
 

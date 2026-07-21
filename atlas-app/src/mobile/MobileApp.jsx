@@ -181,7 +181,7 @@ export function MobileApp() {
       )}
       {!mode && <ModePicker onPick={(m, prof) => {
         setMode(m);
-        setProfile({ name: prof.name || "", weight: prof.weight ?? null });
+        setProfile({ name: prof.name || "", weight: prof.weight ?? null, sex: prof.sex || null });
         setSessions(m === "demo" ? DEMO_SESSIONS.slice() : []);
         if (prof.weight) setWeights([{ id: `w_${Date.now()}`, ts: Date.now(), kg: prof.weight }]);
       }} />}
@@ -204,13 +204,85 @@ export function MobileApp() {
 // Första start: samma val som webbappen. Utan det här hamnar en ny användare rakt in i
 // någon annans exempeldata utan att förstå att den inte är hens egen.
 function ModePicker({ onPick }) {
-  const [step, setStep] = useState("mode");
+  // Startsidan enligt designspråket 2026-07-20 (skiss 1A/1B), följd av lägesvalet.
+  // Lägesvalet är HELIGT och får aldrig designas bort: demo och verklig historik
+  // hålls åtskilda, och det ska väljas medvetet.
+  const [step, setStep] = useState("start");
+  const [sex, setSex] = useState(null);          // "m" | "f" | null — frivilligt
   const [name, setName] = useState("");
   const [weight, setWeight] = useState("");
 
-  const Choice = ({ title, body, tone, onClick }) => (
-    <button onClick={onClick} style={{ width: "100%", textAlign: "left", padding: 16, marginBottom: 10, borderRadius: 14, border: `1px solid ${tone}55`, background: C.card, color: C.text, cursor: "pointer" }}>
-      <div style={{ fontSize: 15.5, fontWeight: 800, color: tone, marginBottom: 4 }}>{title}</div>
+  // Hjältebilderna ligger som separata webp bredvid HTML:en (samma mönster som
+  // receptbilderna). Saknas de — offline förstagång, borttappad fil — döljs de
+  // och gradienten bär utseendet i stället. Inget trasigt bildikon-hål.
+  const [bildOk, setBildOk] = useState({ m: true, f: true });
+  const bild = kön => new URL(`startsida-${kön === "m" ? "man" : "kvinna"}.webp`, document.baseURI).href;
+
+  if (step === "start") {
+    const visa = kön => sex === null || sex === kön;
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "18px 18px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ ...hdr(20), color: C.lime }}>▲</span>
+            <span style={{ ...hdr(20), letterSpacing: 2.6 }}>ATLAS</span>
+          </div>
+          <div style={{ fontSize: 10, letterSpacing: 2, color: C.muted, marginTop: 3, fontFamily: HFONT }}>TRÄNA. FÖRSTÅ. ÅTERHÄMTA.</div>
+        </div>
+
+        {/* Hjälten: två personer, valet låter en bli ensam kvar. */}
+        <div style={{ position: "relative", height: 300, margin: "14px 0 0", display: "flex", justifyContent: "center", overflow: "hidden" }}>
+          {["m", "f"].map(kön => (bildOk[kön] && visa(kön)) ? (
+            <img key={kön} src={bild(kön)} alt="" onError={() => setBildOk(b => ({ ...b, [kön]: false }))}
+              style={{ width: sex ? "70%" : "50%", height: "100%", objectFit: "cover", objectPosition: "top", transition: "width .3s", filter: "brightness(0.92)" }} />
+          ) : null)}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 40%, rgba(10,10,10,0.55) 78%, #0A0A0A 100%)" }} />
+          <div style={{ position: "absolute", bottom: 14, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 10 }}>
+            {[["m", "Man"], ["f", "Kvinna"]].map(([k, l]) => (
+              <button key={k} onClick={() => setSex(sex === k ? null : k)} style={{
+                padding: "9px 26px", borderRadius: 999, cursor: "pointer", fontFamily: HFONT, fontSize: 13, fontWeight: 800,
+                textTransform: "uppercase", letterSpacing: 1.2,
+                border: `1.5px solid ${sex === k ? C.lime : "rgba(255,255,255,0.55)"}`,
+                background: "rgba(10,10,10,0.45)", color: sex === k ? C.lime : C.text,
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ textAlign: "center", fontSize: 11, color: C.muted, marginTop: 8 }}>Styr kroppskartan och beräkningarna i appen. Går att hoppa över.</div>
+
+        <div style={{ padding: "18px 18px 0" }}>
+          <div style={{ ...hdr(30) }}>Träna.</div>
+          <div style={{ ...hdr(30), color: C.lime }}>Utvecklas.</div>
+          <div style={{ ...hdr(30) }}>Överträffa dig själv.</div>
+          <div style={{ width: 34, height: 3, background: C.lime, margin: "12px 0" }} />
+          <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6 }}>
+            Se vilka muskler som är återhämtade, vad de tål idag, och när nästa pass gör nytta.
+            Byggt på vad du faktiskt loggar — inte på gissningar.
+          </div>
+        </div>
+
+        <div style={{ display: "flex", margin: "18px 18px 0" }}>
+          {[["activity", "Muskelkarta", "Återhämtning per muskelgrupp, inte bara en totalsiffra."],
+            ["trending-up", "Veckovolym", "Vet när en muskel fått tillräckligt — och när det blir för mycket."],
+            ["target", "Ärliga siffror", "Saknas underlag säger appen det, i stället för att gissa."]].map(([ic, t, b], i) => (
+            <div key={t} style={{ flex: 1, padding: "0 9px", borderLeft: i ? `1px solid ${C.border}` : "none", textAlign: "center" }}>
+              <Icon name={ic} size={18} strokeWidth={1.6} color={C.lime} />
+              <div style={{ ...hdr(11.5), letterSpacing: 1, margin: "7px 0 4px" }}>{t}</div>
+              <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.5 }}>{b}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ padding: 18, marginTop: "auto" }}>
+          <button onClick={() => setStep("mode")} style={bigBtn}>Kom igång <span style={{ marginLeft: 6 }}>→</span></button>
+        </div>
+      </div>
+    );
+  }
+
+  const Choice = ({ title, body, onClick }) => (
+    <button onClick={onClick} style={{ width: "100%", textAlign: "left", padding: 16, marginBottom: 10, borderRadius: 16, border: `1px solid ${C.border}`, background: C.card, cursor: "pointer", color: C.text }}>
+      <div style={{ ...hdr(15), color: C.lime, marginBottom: 5 }}>{title}</div>
       <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>{body}</div>
     </button>
   );
@@ -218,35 +290,34 @@ function ModePicker({ onPick }) {
   if (step === "mode") {
     return (
       <div style={{ padding: "40px 18px" }}>
-        <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5 }}>ATLAS</div>
-        <div style={{ fontSize: 13, color: C.muted, margin: "6px 0 26px", lineHeight: 1.55 }}>
-          Välj hur du vill börja. Valet går att ändra senare, men lägena hålls helt åtskilda — exempeldata kan aldrig blandas in i din egen historik.
+        <div style={{ ...hdr(24) }}>Hur vill du börja?</div>
+        <div style={{ fontSize: 13, color: C.muted, margin: "8px 0 24px", lineHeight: 1.55 }}>
+          Valet går att ändra senare, men lägena hålls helt åtskilda — exempeldata kan aldrig blandas in i din egen historik.
         </div>
-        <Choice tone={C.blue} title="Riktig profil" body="Appen startar tom och bygger allt på det du själv loggar. Välj den här om du ska träna med appen." onClick={() => setStep("profile")} />
-        <Choice tone={C.purple} title="Demo" body="Fylld med exempeldata så du kan se hur appen fungerar utan att logga något. Inget av det är dina siffror." onClick={() => onPick("demo", {})} />
+        <Choice title="Riktig profil" body="Appen startar tom och bygger allt på det du själv loggar. Välj den här om du ska träna med appen." onClick={() => setStep("about")} />
+        <Choice title="Demo" body="Fylld med exempeldata så du kan se hur appen fungerar utan att logga något. Inget av det är dina siffror." onClick={() => onPick("demo", { name: "", weight: null, sex })} />
       </div>
     );
   }
 
   return (
     <div style={{ padding: "40px 18px" }}>
-      <div style={{ fontSize: 22, fontWeight: 800 }}>Kort om dig</div>
-      <div style={{ fontSize: 12.5, color: C.muted, margin: "6px 0 20px", lineHeight: 1.55 }}>
-        Båda fälten är frivilliga. Vikten används för att räkna belastning i övningar med kroppsvikt — utan den utelämnas de beräkningarna hellre än gissas.
+      <div style={{ ...hdr(22) }}>Kort om dig</div>
+      <div style={{ fontSize: 12.5, color: C.muted, margin: "8px 0 20px", lineHeight: 1.55 }}>
+        Båda fälten är frivilliga. Vikten används för att räkna belastning i övningar med kroppsvikt — utan den utelämnas de beräkningarna, de hittas inte på.
       </div>
       <label style={{ fontSize: 12, color: C.muted }}>Namn</label>
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Vad ska appen kalla dig?" style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, margin: "6px 0 14px" }} />
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Vad ska appen kalla dig?" style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, margin: "6px 0 14px", boxSizing: "border-box" }} />
       <label style={{ fontSize: 12, color: C.muted }}>Kroppsvikt (kg)</label>
-      <input value={weight} onChange={e => setWeight(e.target.value)} inputMode="decimal" placeholder="t.ex. 78" style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, margin: "6px 0 18px" }} />
+      <input value={weight} onChange={e => setWeight(e.target.value)} inputMode="decimal" placeholder="t.ex. 78" style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, margin: "6px 0 18px", boxSizing: "border-box" }} />
       <button onClick={() => {
         const kg = parseFloat(String(weight).replace(",", "."));
-        onPick("real", { name: name.trim(), weight: isFinite(kg) && kg >= 25 && kg <= 300 ? kg : null });
+        onPick("real", { name: name.trim(), weight: isFinite(kg) && kg >= 25 && kg <= 300 ? kg : null, sex });
       }} style={bigBtn}>Kom igång</button>
-      <button onClick={() => setStep("mode")} style={{ width: "100%", marginTop: 10, padding: 12, borderRadius: 12, border: "none", background: "transparent", color: C.muted, fontSize: 13, cursor: "pointer" }}>Tillbaka</button>
+      <button onClick={() => setStep("mode")} style={{ width: "100%", marginTop: 10, padding: 12, borderRadius: 999, border: "none", background: "transparent", color: C.muted, fontSize: 13, cursor: "pointer" }}>Tillbaka</button>
     </div>
   );
 }
-
 function Home({ overall, muscleStates, nw, checkin, startWorkout, queue, setSheet, installHidden, setInstallHidden, profile = {}, live = null, onResume, onDiscard, atGym = null, röstKrasch = false, sessions = [] }) {
   // Designspråk 2026-07-20: kartan dominerar, EN primärhandling, tre genvägar.
   // Åtta snabbknappar i rad var själva plottret — resten bor i menyn nu.
