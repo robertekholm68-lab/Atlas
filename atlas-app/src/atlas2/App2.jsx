@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
 import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout } from "./store.js";
 import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
-import { SvgBody } from "../features/body-map/index.jsx";
+import { BodyMap2 } from "./BodyMap2.jsx";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
 /* ══════════ STARTSIDA ══════════ */
@@ -140,8 +140,10 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
       </div>
       <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, textTransform: "capitalize" }}>{datum}</div>
 
-      <div style={{ height: 370, marginTop: 6, background: "radial-gradient(ellipse 58% 44% at 50% 42%, rgba(212,255,63,.055), transparent 70%)" }}>
-        <SvgBody muscleStates={states} onSelect={() => onOpen("map")} reduced />
+      {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot svärtan
+          och det enda som lyser är muskler med faktiskt underlag. */}
+      <div style={{ marginTop: 10 }}>
+        <BodyMap2 muscleStates={states} onSelect={() => onOpen("map")} height={360} />
       </div>
 
       <div style={{ textAlign: "center", fontSize: besked.empty ? 15.5 : 17.5, fontWeight: 600, lineHeight: 1.45, margin: "12px 6px 0", color: C.text }}>
