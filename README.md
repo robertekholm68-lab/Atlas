@@ -1,8 +1,12 @@
-# ATLAS
+# Askr
 
-> **Kroppen är gränssnittet.**
+> **Fråga kroppen.** Kroppen är gränssnittet.
 
-ATLAS är en AI-driven "Digital Human Twin" för styrketräning, återhämtning, nutrition och mål.
+Askr är en AI-driven "Digital Human Twin" för styrketräning, återhämtning, nutrition och mål.
+
+> Produkten hette **ATLAS** till 2026-07-21. Repo-namnet, Pages-adresserna och
+> källmappen `atlas-app/` är avsiktligt kvar som `Atlas`/`atlas-app` — byts de
+> utan migrering slutar publiceringen och den installerade appen att fungera.
 
 ## Live-demo
 
