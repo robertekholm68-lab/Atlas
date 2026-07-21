@@ -11,6 +11,7 @@ import { C, HFONT, hdr, label, btnPrimary, card, statRow, statCell, orDash } fro
 import { coachFacts, recommendation } from "./facts.js";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { bodyState } from "./store.js";
+import { CoachChat } from "./CoachChat.jsx";
 
 function Rad({ text }) {
   return (
@@ -24,7 +25,7 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, goal, onStart, onOpenGoal }) {
+export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, onStart, onOpenGoal }) {
   const facts = coachFacts({ sessions, activeProgram, weights, goal });
   const rek = recommendation(facts);
   const { states } = bodyState(sessions);
@@ -112,6 +113,11 @@ export function CoachView({ sessions, activeProgram, weights, profile, goal, onS
           </div>
         ))}
       </div>
+
+      <div style={{ height: 1, background: C.border, margin: "26px 0 20px" }} />
+
+      <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
+        foodLog={foodLog} goal={goal} onStart={onStart} />
 
       {/* Ärlighetsraden. Står kvar även när underlaget är gott — den är en
           egenskap hos produkten, inte en ursäkt när det går dåligt. */}

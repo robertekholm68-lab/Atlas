@@ -477,3 +477,29 @@ describe("Släpande muskel kräver underlag", () => {
     expect(t).toMatch(/set\/vecka/i);
   });
 });
+
+describe("Askr 2.0 — fråga coachen", () => {
+  it("utan loggad träning erbjuds ingen readiness-siffra", async () => {
+    const { coachReply } = await import("../features/ai-coach/index.jsx");
+    const { bodyState } = await import("../atlas2/store.js");
+    const { states, overall, covered } = bodyState([]);
+    // Samma gating som CoachChat gör: utan täckning skickas null vidare.
+    const svar = coachReply("hur ser återhämtningen ut?", {
+      overallReadiness: covered ? Math.round(overall) : null,
+      muscleStates: states, sessions: [], activeProgram: null,
+    });
+    // `covered` är ett ANTAL täckta muskler, inte en boolean. Noll är falskt,
+    // så gatingen fungerar — men namnet inbjuder till missförstånd.
+    expect(covered).toBeFalsy();
+    expect(svar.text).toMatch(/ingen readiness|logga några pass/i);
+    expect(svar.text).not.toMatch(/\d+%/);
+  });
+
+  it("chatten återanvänder coachReply i stället för egen logik", async () => {
+    // Två coacher hade betytt två sanningar om samma kropp.
+    const fs = await import("fs");
+    const src = fs.readFileSync("src/atlas2/CoachChat.jsx", "utf8");
+    expect(src).toMatch(/import \{ coachReply \}/);
+    expect(src).not.toMatch(/function coachReply/);
+  });
+});

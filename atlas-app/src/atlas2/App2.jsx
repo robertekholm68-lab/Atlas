@@ -262,7 +262,7 @@ export function Atlas2() {
     );
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights}
-        profile={profile} goal={mål} onStart={startaPass}
+        profile={profile} foodLog={foodLog} goal={mål} onStart={startaPass}
         onOpenGoal={() => setSheet("mal")} />
     );
     if (flik === "framsteg") return (
