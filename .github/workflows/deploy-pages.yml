@@ -1,0 +1,116 @@
+# Bygger och publicerar Askr till GitHub Pages automatiskt vid varje merge till
+# main. Ersätter den handbyggda docs/ i repot — därför checkas ingen docs/ in
+# härifrån; sajten sätts samman i CI och laddas upp som en Pages-artefakt.
+#
+# Adressen får INTE ändras: Android-skalet har
+# robertekholm68-lab.github.io/Atlas/atlas2.html hårdkodad, så atlas2.html
+# måste ligga kvar i sajtens rot.
+name: Bygg och publicera till GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# actions/deploy-pages kräver pages: write + id-token: write.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# En publicering i taget. cancel-in-progress: false så en pågående deploy får
+# slutföras i stället för att avbrytas halvvägs.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: atlas-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: atlas-app/package-lock.json
+
+      - name: Installera beroenden
+        run: npm ci
+
+      - name: Kör tester (rött stoppar publiceringen)
+        # p5-realmode är känt instabil i full svit men grön isolerat (se
+        # CLAUDE.md). En omkörning krävs så att den flakigheten inte blockerar
+        # en korrekt publicering. Reruns hjälper BARA icke-deterministiska fall:
+        # ett riktigt fel faller i alla tre försöken och stoppar deployen, en
+        # flakig p5 rensas oftast av försök två.
+        run: |
+          for i in 1 2 3; do
+            echo "== testförsök $i av 3 =="
+            if npm test; then exit 0; fi
+            echo "-- försök $i föll --"
+          done
+          echo "Testerna föll i tre försök i rad — det är inte flakighet. Avbryter publiceringen."
+          exit 1
+
+      - name: Bygg alla tre målen
+        run: |
+          npm run build                                   # desktop  -> dist/
+          npx vite build --config vite.mobile.config.js   # mobil    -> dist-mobile/
+          npx vite build --config vite.atlas2.config.js   # Askr 2.0 -> dist-atlas2/
+
+      - name: Sätt samman sajten
+        run: |
+          set -e
+          site="$GITHUB_WORKSPACE/_site"
+          rm -rf "$site"; mkdir -p "$site"
+          # Desktop-bygget bär receptbilderna (import.meta.glob) och alla
+          # public-filer (ikoner, startsida-*, figur-*, sport-icons, TESTARE.md).
+          # Dess index.html ÄR desktop-appen och ska heta app.html i sajten.
+          cp -R dist/. "$site"/
+          mv "$site/index.html" "$site/app.html"
+          # Mobil + 2.0: egna HTML och service workers. Public-filerna dubbleras
+          # men är byte-identiska, så överskrivning är ofarlig.
+          cp -R dist-mobile/. "$site"/
+          cp -R dist-atlas2/. "$site"/
+          # Landningssidan är den riktiga startsidan — läggs SIST så den blir
+          # sajtens index.html (efter att desktop-index döpts om till app.html).
+          cp landing/index.html "$site/index.html"
+          # Utan .nojekyll strippar Pages filer som börjar med _ (och kan bråka
+          # med andra namn). Krävs.
+          touch "$site/.nojekyll"
+
+      - name: Verifiera hopsättningen
+        run: |
+          set -e
+          site="$GITHUB_WORKSPACE/_site"
+          # Adressen får inte ändras: atlas2.html i roten.
+          for f in atlas2.html app.html mobile.html index.html sw.js sw-atlas2.js atlas2.webmanifest .nojekyll; do
+            test -f "$site/$f" || { echo "FEL: $f saknas i sajten"; exit 1; }
+          done
+          # Receptbilderna ska vara 134 (samma som källorna i src/assets/recipes).
+          # Färre betyder att import.meta.glob missat filer — stoppa hellre än
+          # att publicera en app med tomma tallrikar.
+          n=$(find "$site" -maxdepth 1 -type f \( -name 'g_*.webp' -o -name 'r_*.webp' \) | wc -l)
+          echo "Receptbilder i sajten: $n (förväntat 134)"
+          test "$n" -eq 134 || { echo "FEL: fel antal receptbilder ($n != 134) — import.meta.glob har troligen missat filer"; exit 1; }
+
+      - name: Ladda upp Pages-artefakt
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicera till GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
