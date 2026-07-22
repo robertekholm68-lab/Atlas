@@ -27,9 +27,15 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const isDoc = e.request.mode === "navigate" || e.request.destination === "document";
   if (isDoc) {
-    // Network-first: annars fastnar testare på en gammal version.
+    // Network-first + no-cache (samma som 2.0): revalidera dokumentet mot servern
+    // varje navigering och kringgå HTTP-cachens max-age. GitHub Pages serverar med
+    // max-age=600, så en ren fetch kunde dölja en ny publicering i upp till 10 min
+    // (gammalt app-skal tills man HÅRD-laddade om). "no-cache" ger 304 vid oförändrad
+    // HTML (småbytes) och släpper igenom ny HTML direkt. Offlinestödet är orört:
+    // .catch() faller fortfarande tillbaka på cachen, sedan mobile.html. Assets
+    // (receptbilder) rörs INTE — de ligger kvar cache-first i grenen nedan.
     e.respondWith(
-      fetch(e.request).then((res) => {
+      fetch(e.request, { cache: "no-cache" }).then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => { try { c.put(e.request, copy); } catch (x) {} });
         return res;
