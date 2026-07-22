@@ -55,6 +55,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
       goalProfile: goal ? { type: goal.typ } : null,
       ...kost,   // nutritionTargets, nutritionTotals, nutritionDays
       weights,   // [{ts,kg}] → §13 facts.vikt, så coachen kan svara om vikt
+      goal,      // journey-målet → §13 facts.målresa (fas, veckor kvar, delmål)
       measurements: [],
       cycle: null,
       supplements: [],

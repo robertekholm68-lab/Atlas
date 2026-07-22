@@ -19,9 +19,11 @@
 // — inte längre i apparnas vy-lager. Apparna matar in sina egna modifierare
 // (ctx.cycle, ctx.nutRec, ctx.readinessAdjust) så coachen och kartan visar samma tal
 // ur en källa. Vikt-blocket läser weights [{ts,kg}] eller measurements [{date,weight}]
-// — samma sanning oavsett vy. Kvar att koppla om: coachReplys grenar för program,
-// kost och målresa, samt App.jsx/MobileApp som fortfarande räknar sin headline
-// parallellt (samma formel, samma tal — men två beräkningar tills de läser kropp.readiness).
+// — samma sanning oavsett vy. Målresa-grenen läser facts.målresa (fas, veckor kvar,
+// nästa delmål, följsamhet) ur journey-målet (ctx.goal). Kvar att koppla om:
+// coachReplys grenar för program och kost, samt App.jsx/MobileApp som fortfarande
+// räknar sin headline parallellt (samma formel, samma tal — men två beräkningar
+// tills de läser kropp.readiness).
 
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "../atlas2/store.js";
 import { MUSCLES } from "../data/muscles.js";

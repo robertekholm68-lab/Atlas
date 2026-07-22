@@ -200,6 +200,27 @@ function coachReply(text, ctx, lastTopic = null) {
     return { text: r, chips: chip(["Hur går mitt mål?", "Berätta om kosten", "Hur ser återhämtningen ut?"]) };
   }
 
+  // 4c) Målresa — fas, veckor kvar, nästa delmål, följsamhet ur §13 (facts.målresa).
+  // Journey-specifika frågor; generella "hur går mitt mål" faller vidare till
+  // mål-grenen (goalReasoning), som handlar om en annan sak (recomp-mixen).
+  if (/målresa|min resa|hur går resan|var i resan|vilken fas|nuvarande fas|vilken del av resan|delmål|veckor kvar|hur långt (har jag )?kvar|hur lång tid kvar|nästa hållpunkt/.test(t)) {
+    const m = facts.målresa;
+    if (!m.namn) return { text: "Du har ingen målresa satt än — sätt ett mål med ett datum så visar jag var i resan du är, vilken fas du bör ligga i och nästa delmål.", chips: chip(["Hur ser återhämtningen ut?", "Vad ska jag träna?"]) };
+    let r = `Din målresa: ${m.namn}.`;
+    if (m.passerat) {
+      r += " Måldatumet har passerat — dags att sätta ett nytt mål eller förlänga det här.";
+    } else {
+      if (m.fas) r += ` Just nu i ${m.fas}-fasen — ${m.fasFokus}`;
+      if (m.veckorKvar != null) r += `\n\n${m.veckorKvar} ${m.veckorKvar === 1 ? "vecka" : "veckor"} kvar till måldatumet.`;
+      if (m.nästaDelmål) r += ` Nästa delmål: ${m.nästaDelmål.namn} (${new Date(m.nästaDelmål.datum).toLocaleDateString("sv-SE")}).`;
+    }
+    if (m.följsamhet != null) r += `\n\nFöljsamhet hittills: ${m.följsamhet}% av planerade pass.`;
+    // Per-block-tillit: få loggade pass sedan start → osäkert att uttala sig om
+    // hur resan går. Ett svagt block drar bara ner uttalanden OM RESAN.
+    if (m.tillit.nivå === "svag" || m.tillit.nivå === "ingen") r += `\n\nMen det vilar på tunt underlag (${m.tillit.text}) — för få loggade pass sedan start för att säga något säkert om hur resan går än. Logga fler pass.`;
+    return { text: r, chips: chip(["Hur ser återhämtningen ut?", "Vad ska jag träna?", "Hur går mitt mål?"]) };
+  }
+
   // 4) Mål / resultat / recomp
   if (/mål|recomp|framsteg|hur går det|resultat|fett|kondition|bygga muskel|deffa|bulk/.test(t)) {
     const gr = goalProfile ? goalReasoning({ goalProfile, sessions, nutritionTotals, nutritionTargets, nutritionDays, readiness: overallReadiness, measurements }) : null;
