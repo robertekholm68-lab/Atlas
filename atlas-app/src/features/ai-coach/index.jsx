@@ -132,10 +132,22 @@ function coachReply(text, ctx, lastTopic = null) {
     const kropp = facts.kropp;
     // Siffran kommer nu från §13: lastviktad bas + cykel/kost (och ev. app-nudge),
     // beräknad i facts.js så coachen och kartan visar EXAKT samma tal ur en källa.
-    // Faller tillbaka på appens headline-värde bara när §13 saknar muskellast
-    // (äldre importerad data / testfixtures utan muscleLoads).
-    const rd = kropp.readiness != null ? kropp.readiness : overallReadiness;
-    if (rd == null) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
+    // §13 ger null utan FÄRSK belastning (senaste veckan) — då visar kartan "—" och
+    // coachen måste säga samma sak, inte falla tillbaka på ett platt snitt (det var
+    // just motsägelsen). Fallbacken på appens headline gäller BARA när historiken
+    // saknar muskellast helt (äldre importerad data / testfixtures) och §13 därför
+    // inte kan räkna alls — då finns ingen viktad siffra att vara oense om.
+    const harMuskellast = (sessions || []).some(s => s && s.muscleLoads && Object.keys(s.muscleLoads).length > 0);
+    const rd = kropp.readiness != null ? kropp.readiness : (harMuskellast ? null : overallReadiness);
+    if (rd == null) {
+      // Ingen aktuell siffra (ingen färsk belastning). readinessFörbehåll bär
+      // skillnaden utvilad vs otränad — nu OVANPÅ det null:ade viktade talet, i
+      // stället för ovanpå en missvisande hög siffra. null-vid-8-dagar och
+      // förbehållet löser olika saker och lever båda kvar, sida vid sida.
+      if (!facts.träning.passTotalt) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
+      const f = readinessFörbehåll(facts);
+      return { text: `Jag ger dig ingen readiness-siffra just nu — den bygger på färsk belastning, och du har inte tränat den senaste veckan.${f ? `\n\n${f}` : ""}`, chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
+    }
     // Fräscha/trötta ur §13: det utesluter otränade muskler (status no_data), så
     // avträning inte längre listas som "fräsch och redo". Faller tillbaka på
     // muscleStates när passen saknar muskellast (t.ex. äldre importerad data).
@@ -156,10 +168,9 @@ function coachReply(text, ctx, lastTopic = null) {
     // Slår ihop kropp- och träningstilliten (datalage.svagast), så en användare
     // med få pass får siffran presenterad som fingervisning, inte som facit.
     if (facts.datalage.svagast === "svag") r += `\n\nMen det här vilar på tunt underlag (${kropp.tillit.text}) — läs siffran som en fingervisning, inte en dom. Fler loggade pass gör den säkrare.`;
-    // Skilj "utvilad" från "har inte tränat". Utan detta presenterar coachen
-    // avträning som god form. Nu ur delade facts (träning.dagarSedanPass).
-    const förbehåll = readinessFörbehåll(facts);
-    if (förbehåll) r += `\n\n${förbehåll}`;
+    // OBS: förbehållet (utvilad vs otränad) hör hemma i null-grenen ovan — när en
+    // viktad siffra VISAS finns det per definition färsk belastning (senaste pass
+    // ≤ tröskeln), så readinessFörbehåll är null här och skulle bara vara brus.
     if (senior) r += "\n\nMed åren tar återhämtningen ofta lite längre tid — pressa inte varje pass till max, och prioritera sömn och protein. Samtidigt ger styrketräningen ännu mer utdelning nu: den motverkar muskel- och benförlust.";
     return { text: r, chips: chip([...(senior ? ["Träning efter 50"] : []), "Vad ska jag träna?", "Hur går mitt mål?"]) };
   }

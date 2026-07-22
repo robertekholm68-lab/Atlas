@@ -219,8 +219,11 @@ export const buildCoachFacts = coachFacts;
  */
 export function readinessFörbehåll(facts, tröskel = 10) {
   const d = facts && facts.träning && facts.träning.dagarSedanPass;
-  if (d == null) return "Du har inga loggade pass, så siffran beskriver en kropp som inte belastats — inte en återhämtad kropp.";
+  if (d == null) return "Du har inga loggade pass, så det finns ingen readiness att beskriva — kroppen har inte belastats, inte återhämtats.";
   if (d < tröskel) return null;
   const tid = d >= 60 ? `${Math.floor(d / 30)} månader` : `${d} dagar`;
-  return `Observera: ditt senaste pass var för ${tid} sedan. Den höga siffran betyder att kroppen inte belastats, inte att den är i form. Börja lugnt.`;
+  // Formuleras utan att förutsätta en visad siffra: i den viktade världen är
+  // talet redan null vid det här laget (ingen färsk belastning). En hög siffra
+  // HADE varit avträning, inte form — men den visas inte längre.
+  return `Observera: ditt senaste pass var för ${tid} sedan — kroppen har inte belastats på ett tag. En hög readiness-siffra hade varit avträning, inte form, så jag ger ingen. Börja lugnt när du är tillbaka.`;
 }
