@@ -268,14 +268,23 @@ function coachReply(text, ctx, lastTopic = null) {
     return { text: r, topic: { kind: "topic", id: "protein_kost" }, chips: chip(["Berätta om energibalans", "Hur går mitt mål?", "Hur ser återhämtningen ut?"]) };
   }
 
-  // 6) Programförslag / ändring
+  // 6) Programförslag / ändring — siffror + per-block-tillit ur §13 (facts.program)
   if (/förslag|ändra|förbättra|justera|program|platå|plateau|byt|coach/.test(t)) {
-    if (!activeProgram) return { text: "Du har inget aktivt program. Öppna programbiblioteket så föreslår jag ett utifrån ditt mål, sedan kan jag ge löpande förbättringsförslag.", action: { label: "Öppna program", kind: "programs" }, chips: chip(["Hur går mitt mål?", "Vad ska jag träna?"]) };
-    const an = analyzeProgram({ program: activeProgram, sessions, readiness: overallReadiness });
-    const props = (an && an.proposals) || [];
-    if (!props.length) return { text: `Jag ser inget som behöver ändras i ${activeProgram.name} just nu — det ser balanserat ut. Fortsätt logga pass så flaggar jag om något dyker upp (platå, trötthet, obalans).`, chips: chip(["Hur går mitt mål?", "Vad ska jag träna?"]) };
-    const p = props[0];
-    return { text: `Ett förslag för ${activeProgram.name}:\n\n${p.title}\n${p.why || p.detail || ""}${principleLine(p.kind)}\n\nJag ändrar aldrig något själv — du granskar och godkänner i Program.`, action: { label: "Granska i Program", kind: "programs" }, topic: KIND_TO_TOPIC[p.kind] ? { kind: "topic", id: KIND_TO_TOPIC[p.kind] } : null, chips: chip(["Hur går mitt mål?", "Hur ser återhämtningen ut?"]) };
+    const pf = facts.program;
+    if (!pf.namn) return { text: "Du har inget aktivt program. Öppna programbiblioteket så föreslår jag ett utifrån ditt mål, sedan kan jag ge löpande förbättringsförslag.", action: { label: "Öppna program", kind: "programs" }, chips: chip(["Hur går mitt mål?", "Vad ska jag träna?"]) };
+    if (!pf.förslag) return { text: `Jag ser inget som behöver ändras i ${pf.namn} just nu — det ser balanserat ut. Fortsätt logga pass så flaggar jag om något dyker upp (platå, trötthet, obalans).`, chips: chip(["Hur går mitt mål?", "Vad ska jag träna?"]) };
+    const p = pf.förslag;
+    let r = `Ett förslag för ${pf.namn}:\n\n${p.title}\n${p.why || p.detail || ""}${principleLine(p.kind)}`;
+    // Per-block-tillit: med få loggade pass ser coachen bara programmets STRUKTUR,
+    // inte hur du svarar. Strukturella luckor gäller ändå; platå/deload/följsamhet
+    // kräver underlag över tid — säg vilket det är i stället för att låta lika säker.
+    if (pf.tillit.nivå === "svag" || pf.tillit.nivå === "ingen") {
+      r += p.strukturellt
+        ? `\n\nDet här är en strukturell lucka i själva programmet — den gäller oavsett hur mycket du hunnit logga. ${pf.tillit.nivå === "ingen" ? "Men utan loggade pass" : `Men med ${pf.tillit.text}`} kan jag ännu inte bedöma platåer, deload-behov eller hur du följer planen.`
+        : `\n\nMen det bygger på ${pf.tillit.text} — läs det som en tidig signal, inte en dom. Fler loggade pass gör bedömningen säkrare.`;
+    }
+    r += `\n\nJag ändrar aldrig något själv — du granskar och godkänner i Program.`;
+    return { text: r, action: { label: "Granska i Program", kind: "programs" }, topic: KIND_TO_TOPIC[p.kind] ? { kind: "topic", id: KIND_TO_TOPIC[p.kind] } : null, chips: chip(["Hur går mitt mål?", "Hur ser återhämtningen ut?"]) };
   }
 
   // 6a0) Variation — "varierad träning / samma övningar / variation"

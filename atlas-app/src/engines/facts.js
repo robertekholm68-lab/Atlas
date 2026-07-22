@@ -19,16 +19,23 @@
 // — inte längre i apparnas vy-lager. Apparna matar in sina egna modifierare
 // (ctx.cycle, ctx.nutRec, ctx.readinessAdjust) så coachen och kartan visar samma tal
 // ur en källa. Vikt-blocket läser weights [{ts,kg}] eller measurements [{date,weight}]
-// — samma sanning oavsett vy. Målresa-grenen läser facts.målresa (fas, veckor kvar,
-// nästa delmål, följsamhet) ur journey-målet (ctx.goal). Kvar att koppla om:
-// coachReplys grenar för program och kost, samt App.jsx/MobileApp som fortfarande
-// räknar sin headline parallellt (samma formel, samma tal — men två beräkningar
-// tills de läser kropp.readiness).
+// — samma sanning oavsett vy. Målresa läser facts.målresa (fas, veckor kvar, delmål)
+// ur journey-målet (ctx.goal); kost läser facts.kost (mål + dagens intag); program
+// läser facts.program (analyzeProgram-förslagen, märkta strukturella vs
+// historikberoende). Kvar att koppla om: BARA mål-grenens recomp-resonemang
+// (goalReasoning) — en egen sak från programförslagen. Dessutom räknar
+// App.jsx/MobileApp fortfarande sin headline-readiness parallellt (samma formel,
+// samma tal — men två beräkningar tills de läser kropp.readiness).
 
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "../atlas2/store.js";
 import { MUSCLES } from "../data/muscles.js";
 import { resa as byggResa, nästaDelmål } from "./journey.js";
 import { readinessBreakdown, metricSeries } from "./index.js";
+import { analyzeProgram } from "./coach-programs.js";
+
+// Förslag som gäller ur PROGRAMMETS STRUKTUR (giltiga oavsett loggad historik)
+// kontra historikberoende (platå/deload/följsamhet — kräver underlag över tid).
+const STRUKTURELLA_FÖRSLAG = new Set(["add-exercise", "reduce-volume", "respread-days"]);
 
 /** Tillitsnivå ur antal observationer. Trubbig med flit — hellre försiktig. */
 function tillit(n, tröskel = 3) {
@@ -104,12 +111,22 @@ export function coachFacts(ctx = {}, now = Date.now()) {
   };
 
   // ── programmet ─────────────────────────────────────────────────────────
+  // analyzeProgram-analysen bor nu här. Readiness matas in ur kropp-blocket, så
+  // deload-bedömningen använder samma tal coachen visar. Topp-förslaget märks som
+  // strukturellt eller historikberoende — det styr hur tilliten läses i coachen.
+  const progAnalys = ctx.activeProgram ? analyzeProgram({ program: ctx.activeProgram, sessions, readiness: kropp.readiness }) : null;
+  const progFörslag = (progAnalys && progAnalys.proposals) || [];
+  const topp = progFörslag[0] || null;
   const program = ctx.activeProgram ? {
     namn: ctx.activeProgram.name,
     passPerVecka: ctx.activeProgram.daysPerWeek,
     följerPlanen: vecka.length >= (ctx.activeProgram.daysPerWeek || 0),
+    // Följsamhet i procent (loggade vs planerade pass, senaste 2 v). Historiksiffra.
+    följsamhet: progAnalys && progAnalys.adherence ? Math.round(progAnalys.adherence.rate * 100) : null,
+    antalFörslag: progFörslag.length,
+    förslag: topp ? { title: topp.title, why: topp.why, detail: topp.detail, kind: topp.kind, strukturellt: STRUKTURELLA_FÖRSLAG.has(topp.kind) } : null,
     tillit: tillit(sessions.length),
-  } : { namn: null, tillit: tillit(0) };
+  } : { namn: null, antalFörslag: 0, förslag: null, tillit: tillit(0) };
 
   // ── vikten ─────────────────────────────────────────────────────────────
   // Primärt ur weights [{ts,kg}] (Askr 2.0). Saknas de tas vikten ur
