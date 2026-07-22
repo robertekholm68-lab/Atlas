@@ -69,7 +69,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-07-21)
+## Aktuella siffror (avlästa 2026-07-22)
 
 | Sak | Antal |
 |---|---|
@@ -80,7 +80,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, SLV-databasen | 2606 |
 | Livsmedel, kuraterade | 74 |
 | Recept | 276 |
-| Tester (vitest) | 627 i 61 filer |
+| Tester (vitest) | 632 i 61 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -155,6 +155,14 @@ källa; apparna matar in sina egna modifierare (`ctx.cycle`, `ctx.nutRec`,
 vs **historikberoende** (platå/deload/följsamhet — tillitsgatade). Kvar på ctx:
 BARA mål-grenens **recomp-resonemang** (`goalReasoning`) — en egen sak från
 programförslagen. Båda apparna gör samma bedömning av när data får uttalas om.
+
+**Readiness har EN aggregering.** Talet är ett **lastviktat snitt** (muskler du
+belastar mer väger tyngre) + cykel/kost — överallt. Det gamla platta snittet
+(`bodyState.overall`) visas inte längre någonstans; det finns kvar som en
+coach-fallback som ändå skrivs över av `kropp.readiness` så fort passen har
+muskellast. MEN samma formel räknas på tre ställen — `facts.js` (`kropp.readiness`,
+källan för coach + karta), `App.jsx` och `MobileApp` (varsin egen headline).
+Samma tal idag, men tre beräkningar som kan driva isär — se backloggen.
 
 `readinessFörbehåll(facts)` skiljer **utvilad** från **otränad**. Hög readiness
 betyder två helt olika saker beroende på historiken. Utan förbehållet svarade
@@ -249,10 +257,14 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
   stänger öppet ark, går till hem från annan flik, backar genom onboarding-steg,
   och lämnar appen först på hem/start. Bygger inte upp historik vid flikbyten.
   Ett pågående pass kastas aldrig (live ligger kvar i `atlas.v3.live`).
-- **Näringsmål i v3** (`atlas.v3.nutritionTargets`, `NutritionSheet.jsx`):
-  matvyn visar ring/återstående, coachen får riktiga värden via `nutritionCtx`
-  och skiljer "inget mål satt" från "mål satt men inget loggat idag". Utan mål
-  hittas ingenting på.
+- **Näringsmål OCH matlogg i v3 — INGEN öppen lucka.** `NutritionSheet.jsx`
+  sätter näringsmål (`atlas.v3.nutritionTargets`); `FoodView.jsx` är en riktig
+  matlogg med livsmedelsdatabas (`FOOD_INDEX`). Matvyn visar ring/återstående,
+  coachen får riktiga värden via `nutritionCtx` och läser dem ur `facts.kost`.
+  Coachen skickar `null` BARA i de ärliga tillstånden — "inget mål satt" och
+  "mål satt men inget loggat idag" (aldrig påhittade nollor). Alltså: v3 saknar
+  inte nutrition; att coachen ibland svarar "inga kostmål" är rätt beteende, inte
+  en saknad funktion.
 - **Async store + synk-form:** `store.load/save` är asynkrona (localStorage kvar
   som rygg); `App2` hydreras en gång. Varje post (pass, vikt, matlogg, mål) bär
   `id`, `userId`, `deviceId`, `updatedAt`. Nya poster får slumpat id vid
@@ -264,6 +276,12 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
   träning, vikt, målresa, kost och program (siffror + per-block-tillit ur §13).
   Kvar: BARA mål-grenens recomp-resonemang (`goalReasoning`) — en egen sak från
   programförslagen (`analyzeProgram`, nu i `facts.program`).
+- **Ena headline-readiness mot `kropp.readiness`.** `App.jsx` (`trainingBase` +
+  `readinessBreakdown`) och `MobileApp.jsx` (rad 143) räknar sitt readiness-tal
+  parallellt med en egen kopia av samma lastviktade formel. Samma tal som
+  `facts.kropp.readiness` idag, men tre beräkningar som kan driva isär vid en
+  framtida ändring. Låt båda läsa `kropp.readiness` direkt — precis som 2.0 redan
+  gör (App2/CoachView/ProgressView) — så aggregeringen bara finns på ETT ställe.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
 - Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
