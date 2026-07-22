@@ -21,7 +21,7 @@ const FÖRSLAG = [
   "Bröstet svarar inte",
 ];
 
-export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, onStart }) {
+export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, weights = [], onStart }) {
   const [rader, setRader] = useState([]);
   const [text, setText] = useState("");
   const [ämne, setÄmne] = useState(null);
@@ -54,6 +54,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
       foodLog,
       goalProfile: goal ? { type: goal.typ } : null,
       ...kost,   // nutritionTargets, nutritionTotals, nutritionDays
+      weights,   // [{ts,kg}] → §13 facts.vikt, så coachen kan svara om vikt
       measurements: [],
       cycle: null,
       supplements: [],

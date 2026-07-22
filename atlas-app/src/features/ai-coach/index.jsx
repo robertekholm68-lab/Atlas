@@ -184,6 +184,22 @@ function coachReply(text, ctx, lastTopic = null) {
     return { text: "Du har inget aktivt program än. Vill du att jag öppnar programbiblioteket så hittar vi ett som passar ditt mål?", action: { label: "Öppna program", kind: "programs" }, chips: chip(["Hur går mitt mål?", "Hur ser återhämtningen ut?"]) };
   }
 
+  // 4b) Vikt / viktutveckling — siffror + per-block-tillit ur §13 (facts.vikt).
+  // Ligger före mål-grenen så en tydlig viktfråga får ett viktsvar; generella
+  // "hur går det"-frågor faller vidare till målresonemanget.
+  if (/väger|hur mycket väg|min vikt|min kroppsvikt|viktutveckling|viktkurva|viktnedgång|viktökning|gått (ner|upp) i vikt|gå (ner|upp) i vikt|lagt på mig|tappat.{0,10}(kilo|kg)/.test(t)) {
+    const v = facts.vikt;
+    if (v.senaste == null) return { text: "Jag har ingen loggad kroppsvikt än — logga några vägningar så följer jag utvecklingen. En enstaka mätning säger inget om en trend.", chips: chip(["Hur går mitt mål?", "Berätta om kosten"]) };
+    let r = `Senaste loggade vikt: ${v.senaste} kg.`;
+    if (v.förändring != null && v.förändring !== 0) r += ` Sedan din första notering har du gått ${v.förändring < 0 ? "ner" : "upp"} ${Math.abs(v.förändring)} kg.`;
+    else if (v.förändring === 0) r += " Den ligger stabilt sedan första noteringen.";
+    // Per-block-tillit: två punkter är ingen trend (§13-tröskel 3). Ett svagt
+    // vikt-block drar ner uttalanden OM VIKTEN, inget annat.
+    if (v.tillit.nivå === "svag") r += `\n\nMen det vilar på tunt underlag (${v.tillit.text}) — det räcker inte för en trend än. Logga fler vägningar så blir riktningen tillförlitlig.`;
+    else r += `\n\n(${v.tillit.text} — tillräckligt för att läsa en riktning.)`;
+    return { text: r, chips: chip(["Hur går mitt mål?", "Berätta om kosten", "Hur ser återhämtningen ut?"]) };
+  }
+
   // 4) Mål / resultat / recomp
   if (/mål|recomp|framsteg|hur går det|resultat|fett|kondition|bygga muskel|deffa|bulk/.test(t)) {
     const gr = goalProfile ? goalReasoning({ goalProfile, sessions, nutritionTotals, nutritionTargets, nutritionDays, readiness: overallReadiness, measurements }) : null;

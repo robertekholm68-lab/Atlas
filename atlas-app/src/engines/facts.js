@@ -14,18 +14,19 @@
 // fattades på den felaktiga uppgiften. Nu finns den, i motorlagret, där båda
 // apparna kan nå den.
 //
-// STATUS: Askr 2.0 läser härifrån. coachReplys kropp- och träningsgrenar gör det
-// nu också, och readiness-SIFFRAN (lastviktad bas + cykel/kost) räknas här — inte
-// längre i apparnas vy-lager. Apparna matar in sina egna modifierare (ctx.cycle,
-// ctx.nutRec, ctx.readinessAdjust) så coachen och kartan visar samma tal ur en
-// källa. Kvar att koppla om: coachReplys grenar för program, vikt, kost och målresa,
-// samt App.jsx/MobileApp som fortfarande räknar sin headline parallellt (samma
-// formel, samma tal — men det är två beräkningar tills de läser kropp.readiness).
+// STATUS: Askr 2.0 läser härifrån. coachReplys kropp-, tränings- och viktgrenar
+// gör det nu också, och readiness-SIFFRAN (lastviktad bas + cykel/kost) räknas här
+// — inte längre i apparnas vy-lager. Apparna matar in sina egna modifierare
+// (ctx.cycle, ctx.nutRec, ctx.readinessAdjust) så coachen och kartan visar samma tal
+// ur en källa. Vikt-blocket läser weights [{ts,kg}] eller measurements [{date,weight}]
+// — samma sanning oavsett vy. Kvar att koppla om: coachReplys grenar för program,
+// kost och målresa, samt App.jsx/MobileApp som fortfarande räknar sin headline
+// parallellt (samma formel, samma tal — men två beräkningar tills de läser kropp.readiness).
 
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "../atlas2/store.js";
 import { MUSCLES } from "../data/muscles.js";
 import { resa as byggResa, nästaDelmål } from "./journey.js";
-import { readinessBreakdown } from "./index.js";
+import { readinessBreakdown, metricSeries } from "./index.js";
 
 /** Tillitsnivå ur antal observationer. Trubbig med flit — hellre försiktig. */
 function tillit(n, tröskel = 3) {
@@ -109,7 +110,12 @@ export function coachFacts(ctx = {}, now = Date.now()) {
   } : { namn: null, tillit: tillit(0) };
 
   // ── vikten ─────────────────────────────────────────────────────────────
-  const vikter = (ctx.weights || []).slice().sort((a, b) => a.ts - b.ts);
+  // Primärt ur weights [{ts,kg}] (Askr 2.0). Saknas de tas vikten ur
+  // measurements [{date,weight}] (nuvarande appens vy) — samma sanning oavsett
+  // vilken vy som matar in, så coachen kan svara om vikt i båda apparna.
+  const vikter = (ctx.weights && ctx.weights.length)
+    ? ctx.weights.slice().sort((a, b) => a.ts - b.ts)
+    : metricSeries(ctx.measurements, "weight").map(m => ({ ts: m.date, kg: m.value }));
   const vikt = {
     senaste: vikter.length ? vikter[vikter.length - 1].kg : null,
     förändring: vikter.length >= 2 ? +(vikter[vikter.length - 1].kg - vikter[0].kg).toFixed(1) : null,

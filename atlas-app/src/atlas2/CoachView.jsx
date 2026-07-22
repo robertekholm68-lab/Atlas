@@ -117,7 +117,7 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
       <div style={{ height: 1, background: C.border, margin: "26px 0 20px" }} />
 
       <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
-        foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} onStart={onStart} />
+        foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
 
       {/* Ärlighetsraden. Står kvar även när underlaget är gott — den är en
           egenskap hos produkten, inte en ursäkt när det går dåligt. */}
