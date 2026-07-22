@@ -261,39 +261,83 @@ export function Atlas2() {
   useEffect(() => { if (hydrated) save("nutritionTargets", nutritionTargets); }, [hydrated, nutritionTargets]);
 
   // ── OS-bakåtknappen mot webbhistoriken ────────────────────────────────────
-  // popstate-lyssnaren registreras EN gång och läser flik/sheet ur en ref, så
-  // att den alltid ser aktuellt tillstånd utan att bindas om vid varje byte.
-  const navRef = useRef({ sheet, flik });
-  useEffect(() => { navRef.current = { sheet, flik }; }, [sheet, flik]);
+  // popstate-lyssnaren läser HELA navigeringen (step/flik/sheet) ur en ref så att
+  // den alltid ser aktuellt tillstånd utan att bindas om vid varje byte.
+  const navRef = useRef({ step, sheet, flik });
+  useEffect(() => { navRef.current = { step, sheet, flik }; }, [step, sheet, flik]);
 
+  // EN enda vaktpost i historiken hålls så länge vi är i ett "guardat" steg
+  // (onboarding "mode" eller appen). `guardRef` speglar om vaktposten ligger
+  // uppe. Fram-och-tillbaka mellan flikar bygger ALDRIG upp historik — bakåt
+  // behöver aldrig tryckas tio gånger för att komma ut.
+  const guardRef = useRef(false);
+  const tryckVakt = () => { window.history.pushState({ askr: true }, ""); guardRef.current = true; };
+
+  // Lägg vaktposten när vi kliver in i ett guardat steg (mode/app) och den inte
+  // redan finns. "start" är oguardat — där ska bakåt lämna appen direkt.
   useEffect(() => {
-    if (step !== "app") return;   // ingen historikvakt under onboarding
-    // EN enda vaktpost i historiken. Vi trycker in den när appen startar och en
-    // ny bara EFTER att ett bakåttryck konsumerat den (se onPop). Därför bygger
-    // fram-och-tillbaka mellan flikar ALDRIG upp historik — bakåt behöver aldrig
-    // tryckas tio gånger för att komma ut.
-    window.history.pushState({ askr: true }, "");
+    if ((step === "mode" || step === "app") && !guardRef.current) tryckVakt();
+  }, [step]);
+
+  // Lyssnaren registreras EN gång för hela livscykeln (onboarding → app).
+  useEffect(() => {
     const onPop = () => {
+      guardRef.current = false;   // webbläsaren har just poppat vår vaktpost
       const åtgärd = backAction(navRef.current);
-      if (åtgärd === "stäng-ark") {
-        setSheet(null);
-        window.history.pushState({ askr: true }, "");   // återställ vaktposten
-      } else if (åtgärd === "till-hem") {
-        // Behåller live-passet — det ligger kvar i state och atlas.v3.live — så
-        // detta pausar ett pågående pass i stället för att kasta det.
-        setFlik("hem");
-        window.history.pushState({ askr: true }, "");
+      if (åtgärd === "stäng-ark") { setSheet(null); tryckVakt(); }
+      else if (åtgärd === "till-hem") {
+        // Behåller live-passet (ligger kvar i state och atlas.v3.live) — detta
+        // pausar ett pågående pass i stället för att kasta det.
+        setFlik("hem"); tryckVakt();
+      } else if (åtgärd === "till-start") {
+        // Backa ett onboarding-steg. "start" är oguardat → ingen ny vaktpost;
+        // nästa bakåt lämnar appen.
+        setStep("start");
       } else {
-        // Hem utan ark: låt bakåt lämna appen. Vaktposten är redan borttagen av
-        // webbläsaren, så ett extra steg bakåt tar oss ut ur appen.
+        // Lämna appen. Vaktposten är redan borttagen av webbläsaren, så ett extra
+        // steg bakåt tar oss ut.
         window.history.back();
       }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [step]);
+  }, []);
+
+  // Global a11y-CSS, injiceras en gång i head:
+  //  · Synlig tangentbordsfokus GENOMGÅENDE (även onboarding-skärmarna, som
+  //    ligger utanför app-roten). :focus-visible → bara vid tangentbord, inte
+  //    musklick, så accenten inte blinkar vid varje tap.
+  //  · prefers-reduced-motion: nollar transitions/animationer för den som bett
+  //    om mindre rörelse. `!important` krävs för att slå inline-transitions
+  //    (t.ex. vilo-ringen och startbildens bredd).
+  useEffect(() => {
+    const ID = "askr-a11y";
+    if (document.getElementById(ID)) return;
+    const st = document.createElement("style");
+    st.id = ID;
+    st.textContent =
+      `:focus-visible{outline:2px solid ${C.lime};outline-offset:2px;border-radius:6px}` +
+      `@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}}`;
+    document.head.appendChild(st);
+  }, []);
+
+  // ── Ark som dialog: fokus in vid öppning + Escape stänger ─────────────────
+  // Tillgänglighet: ett öppet ark ska ta emot fokus (skärmläsare/tangentbord)
+  // och gå att stänga med Escape, inte bara med bakgrundsklick (som kräver mus).
+  const arkRef = useRef(null);
+  useEffect(() => {
+    if (!sheet) return;
+    if (arkRef.current) { try { arkRef.current.focus(); } catch (e) {} }
+    const onKey = e => { if (e.key === "Escape") setSheet(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheet]);
 
   const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
+  // Läsbar etikett för arket (aria-label på dialogen).
+  const arkEtikett = s =>
+    s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "import" ? "Historik"
+    : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj" : "Ark";
 
   const pickMode = m => {
     setMode(m); save("mode", m);
@@ -362,12 +406,13 @@ export function Atlas2() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BFONT, maxWidth: 480, margin: "0 auto" }}>
+    <div className="askr-app" style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BFONT, maxWidth: 480, margin: "0 auto" }}>
       {vy()}
       <BottomNav aktiv={flik} onChange={setFlik} />
       {sheet && (
         <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
+          <div ref={arkRef} role="dialog" aria-modal="true" aria-label={arkEtikett(sheet)} tabIndex={-1}
+            onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
             {sheet === "mal" ? (
               <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />

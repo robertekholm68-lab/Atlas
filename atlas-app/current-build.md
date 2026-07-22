@@ -64,6 +64,10 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 - **Askr 2.0 har EGEN namnrymd** (`atlas.v3.*`) och rör aldrig de andra.
   Import från v2/mobile finns i `atlas2/import.js` — läser, skriver aldrig
   tillbaka.
+- **`store.load/save` är asynkrona** (localStorage kvar som rygg) — sömmen en
+  framtida enhetssynk behöver. `App2` hydreras en gång efter montering. Poster
+  bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
+  backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
 ## Aktuella siffror (avlästa 2026-07-21)
 
@@ -76,7 +80,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, SLV-databasen | 2606 |
 | Livsmedel, kuraterade | 74 |
 | Recept | 276 |
-| Tester (vitest) | 599 i 61 filer |
+| Tester (vitest) | 627 i 61 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -96,19 +100,23 @@ dashboard, body-map, training, programs, nutrition, recipes, goals, ai-coach,
 progress, calendar, profile, machines, chamber, onboarding, settings.
 
 ### `src/atlas2/` — Askr 2.0
-`design.js` (alla visuella beslut på ett ställe), `store.js` (v3-lagring +
-härledda tillstånd + `sessionVolume`), `import.js` (historikimport),
+`design.js` (alla visuella beslut på ett ställe), `store.js` (async v3-lagring +
+härledda tillstånd + `sessionVolume` + synk-form), `import.js` (historikimport),
 `BodyMap2.jsx`, `Nav.jsx`, `WorkoutView.jsx`, `FoodView.jsx`, `CoachView.jsx`,
-`ProgressView.jsx`, `ProgramSheet.jsx`, `ImportSheet.jsx`, `MuscleSheet.jsx`,
-`GoalSheet.jsx`, `App2.jsx`, `main2.jsx`, `body_regions.json`.
+`CoachChat.jsx`, `ProgressView.jsx`, `ProgramSheet.jsx`, `ImportSheet.jsx`,
+`MuscleSheet.jsx`, `GoalSheet.jsx`, `NutritionSheet.jsx`, `backnav.js`
+(OS-bakåtbeslut, rent), `App2.jsx`, `main2.jsx`, `body_regions.json`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
 
 **PWA:** `vite.atlas2.config.js` emitterar `sw-atlas2.js` och
 `atlas2.webmanifest` som riktiga filer. Service workers får enligt spec inte
-registreras från blob:-adresser. Dokument hämtas network-first, allt annat
-cache-first. Ikoner: `atlas-icon-192.png`, `-512.webp`, `-512-mask.webp` i
-`public/`, delade med mobilen.
+registreras från blob:-adresser. Dokument hämtas network-first **med
+`{ cache: "no-cache" }`** (revalidering, kringgår GitHub Pages 10-min HTTP-cache
+så en ny publicering slår igenom utan hård omladdning); allt annat cache-first
+för offlinestöd. Cachenamn `atlas2-<byggtid>`, gamla rensas vid `activate`.
+Ikoner: `atlas-icon-192.png`, `-512.webp`, `-512-mask.webp` i `public/`, delade
+med mobilen.
 
 ### `src/data/`
 tokens, muscles (21-taxonomi + vektorpaths), exercises, machines, gyms, foods
@@ -191,17 +199,27 @@ data i skalet försvinner.
 
 ## Deploy
 
-GitHub Pages, `/docs` på `main`, HTTPS. `file://` gör localStorage opålitligt
-och blockerar service worker.
+**Automatisk sedan 2026-07-21:** GitHub Actions (`.github/workflows/deploy-pages.yml`)
+bygger och publicerar vid varje push till `main`. Pages-källan är satt till
+**GitHub Actions** (inte längre "deploy from a branch"). `file://` gör
+localStorage opålitligt och blockerar service worker.
 
-Filer i `docs/`: `index.html` (startsida), `app.html` (desktop),
-`mobile.html` + `sw.js` (PWA), `atlas2.html` (2.0), receptbilder,
-`startsida-man.webp`, `startsida-kvinna.webp`, `sport-icons.json`, `.nojekyll`.
+Flödet kör `npm ci`, `npm test` (upp till tre försök så att den kända
+`p5-realmode`-flakigheten inte blockerar en korrekt publicering; rött i alla tre
+stoppar deployen), bygger alla tre målen, sätter samman sajten i CI, skriver
+`.nojekyll` och publicerar via `actions/deploy-pages`. **`docs/` checkas inte
+längre in** — den byggs från noll i CI. Ett verifieringssteg kräver att
+receptbilderna är 134 (samma som `src/assets/recipes/`); färre stoppar
+publiceringen (då har `import.meta.glob` missat filer).
 
-**Pushrutinen ersätter `atlas-app/` och `docs/` i sin helhet.** Ändringar gjorda
-av någon annan i repot raderas alltså tyst. Säkring sedan 2026-07-21: fjärrens
-HEAD jämförs mot senast pushade hash före varje push, och pushen avbryts vid
-avvikelse.
+Sajtens rot: `index.html` (landning, källa `atlas-app/landing/`), `app.html`
+(desktop), `mobile.html` + `sw.js`, `atlas2.html` + `sw-atlas2.js` +
+`atlas2.webmanifest`, receptbilder, `public/`-assets, `TESTARE.md`, `.nojekyll`.
+**Adressen får inte ändras** — Android-skalet har `…/Atlas/atlas2.html`
+hårdkodad. De döda TWA-resterna `manifest.webmanifest` och
+`.well-known/assetlinks.json` (paket `com.atlas.twa`) togs bort.
+
+Den gamla handbyggda `docs/` i repot är vilande och kan tas bort separat.
 
 ## Leverans
 
@@ -220,18 +238,34 @@ har gett falska larm om trasiga vyer minst fyra gånger.
 bottennavigering, pågående pass med riktig loggning, kvitto, programväljare,
 matvy (översikt/logga/recept), coachvy med skäl, framstegsvy, historikimport,
 muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
+- **OS-bakåtknappen** (`pushState`/`popstate`, `atlas2/backnav.js`): bakåt
+  stänger öppet ark, går till hem från annan flik, backar genom onboarding-steg,
+  och lämnar appen först på hem/start. Bygger inte upp historik vid flikbyten.
+  Ett pågående pass kastas aldrig (live ligger kvar i `atlas.v3.live`).
+- **Näringsmål i v3** (`atlas.v3.nutritionTargets`, `NutritionSheet.jsx`):
+  matvyn visar ring/återstående, coachen får riktiga värden via `nutritionCtx`
+  och skiljer "inget mål satt" från "mål satt men inget loggat idag". Utan mål
+  hittas ingenting på.
+- **Async store + synk-form:** `store.load/save` är asynkrona (localStorage kvar
+  som rygg); `App2` hydreras en gång. Varje post (pass, vikt, matlogg, mål) bär
+  `id`, `userId`, `deviceId`, `updatedAt`. Nya poster får slumpat id vid
+  skapandet; `migrera()` ger befintlig data utan id ett innehållsbaserat id
+  (idempotent). Ingen server/inloggning/nätverkskod — bara formen.
 
 **Askr 2.0 — kvar:**
 - Koppla nuvarande appens coach till `engines/facts.js`.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
-- Tillgänglighetsgenomgång.
-- **OS-bakåtknappen i 2.0** (`pushState`/`popstate`). Finns inte alls: `flik`,
-  `sheet` och `step` ligger enbart i React-tillstånd, så ett bakåtsvep i den
-  installerade PWA:n lämnar appen i stället för att stänga ett ark. Android-
-  skalet löser det på egen hand, PWA:n gör det inte.
-- **Nutrition i v3.** `atlas.v3.*` saknar näringsmål och matlogg, därför skickar
-  `CoachChat` null och coachen säger att den inte kan svara på kostfrågor.
+- Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
+  `role="dialog"` + Escape, aria på fält, AA-upplyst `nodata`/`border`,
+  `prefers-reduced-motion`. Kvar: träffytor ≥44 px (matvyn, väntar på blick).
+- **Muskelkartans a11y (eget spår).** SVG-regionerna är klickbara men inte
+  fokuserbara och saknar namn för skärmläsare. Kräver riktig interaktionsdesign
+  (fokuserbara regioner, pilnavigering, muskelnamn) — kartan är för central för
+  en snabbfix.
+- **Synk-motorn:** `updatedAt` bumpas ännu inte vid *redigering* (sätts vid
+  skapande/migrering), och programmen stämplas inte. Hör till själva
+  synkmotorn, som medvetet inte byggts.
 - **Struken:** återhämtningsvy (skiss 5). Sömn, HRV och vilopuls har ingen
   datakälla. En vy med tomma fält är sämre än ingen vy. Tas upp igen först när
   en klocka kopplas in.
@@ -247,7 +281,8 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
   `isInstalledAndroid()`) tills mikrofonkraschen är verifierad. Fungerar i
   Chrome. **Pending: test på riktig telefon eller `adb logcat`.**
 - Webbversionen har nya paletten men inte skissernas layout.
-- OS-bakåtknapp (`pushState`/`popstate`) för Android-PWA — scopat, deferrat.
+- OS-bakåtknapp (`pushState`/`popstate`): byggd i **2.0** (se ovan). Desktop och
+  mobil-PWA har den inte än — samma mönster kan återanvändas ur `atlas2/backnav.js`.
 
 **Kända luckor i kartan:** `serratus_anterior` och `hip_flexors` saknar egen
 form i 2.0:s figur och ritas inte ut (räknas fortfarande i motorn).

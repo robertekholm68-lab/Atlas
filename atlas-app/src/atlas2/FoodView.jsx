@@ -81,12 +81,12 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
         <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}>
           <span style={{ color: C.muted }}>Återstående </span>
           <span style={{ color: kvar >= 0 ? C.lime : C.critical, fontWeight: 700 }}>{Math.round(kvar)} kcal</span>
-          {onSätta && <button onClick={onSätta} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", marginLeft: 8, textDecoration: "underline" }}>Ändra mål</button>}
+          {onSätta && <button onClick={onSätta} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", textDecoration: "underline", display: "inline-block", minHeight: 44, padding: "12px 10px", verticalAlign: "middle" }}>Ändra mål</button>}
         </div>
       ) : (
         <div style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
           Inget kalorimål satt. {onSätta
-            ? <button onClick={onSätta} style={{ background: "none", border: "none", color: C.lime, fontSize: 12.5, cursor: "pointer", textDecoration: "underline", padding: 0 }}>Sätt ett mål</button>
+            ? <button onClick={onSätta} style={{ background: "none", border: "none", color: C.lime, fontSize: 12.5, cursor: "pointer", textDecoration: "underline", display: "inline-block", minHeight: 44, padding: "12px 10px", verticalAlign: "middle" }}>Sätt ett mål</button>
             : "Sätt ett i profilen"} så visas hur mycket som återstår — appen hittar inte på ett åt dig.
         </div>
       )}
@@ -181,7 +181,7 @@ function Logga({ onLägg }) {
 
       {träffar.map(f => (
         <button key={f.id} onClick={() => { setVald(f); setGram(100); }}
-          style={{ width: "100%", textAlign: "left", padding: "13px 4px", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, color: C.text, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          style={{ width: "100%", textAlign: "left", padding: "14px 4px", minHeight: 44, boxSizing: "border-box", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, color: C.text, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 14, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
           <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{f.kcal} kcal · P {f.protein}</span>
         </button>
@@ -242,7 +242,7 @@ function Recept({ onLägg }) {
             </div>
           </div>
           <button onClick={() => onLägg({ id: nyId("f_"), name: r.name, kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat, ts: Date.now(), recipeId: r.id })}
-            style={{ padding: "8px 15px", borderRadius: 999, border: `1px solid ${C.lime}`, background: "transparent", color: C.lime, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>
+            style={{ padding: "0 18px", minHeight: 44, borderRadius: 999, border: `1px solid ${C.lime}`, background: "transparent", color: C.lime, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>
             Logga
           </button>
         </div>
@@ -267,7 +267,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta 
       <div style={{ display: "flex", gap: 22, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>
         {[["oversikt", "Översikt"], ["logga", "Logga mat"], ["recept", "Recept"]].map(([id, l]) => (
           <button key={id} onClick={() => setFlik(id)} style={{
-            background: "none", border: "none", cursor: "pointer", padding: "0 2px 10px",
+            background: "none", border: "none", cursor: "pointer", padding: "15px 6px 12px", minHeight: 44,
             fontFamily: HFONT, fontSize: 12.5, fontWeight: 700, letterSpacing: 1.3, textTransform: "uppercase",
             color: flik === id ? C.lime : C.muted,
             borderBottom: `2px solid ${flik === id ? C.lime : "transparent"}`, marginBottom: -1,

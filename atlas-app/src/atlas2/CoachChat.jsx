@@ -127,7 +127,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
           style={{
             flex: 1, padding: "13px 15px", borderRadius: 999, minWidth: 0,
             border: `1px solid ${C.border}`, background: C.card2, color: C.text,
-            fontFamily: BFONT, fontSize: 14, outline: "none",
+            fontFamily: BFONT, fontSize: 14,
           }} />
         <button onClick={() => fråga(text)} disabled={!text.trim()} style={{
           padding: "13px 19px", borderRadius: 999, cursor: text.trim() ? "pointer" : "default",
