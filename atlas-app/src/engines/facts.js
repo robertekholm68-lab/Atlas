@@ -140,7 +140,31 @@ export function coachFacts(ctx = {}, now = Date.now()) {
     tillit: tillit(r.passLoggade),
   } : { namn: null, tillit: tillit(0) };
 
-  const block = { kropp, träning, program, vikt, målresa };
+  // ── kosten ─────────────────────────────────────────────────────────────
+  // Mål + DAGENS intag matas in färdiggatat av nutritionCtx: nutritionTargets =
+  // null utan mål, nutritionTotals = null (inte nollor) om inget loggats idag.
+  // Tilliten sitter på ANTAL LOGGADE DAGAR — en dag är ingen kostvana. Dagens
+  // siffra är sann som dagssiffra, men diagnos om mönster kräver underlag över tid.
+  const kMål = ctx.nutritionTargets || null;
+  const kIntag = ctx.nutritionTotals || null;
+  const kDagar = ctx.nutritionDays || 0;
+  const num = (o, k) => (o && o[k] != null ? o[k] : null);
+  const kost = {
+    proteinMål: num(kMål, "protein"),
+    proteinIntag: num(kIntag, "protein"),
+    kcalMål: num(kMål, "kcal"),
+    kcalIntag: num(kIntag, "kcal"),
+    harMål: !!(kMål && (kMål.protein || kMål.kcal)),
+    dagar: kDagar,
+    // Energibalans IDAG — null när kcal-underlag saknas (inget mål eller inget
+    // loggat). Ingen påhittad balans ur en tyst nolla.
+    energibalans: (num(kMål, "kcal") && num(kIntag, "kcal") != null)
+      ? (kIntag.kcal < kMål.kcal * 0.94 ? "underskott" : kIntag.kcal > kMål.kcal * 1.06 ? "överskott" : "runt underhåll")
+      : null,
+    tillit: tillit(kDagar),
+  };
+
+  const block = { kropp, träning, program, vikt, målresa, kost };
 
   // Tilliten är PER PÅSTÅENDE, inte ett globalt minimum över allt.
   //

@@ -246,12 +246,16 @@ function coachReply(text, ctx, lastTopic = null) {
 
   // 5) Kost / protein
   if (/protein|kost|kalori|äta|mat|deff|underskott|överskott/.test(t)) {
-    const pT = nutritionTargets && nutritionTargets.protein, pN = nutritionTotals && nutritionTotals.protein;
-    const kT = nutritionTargets && nutritionTargets.kcal, kN = nutritionTotals && nutritionTotals.kcal;   // standardiserat till kcal (var .calories → coachen såg aldrig kalorimålet)
-    if (!pT && !kT) return { text: "Jag har inga kostmål inställda ännu. Logga kost eller sätt mål i kostfliken så kan jag väga in energibalans och protein i råden.", chips: chip(["Hur går mitt mål?", "Vad ska jag träna?"]) };
+    const k = facts.kost;   // §13: mål + dagens intag, färdiggatade i nutritionCtx
+    if (!k.harMål) return { text: "Jag har inga kostmål inställda ännu. Logga kost eller sätt mål i kostfliken så kan jag väga in energibalans och protein i råden.", chips: chip(["Hur går mitt mål?", "Vad ska jag träna?"]) };
     let r = "";
-    if (pT) r += `Proteinmål: ${pT} g${pN != null ? ` — idag ${Math.round(pN)} g (${pN >= pT * 0.9 ? "på god väg" : "under målet"})` : ""}.`;
-    if (kT && kN != null) { const bal = kN < kT * 0.94 ? "underskott" : kN > kT * 1.06 ? "överskott" : "runt underhåll"; r += `\nEnergi: ${Math.round(kN)}/${kT} kcal idag — ${bal}.`; }
+    if (k.proteinMål) r += `Proteinmål: ${k.proteinMål} g${k.proteinIntag != null ? ` — idag ${Math.round(k.proteinIntag)} g (${k.proteinIntag >= k.proteinMål * 0.9 ? "på god väg" : "under målet"})` : ""}.`;
+    if (k.kcalMål && k.kcalIntag != null) r += `\nEnergi: ${Math.round(k.kcalIntag)}/${k.kcalMål} kcal idag — ${k.energibalans}.`;
+    // Per-block-tillit: en dagssiffra är sann som dagssiffra, men få loggade dagar
+    // är ingen kostvana — uttala dig inte om mönster utan underlag över tid.
+    if (k.tillit.nivå === "svag" || k.tillit.nivå === "ingen") r += k.dagar === 0
+      ? `\n\nDu har inte loggat någon kost än, så jag kan bara visa målet — inte hur du faktiskt ligger till. Logga måltider så börjar jag följa mönstret.`
+      : `\n\nMen det bygger på bara ${k.dagar} ${k.dagar === 1 ? "loggad dag" : "loggade dagar"} — inte en kostvana. Logga fler så kan jag säga något om ditt mönster över tid, inte en enstaka dag.`;
     const pf = citableTopic("protein_kost").find(f => /1,6/.test(f.fact));
     r += `\n\n${pf ? pf.fact : "Protein runt 1,6–2,2 g/kg kroppsvikt stödjer muskeluppbyggnad."}${pf && pf.source ? ` (${pf.source.name})` : ""} (Allmänna riktlinjer, inte medicinsk rådgivning.)`;
     if (gender === "female") r += "\n\nSom kvinna: håll extra koll på järn (menstruation ökar behovet) och kalcium/D-vitamin för benhälsan.";
