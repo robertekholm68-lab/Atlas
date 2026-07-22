@@ -303,15 +303,21 @@ export function Atlas2() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // Synlig tangentbordsfokus GENOMGÅENDE (även onboarding-skärmarna, som ligger
-  // utanför app-roten). Injiceras en gång i head. :focus-visible → bara vid
-  // tangentbord, inte musklick, så accenten inte blinkar vid varje tap.
+  // Global a11y-CSS, injiceras en gång i head:
+  //  · Synlig tangentbordsfokus GENOMGÅENDE (även onboarding-skärmarna, som
+  //    ligger utanför app-roten). :focus-visible → bara vid tangentbord, inte
+  //    musklick, så accenten inte blinkar vid varje tap.
+  //  · prefers-reduced-motion: nollar transitions/animationer för den som bett
+  //    om mindre rörelse. `!important` krävs för att slå inline-transitions
+  //    (t.ex. vilo-ringen och startbildens bredd).
   useEffect(() => {
-    const ID = "askr-a11y-focus";
+    const ID = "askr-a11y";
     if (document.getElementById(ID)) return;
     const st = document.createElement("style");
     st.id = ID;
-    st.textContent = `:focus-visible{outline:2px solid ${C.lime};outline-offset:2px;border-radius:6px}`;
+    st.textContent =
+      `:focus-visible{outline:2px solid ${C.lime};outline-offset:2px;border-radius:6px}` +
+      `@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}}`;
     document.head.appendChild(st);
   }, []);
 

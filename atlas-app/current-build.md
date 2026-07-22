@@ -256,8 +256,13 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
 - Koppla nuvarande appens coach till `engines/facts.js`.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
-- Tillgänglighetsgenomgång — påbörjad (kontraster, aria, fokus, träffytor). Det
-  som kräver designbeslut listas i PR:en.
+- Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
+  `role="dialog"` + Escape, aria på fält, AA-upplyst `nodata`/`border`,
+  `prefers-reduced-motion`. Kvar: träffytor ≥44 px (matvyn, väntar på blick).
+- **Muskelkartans a11y (eget spår).** SVG-regionerna är klickbara men inte
+  fokuserbara och saknar namn för skärmläsare. Kräver riktig interaktionsdesign
+  (fokuserbara regioner, pilnavigering, muskelnamn) — kartan är för central för
+  en snabbfix.
 - **Synk-motorn:** `updatedAt` bumpas ännu inte vid *redigering* (sätts vid
   skapande/migrering), och programmen stämplas inte. Hör till själva
   synkmotorn, som medvetet inte byggts.

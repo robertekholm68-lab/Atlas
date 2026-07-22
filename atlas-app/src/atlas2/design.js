@@ -10,7 +10,8 @@ export const C = {
   bg: "#0A0A0A",          // grundytan allt ritas på
   card: "#141414",
   card2: "#181818",
-  border: "#232323",
+  border: "#66666E",      // upplyst till WCAG 1.4.11 (3:1) mot bg/card/card2 —
+                          // kontrollramar (inputs, kort-knappar) ska synas
   text: "#FFFFFF",
   text2: "#C8CCD2",       // brödtext på mörkt
   muted: "#8A8F98",       // sekundärt, etiketter
@@ -23,7 +24,8 @@ export const C = {
   recovering: "#FFD166",
   critical: "#FF5C5C",
   undertrained: "#5B9DD9",
-  nodata: "#5E6673",
+  nodata: "#818997",      // upplyst till AA (4.5:1) — ärlighetsprincipen: "för
+                          // lite data" ska SYNAS, inte gömmas i svärtan
 };
 
 /** Statusfärg för ett återhämtningsvärde. null = inget underlag. */
