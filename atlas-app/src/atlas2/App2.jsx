@@ -11,6 +11,7 @@ import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { BottomNav } from "./Nav.jsx";
 import { CoachView } from "./CoachView.jsx";
+import { coachFacts } from "./facts.js";
 import { ProgressView } from "./ProgressView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
@@ -140,12 +141,15 @@ function ModeChoice({ onPick }) {
 
 function Home({ sessions, activeProgram, onStart, onOpen }) {
   const now = Date.now();
-  const { states, overall } = useMemo(() => bodyState(sessions, now), [sessions.length]);
+  const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
+  // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
+  // så hela appen visar EN readiness — lastviktad, inte ett platt snitt.
+  const rd = useMemo(() => coachFacts({ sessions, activeProgram }, now).kropp.readiness, [sessions.length]);
   const besked = todaysMessage(states, sessions.length);
   const nw = activeProgram ? nextWorkout(activeProgram, sessions) : null;
   const vecka = weekSessions(sessions, now).length;
   const senast = lastSessionLabel(sessions, now);
-  const osäkert = overall != null && sessions.length < 3;
+  const osäkert = rd != null && sessions.length < 3;
 
   const datum = new Date(now).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" });
 
@@ -178,8 +182,8 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
       </div>
 
       <div style={{ ...statRow, marginTop: 20 }}>
-        {[["Readiness", orDash(overall), osäkert ? "osäkert underlag" : null,
-            overall == null ? C.muted : overall >= 76 ? C.ready : overall >= 56 ? C.recovering : C.critical],
+        {[["Readiness", orDash(rd), osäkert ? "osäkert underlag" : null,
+            rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical],
           ["Veckans pass", sessions.length ? vecka : DASH, null, C.text],
           ["Senast", senast || DASH, null, C.text]].map(([l, v, sub, col], i) => (
           <div key={l} style={statCell(i)}>

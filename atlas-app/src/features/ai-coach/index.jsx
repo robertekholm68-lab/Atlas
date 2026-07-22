@@ -97,6 +97,9 @@ function coachReply(text, ctx, lastTopic = null) {
   const diet = profile && profile.diet;
   const approach = profile && profile.dietApproach;
   const restrictions = (profile && profile.restrictions) || [];
+  // §13 en gång: kropp- och träningsgrenarna läser siffror + per-block-tillit
+  // härifrån i stället för att räkna om ur ctx. Övriga grenar rör vi inte än.
+  const facts = buildCoachFacts(ctx);
   const chip = arr => arr;
   const muscleAnswer = (mid, mode) => {
     const cats = mode === "training" ? ["training"] : mode === "function" ? ["function"] : null;
@@ -126,20 +129,48 @@ function coachReply(text, ctx, lastTopic = null) {
 
   // 1) Återhämtning / beredskap
   if (/återhämt|beredskap|redo|mår jag|hur trött|kan jag träna|vila/.test(t)) {
-    if (overallReadiness == null) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
-    const st = Object.entries(muscleStates || {}).map(([id, s]) => ({ id, name: MUSCLES[id]?.name, ...s })).filter(x => x.name);
-    const fresh = st.filter(x => x.recoveryScore >= 75).sort((a, b) => b.recoveryScore - a.recoveryScore).slice(0, 3);
-    const tired = st.filter(x => x.recoveryScore < 55).sort((a, b) => a.recoveryScore - b.recoveryScore).slice(0, 3);
-    const lbl = overallReadiness >= 76 ? "god" : overallReadiness >= 56 ? "måttlig" : "låg";
-    let r = `Din samlade beredskap är ${overallReadiness}% (${lbl}).`;
-    if (fresh.length) r += `\n\nFräscha och redo: ${fresh.map(x => x.name).join(", ")}.`;
-    if (tired.length) r += `\nBehöver mer vila: ${tired.map(x => x.name).join(", ")}.`;
-    if (overallReadiness < 56) r += "\n\nMed låg beredskap: håll intensiteten nere, prioritera sömn och protein, eller ta en lugnare dag.";
+    const kropp = facts.kropp;
+    // Siffran kommer nu från §13: lastviktad bas + cykel/kost (och ev. app-nudge),
+    // beräknad i facts.js så coachen och kartan visar EXAKT samma tal ur en källa.
+    // §13 ger null utan FÄRSK belastning (senaste veckan) — då visar kartan "—" och
+    // coachen måste säga samma sak, inte falla tillbaka på ett platt snitt (det var
+    // just motsägelsen). Fallbacken på appens headline gäller BARA när historiken
+    // saknar muskellast helt (äldre importerad data / testfixtures) och §13 därför
+    // inte kan räkna alls — då finns ingen viktad siffra att vara oense om.
+    const harMuskellast = (sessions || []).some(s => s && s.muscleLoads && Object.keys(s.muscleLoads).length > 0);
+    const rd = kropp.readiness != null ? kropp.readiness : (harMuskellast ? null : overallReadiness);
+    if (rd == null) {
+      // Ingen aktuell siffra (ingen färsk belastning). readinessFörbehåll bär
+      // skillnaden utvilad vs otränad — nu OVANPÅ det null:ade viktade talet, i
+      // stället för ovanpå en missvisande hög siffra. null-vid-8-dagar och
+      // förbehållet löser olika saker och lever båda kvar, sida vid sida.
+      if (!facts.träning.passTotalt) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
+      const f = readinessFörbehåll(facts);
+      return { text: `Jag ger dig ingen readiness-siffra just nu — den bygger på färsk belastning, och du har inte tränat den senaste veckan.${f ? `\n\n${f}` : ""}`, chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
+    }
+    // Fräscha/trötta ur §13: det utesluter otränade muskler (status no_data), så
+    // avträning inte längre listas som "fräsch och redo". Faller tillbaka på
+    // muscleStates när passen saknar muskellast (t.ex. äldre importerad data).
+    let fresh = kropp.redo.map(m => m.namn);
+    let tired = kropp.slitna.map(m => m.namn);
+    if (!fresh.length && !tired.length) {
+      const st = Object.entries(muscleStates || {}).map(([id, s]) => ({ id, name: MUSCLES[id]?.name, ...s })).filter(x => x.name);
+      fresh = st.filter(x => x.recoveryScore >= 75).sort((a, b) => b.recoveryScore - a.recoveryScore).slice(0, 3).map(x => x.name);
+      tired = st.filter(x => x.recoveryScore < 55).sort((a, b) => a.recoveryScore - b.recoveryScore).slice(0, 3).map(x => x.name);
+    } else { fresh = fresh.slice(0, 3); tired = tired.slice(0, 3); }
+    const lbl = rd >= 76 ? "god" : rd >= 56 ? "måttlig" : "låg";
+    let r = `Din samlade beredskap är ${rd}% (${lbl}).`;
+    if (fresh.length) r += `\n\nFräscha och redo: ${fresh.join(", ")}.`;
+    if (tired.length) r += `\nBehöver mer vila: ${tired.join(", ")}.`;
+    if (rd < 56) r += "\n\nMed låg beredskap: håll intensiteten nere, prioritera sömn och protein, eller ta en lugnare dag.";
     if (cycle) r += `\n\nDin cykel: ${cycle.sv} (dag ${cycle.day}) — jag har redan vägt in det i beredskapen (${cycle.readiness >= 0 ? "+" : ""}${cycle.readiness}). ${cycle.phase === "menstrual" || cycle.phase === "luteal" ? "Var snäll mot dig själv med intensiteten om orken är låg." : "Bra fönster att pusha lite extra."}`;
-    // Skilj "utvilad" från "har inte tränat". Utan detta presenterar coachen
-    // avträning som god form.
-    const förbehåll = readinessFörbehåll(buildCoachFacts({ sessions, activeProgram }));
-    if (förbehåll) r += `\n\n${förbehåll}`;
+    // Per-block-tillit ur §13: tunt underlag → reservation, aldrig en tyst dom.
+    // Slår ihop kropp- och träningstilliten (datalage.svagast), så en användare
+    // med få pass får siffran presenterad som fingervisning, inte som facit.
+    if (facts.datalage.svagast === "svag") r += `\n\nMen det här vilar på tunt underlag (${kropp.tillit.text}) — läs siffran som en fingervisning, inte en dom. Fler loggade pass gör den säkrare.`;
+    // OBS: förbehållet (utvilad vs otränad) hör hemma i null-grenen ovan — när en
+    // viktad siffra VISAS finns det per definition färsk belastning (senaste pass
+    // ≤ tröskeln), så readinessFörbehåll är null här och skulle bara vara brus.
     if (senior) r += "\n\nMed åren tar återhämtningen ofta lite längre tid — pressa inte varje pass till max, och prioritera sömn och protein. Samtidigt ger styrketräningen ännu mer utdelning nu: den motverkar muskel- och benförlust.";
     return { text: r, chips: chip([...(senior ? ["Träning efter 50"] : []), "Vad ska jag träna?", "Hur går mitt mål?"]) };
   }
@@ -300,7 +331,7 @@ function CoachChat({ ctx, onStartProgram, onOpenPrograms }) {
   );
 }
 
-function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nutritionTotals, nutritionTargets, nutritionDays, goals, overallReadiness, profile, measurements, missionAnalysis = null, activeProgram = null, programRec = null, onStartProgram, onOpenPrograms, goalProfile = null, cycle = null, supplements = [] }) {
+function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nutritionTotals, nutritionTargets, nutritionDays, goals, overallReadiness, profile, measurements, missionAnalysis = null, activeProgram = null, programRec = null, onStartProgram, onOpenPrograms, goalProfile = null, cycle = null, nutRec = null, supplements = [] }) {
   const [q, setQ] = useState(null);
   const [mode, setMode] = useState("performance");
   const [answers, setAnswers] = useState({});
@@ -308,7 +339,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
   const now = Date.now();
   if (!sessions || sessions.length === 0) return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
-      <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
+      <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, nutRec, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
       <div style={{ background: T.bg.surface, border: `1px solid ${T.bg.muted}`, borderRadius: 16, padding: "22px 20px" }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: T.text.primary, marginBottom: 8 }}>Jag håller fortfarande på att lära känna dig.</div>
         <div style={{ fontSize: 13.5, color: T.text.secondary, lineHeight: 1.6, marginBottom: 14 }}>Börja med att logga ett pass, en måltid eller ett mätvärde — eller berätta om ditt mål. Ju mer du loggar, desto mer personlig blir coachningen. Jag drar inga slutsatser om trender eller platåer förrän det finns tillräckligt med din egen historik.</div>
@@ -346,7 +377,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, alignItems: "start" }} className="coach-grid">
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
+        <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, nutRec, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
         {goalProfile && (() => {
           const gr = goalReasoning({ goalProfile, sessions, nutritionTotals, nutritionTargets, nutritionDays, readiness: overallReadiness, measurements });
           if (!gr) return null;
