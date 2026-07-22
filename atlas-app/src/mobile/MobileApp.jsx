@@ -966,7 +966,9 @@ function CoachSheet({ ctx }) {
     });
   };
   useEffect(() => () => { stoppa.current && stoppa.current(); }, []);
-  const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.activeProgram, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); if (taladeFråga) { speak(shortSpoken(r.text)); setTaladeFråga(false); } };
+  // Mobilens check-in-nudge (±6) lever bara här, inte i motorn — matas därför in
+  // som readinessAdjust så coachens siffra blir densamma som hemkortets.
+  const ask = () => { if (!q.trim()) return; const r = coachReply(q, { overallReadiness: ctx.overall, readinessAdjust: ctx.checkin === "high" ? 6 : ctx.checkin === "low" ? -6 : 0, muscleStates: ctx.muscleStates, sessions: ctx.sessions, activeProgram: ctx.activeProgram, goalProfile: null, nutritionTotals: null, nutritionTargets: null, nutritionDays: 0, measurements: [] }); setA(r.text); if (taladeFråga) { speak(shortSpoken(r.text)); setTaladeFråga(false); } };
   return (
     <div>
       <SheetTitle>Coachen</SheetTitle>

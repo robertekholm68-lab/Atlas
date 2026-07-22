@@ -14,13 +14,18 @@
 // fattades på den felaktiga uppgiften. Nu finns den, i motorlagret, där båda
 // apparna kan nå den.
 //
-// STATUS: Askr 2.0 läser härifrån. Nuvarande appens coach (features/ai-coach,
-// coachReply) läser fortfarande ctx direkt och måste kopplas om separat — det
-// är en större och känsligare ändring som förtjänar ett eget steg.
+// STATUS: Askr 2.0 läser härifrån. coachReplys kropp- och träningsgrenar gör det
+// nu också, och readiness-SIFFRAN (lastviktad bas + cykel/kost) räknas här — inte
+// längre i apparnas vy-lager. Apparna matar in sina egna modifierare (ctx.cycle,
+// ctx.nutRec, ctx.readinessAdjust) så coachen och kartan visar samma tal ur en
+// källa. Kvar att koppla om: coachReplys grenar för program, vikt, kost och målresa,
+// samt App.jsx/MobileApp som fortfarande räknar sin headline parallellt (samma
+// formel, samma tal — men det är två beräkningar tills de läser kropp.readiness).
 
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "../atlas2/store.js";
 import { MUSCLES } from "../data/muscles.js";
 import { resa as byggResa, nästaDelmål } from "./journey.js";
+import { readinessBreakdown } from "./index.js";
 
 /** Tillitsnivå ur antal observationer. Trubbig med flit — hellre försiktig. */
 function tillit(n, tröskel = 3) {
@@ -38,7 +43,7 @@ const ORDNING = { ingen: 0, svag: 1, ok: 2, god: 3 };
  */
 export function coachFacts(ctx = {}, now = Date.now()) {
   const sessions = (ctx.sessions || []).filter(s => s && s.completedAt);
-  const { states, overall, covered } = bodyState(sessions, now);
+  const { states } = bodyState(sessions, now);
   const vecka = weekSessions(sessions, now);
 
   // ── kroppen ────────────────────────────────────────────────────────────
@@ -46,10 +51,28 @@ export function coachFacts(ctx = {}, now = Date.now()) {
   const med = Object.entries(states).filter(([, s]) => s.status !== "no_data" && s.readiness != null);
   const sorterad = med.slice().sort((a, b) => b[1].readiness - a[1].readiness);
 
+  // Readiness-siffran räknas HÄR nu, inte i apparnas vy-lager — coachen och
+  // kartan ska visa exakt samma tal. Basen är ett LASTVIKTAT snitt: muskler du
+  // belastar mer väger tyngre (samma bas som nuvarande appen alltid räknat).
+  // Utan färsk belastning (totalvikt ≤ 1) finns ingen siffra — null, aldrig ett
+  // påhittat medelvärde. Det är hela skillnaden mot en vanlig träningsapp.
+  //
+  // Cykel- och kostmodifierarna bor nu i den här kedjan, via readinessBreakdown,
+  // med de ingredienser appen matar in: ctx.cycle och ctx.nutRec. ctx.readinessAdjust
+  // bär appspecifika nudge:ar som inte hör hemma i motorn (t.ex. mobilens check-in).
+  const totalWeight = Object.values(states).reduce((a, s) => a + (s.weeklyLoad || 0), 0);
+  const trainingBase = totalWeight > 1
+    ? Object.values(states).reduce((sum, s) => (s.status !== "no_data" && s.readiness != null) ? sum + s.readiness * ((s.weeklyLoad || 0) / totalWeight) : sum, 0)
+    : null;
+  const readinessWhy = trainingBase != null ? readinessBreakdown(trainingBase, ctx.cycle || null, ctx.nutRec || null) : null;
+
   const kropp = {
-    // Readiness GATAS till null utan underlag. Ingen siffra är bättre än en
-    // påhittad siffra — det är hela skillnaden mot en vanlig träningsapp.
-    readiness: covered ? overall : null,
+    // Justerad total (bas + cykel + kost + ev. app-nudge), gatad till null.
+    readiness: readinessWhy ? Math.max(0, Math.min(100, readinessWhy.total + (ctx.readinessAdjust || 0))) : null,
+    // Rå träningsbas utan modifierare, och hela förklaringen — så en vy kan visa
+    // VARFÖR siffran är som den är utan att räkna om något själv.
+    readinessRaw: trainingBase != null ? Math.round(trainingBase) : null,
+    readinessWhy,
     redo: sorterad.filter(([, s]) => s.readiness >= 76).map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
     slitna: sorterad.filter(([, s]) => s.readiness < 56).reverse().map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
     otränade: Object.entries(states).filter(([, s]) => s.status === "no_data").map(([id]) => ({ id, namn: namn(id) })),

@@ -130,10 +130,11 @@ function coachReply(text, ctx, lastTopic = null) {
   // 1) Återhämtning / beredskap
   if (/återhämt|beredskap|redo|mår jag|hur trött|kan jag träna|vila/.test(t)) {
     const kropp = facts.kropp;
-    // Siffran behåller appens headline-värde (redan justerat för cykel/kost) så
-    // coachen inte säger en annan procent än kartan. §13:s readiness är rå och
-    // gatas till null utan underlag — den används som grind, inte som siffra.
-    const rd = overallReadiness;
+    // Siffran kommer nu från §13: lastviktad bas + cykel/kost (och ev. app-nudge),
+    // beräknad i facts.js så coachen och kartan visar EXAKT samma tal ur en källa.
+    // Faller tillbaka på appens headline-värde bara när §13 saknar muskellast
+    // (äldre importerad data / testfixtures utan muscleLoads).
+    const rd = kropp.readiness != null ? kropp.readiness : overallReadiness;
     if (rd == null) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
     // Fräscha/trötta ur §13: det utesluter otränade muskler (status no_data), så
     // avträning inte längre listas som "fräsch och redo". Faller tillbaka på
@@ -319,7 +320,7 @@ function CoachChat({ ctx, onStartProgram, onOpenPrograms }) {
   );
 }
 
-function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nutritionTotals, nutritionTargets, nutritionDays, goals, overallReadiness, profile, measurements, missionAnalysis = null, activeProgram = null, programRec = null, onStartProgram, onOpenPrograms, goalProfile = null, cycle = null, supplements = [] }) {
+function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nutritionTotals, nutritionTargets, nutritionDays, goals, overallReadiness, profile, measurements, missionAnalysis = null, activeProgram = null, programRec = null, onStartProgram, onOpenPrograms, goalProfile = null, cycle = null, nutRec = null, supplements = [] }) {
   const [q, setQ] = useState(null);
   const [mode, setMode] = useState("performance");
   const [answers, setAnswers] = useState({});
@@ -327,7 +328,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
   const now = Date.now();
   if (!sessions || sessions.length === 0) return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
-      <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
+      <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, nutRec, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
       <div style={{ background: T.bg.surface, border: `1px solid ${T.bg.muted}`, borderRadius: 16, padding: "22px 20px" }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: T.text.primary, marginBottom: 8 }}>Jag håller fortfarande på att lära känna dig.</div>
         <div style={{ fontSize: 13.5, color: T.text.secondary, lineHeight: 1.6, marginBottom: 14 }}>Börja med att logga ett pass, en måltid eller ett mätvärde — eller berätta om ditt mål. Ju mer du loggar, desto mer personlig blir coachningen. Jag drar inga slutsatser om trender eller platåer förrän det finns tillräckligt med din egen historik.</div>
@@ -365,7 +366,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, alignItems: "start" }} className="coach-grid">
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
+        <CoachChat ctx={{ overallReadiness, muscleStates, sessions, activeProgram, goalProfile, nutritionTotals, nutritionTargets, nutritionDays, measurements, profile, cycle, nutRec, supplements, foodLog }} onStartProgram={onStartProgram} onOpenPrograms={onOpenPrograms} />
         {goalProfile && (() => {
           const gr = goalReasoning({ goalProfile, sessions, nutritionTotals, nutritionTargets, nutritionDays, readiness: overallReadiness, measurements });
           if (!gr) return null;
