@@ -139,15 +139,20 @@ tokens, muscles (21-taxonomi + vektorpaths), exercises, machines, gyms, foods
 felaktiga uppgiften i flera sessioner.
 
 **Nuläge:** `engines/facts.js` implementerar §13 på riktigt — ett faktablock
-per domän (kropp, träning, program, vikt, målresa), vart och ett med egen
+per domän (kropp, träning, program, vikt, målresa, kost), vart och ett med egen
 tillit, plus `datalage.svagast` som styr hur bestämt coachen får uttala sig.
 `buildCoachFacts` är exporterat som alias för `coachFacts` så att kod och
 dokument talar samma språk. Ett test bevakar att funktionen finns, så
 påståendet inte kan bli falskt igen.
 
-**Omkopplingen har börjat.** `coachReply` räknar fortfarande sina svar ur ctx,
-men ÄRLIGHETSGRINDARNA hämtas från §13, så båda apparna gör samma bedömning av
-när data får uttalas om. Resten kan följa gren för gren.
+**Omkopplingen är långt gången.** `coachReply` läser nu **kropp-, tränings-,
+vikt-, målresa- och kost-grenarna** ur §13 — siffror plus per-block-tillit, inte
+bara ärlighetsgrindar. Readiness-SIFFRAN (lastviktad bas + cykel/kost) räknas i
+`facts.js`, så coach och karta visar exakt samma tal ur en källa; apparna matar
+in sina egna modifierare (`ctx.cycle`, `ctx.nutRec`, `ctx.readinessAdjust`).
+Kvar på ctx: programförslags-grenen (`analyzeProgram`) och mål-grenens
+recomp-resonemang (`goalReasoning`). Båda apparna gör samma bedömning av när
+data får uttalas om.
 
 `readinessFörbehåll(facts)` skiljer **utvilad** från **otränad**. Hög readiness
 betyder två helt olika saker beroende på historiken. Utan förbehållet svarade
@@ -253,7 +258,10 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
   (idempotent). Ingen server/inloggning/nätverkskod — bara formen.
 
 **Askr 2.0 — kvar:**
-- Koppla nuvarande appens coach till `engines/facts.js`.
+- Koppla nuvarande appens coach till `engines/facts.js` — klart för kropp,
+  träning, vikt, målresa och kost (siffror + per-block-tillit ur §13). Kvar:
+  programförslag (`analyzeProgram`) och mål-grenens recomp-resonemang
+  (`goalReasoning`).
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
 - Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
