@@ -145,14 +145,16 @@ tillit, plus `datalage.svagast` som styr hur bestämt coachen får uttala sig.
 dokument talar samma språk. Ett test bevakar att funktionen finns, så
 påståendet inte kan bli falskt igen.
 
-**Omkopplingen är långt gången.** `coachReply` läser nu **kropp-, tränings-,
-vikt-, målresa- och kost-grenarna** ur §13 — siffror plus per-block-tillit, inte
-bara ärlighetsgrindar. Readiness-SIFFRAN (lastviktad bas + cykel/kost) räknas i
-`facts.js`, så coach och karta visar exakt samma tal ur en källa; apparna matar
-in sina egna modifierare (`ctx.cycle`, `ctx.nutRec`, `ctx.readinessAdjust`).
-Kvar på ctx: programförslags-grenen (`analyzeProgram`) och mål-grenens
-recomp-resonemang (`goalReasoning`). Båda apparna gör samma bedömning av när
-data får uttalas om.
+**Omkopplingen är i praktiken klar.** `coachReply` läser nu **kropp-, tränings-,
+vikt-, målresa-, kost- och program-grenarna** ur §13 — siffror plus
+per-block-tillit, inte bara ärlighetsgrindar. Readiness-SIFFRAN (lastviktad bas +
+cykel/kost) räknas i `facts.js`, så coach och karta visar exakt samma tal ur en
+källa; apparna matar in sina egna modifierare (`ctx.cycle`, `ctx.nutRec`,
+`ctx.readinessAdjust`). Program-grenen läser `facts.program`, där
+`analyzeProgram`-förslagen är märkta **strukturella** (giltiga oavsett historik)
+vs **historikberoende** (platå/deload/följsamhet — tillitsgatade). Kvar på ctx:
+BARA mål-grenens **recomp-resonemang** (`goalReasoning`) — en egen sak från
+programförslagen. Båda apparna gör samma bedömning av när data får uttalas om.
 
 `readinessFörbehåll(facts)` skiljer **utvilad** från **otränad**. Hög readiness
 betyder två helt olika saker beroende på historiken. Utan förbehållet svarade
@@ -259,9 +261,9 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
 
 **Askr 2.0 — kvar:**
 - Koppla nuvarande appens coach till `engines/facts.js` — klart för kropp,
-  träning, vikt, målresa och kost (siffror + per-block-tillit ur §13). Kvar:
-  programförslag (`analyzeProgram`) och mål-grenens recomp-resonemang
-  (`goalReasoning`).
+  träning, vikt, målresa, kost och program (siffror + per-block-tillit ur §13).
+  Kvar: BARA mål-grenens recomp-resonemang (`goalReasoning`) — en egen sak från
+  programförslagen (`analyzeProgram`, nu i `facts.program`).
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
 - Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
