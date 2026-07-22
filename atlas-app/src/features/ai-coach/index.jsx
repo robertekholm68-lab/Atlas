@@ -97,6 +97,9 @@ function coachReply(text, ctx, lastTopic = null) {
   const diet = profile && profile.diet;
   const approach = profile && profile.dietApproach;
   const restrictions = (profile && profile.restrictions) || [];
+  // §13 en gång: kropp- och träningsgrenarna läser siffror + per-block-tillit
+  // härifrån i stället för att räkna om ur ctx. Övriga grenar rör vi inte än.
+  const facts = buildCoachFacts(ctx);
   const chip = arr => arr;
   const muscleAnswer = (mid, mode) => {
     const cats = mode === "training" ? ["training"] : mode === "function" ? ["function"] : null;
@@ -126,19 +129,35 @@ function coachReply(text, ctx, lastTopic = null) {
 
   // 1) Återhämtning / beredskap
   if (/återhämt|beredskap|redo|mår jag|hur trött|kan jag träna|vila/.test(t)) {
-    if (overallReadiness == null) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
-    const st = Object.entries(muscleStates || {}).map(([id, s]) => ({ id, name: MUSCLES[id]?.name, ...s })).filter(x => x.name);
-    const fresh = st.filter(x => x.recoveryScore >= 75).sort((a, b) => b.recoveryScore - a.recoveryScore).slice(0, 3);
-    const tired = st.filter(x => x.recoveryScore < 55).sort((a, b) => a.recoveryScore - b.recoveryScore).slice(0, 3);
-    const lbl = overallReadiness >= 76 ? "god" : overallReadiness >= 56 ? "måttlig" : "låg";
-    let r = `Din samlade beredskap är ${overallReadiness}% (${lbl}).`;
-    if (fresh.length) r += `\n\nFräscha och redo: ${fresh.map(x => x.name).join(", ")}.`;
-    if (tired.length) r += `\nBehöver mer vila: ${tired.map(x => x.name).join(", ")}.`;
-    if (overallReadiness < 56) r += "\n\nMed låg beredskap: håll intensiteten nere, prioritera sömn och protein, eller ta en lugnare dag.";
+    const kropp = facts.kropp;
+    // Siffran behåller appens headline-värde (redan justerat för cykel/kost) så
+    // coachen inte säger en annan procent än kartan. §13:s readiness är rå och
+    // gatas till null utan underlag — den används som grind, inte som siffra.
+    const rd = overallReadiness;
+    if (rd == null) return { text: "Jag har ingen readiness ännu — logga några pass så börjar jag följa din återhämtning.", chips: chip(["Vad ska jag träna?", "Hur går mitt mål?"]) };
+    // Fräscha/trötta ur §13: det utesluter otränade muskler (status no_data), så
+    // avträning inte längre listas som "fräsch och redo". Faller tillbaka på
+    // muscleStates när passen saknar muskellast (t.ex. äldre importerad data).
+    let fresh = kropp.redo.map(m => m.namn);
+    let tired = kropp.slitna.map(m => m.namn);
+    if (!fresh.length && !tired.length) {
+      const st = Object.entries(muscleStates || {}).map(([id, s]) => ({ id, name: MUSCLES[id]?.name, ...s })).filter(x => x.name);
+      fresh = st.filter(x => x.recoveryScore >= 75).sort((a, b) => b.recoveryScore - a.recoveryScore).slice(0, 3).map(x => x.name);
+      tired = st.filter(x => x.recoveryScore < 55).sort((a, b) => a.recoveryScore - b.recoveryScore).slice(0, 3).map(x => x.name);
+    } else { fresh = fresh.slice(0, 3); tired = tired.slice(0, 3); }
+    const lbl = rd >= 76 ? "god" : rd >= 56 ? "måttlig" : "låg";
+    let r = `Din samlade beredskap är ${rd}% (${lbl}).`;
+    if (fresh.length) r += `\n\nFräscha och redo: ${fresh.join(", ")}.`;
+    if (tired.length) r += `\nBehöver mer vila: ${tired.join(", ")}.`;
+    if (rd < 56) r += "\n\nMed låg beredskap: håll intensiteten nere, prioritera sömn och protein, eller ta en lugnare dag.";
     if (cycle) r += `\n\nDin cykel: ${cycle.sv} (dag ${cycle.day}) — jag har redan vägt in det i beredskapen (${cycle.readiness >= 0 ? "+" : ""}${cycle.readiness}). ${cycle.phase === "menstrual" || cycle.phase === "luteal" ? "Var snäll mot dig själv med intensiteten om orken är låg." : "Bra fönster att pusha lite extra."}`;
+    // Per-block-tillit ur §13: tunt underlag → reservation, aldrig en tyst dom.
+    // Slår ihop kropp- och träningstilliten (datalage.svagast), så en användare
+    // med få pass får siffran presenterad som fingervisning, inte som facit.
+    if (facts.datalage.svagast === "svag") r += `\n\nMen det här vilar på tunt underlag (${kropp.tillit.text}) — läs siffran som en fingervisning, inte en dom. Fler loggade pass gör den säkrare.`;
     // Skilj "utvilad" från "har inte tränat". Utan detta presenterar coachen
-    // avträning som god form.
-    const förbehåll = readinessFörbehåll(buildCoachFacts({ sessions, activeProgram }));
+    // avträning som god form. Nu ur delade facts (träning.dagarSedanPass).
+    const förbehåll = readinessFörbehåll(facts);
     if (förbehåll) r += `\n\n${förbehåll}`;
     if (senior) r += "\n\nMed åren tar återhämtningen ofta lite längre tid — pressa inte varje pass till max, och prioritera sömn och protein. Samtidigt ger styrketräningen ännu mer utdelning nu: den motverkar muskel- och benförlust.";
     return { text: r, chips: chip([...(senior ? ["Träning efter 50"] : []), "Vad ska jag träna?", "Hur går mitt mål?"]) };
