@@ -4,7 +4,7 @@ Datalagret. Här slås siffror, struktur, status och backlog upp. Koden i
 `atlas-app/` är ground truth — den här filen sammanfattar, den bestämmer inte.
 Uppdatera filen när bygget ändras.
 
-*Senast verifierad mot koden: 2026-07-21 (kväll). Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-07-23. Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -69,7 +69,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-07-22)
+## Aktuella siffror (avlästa 2026-07-23)
 
 | Sak | Antal |
 |---|---|
@@ -80,7 +80,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, SLV-databasen | 2606 |
 | Livsmedel, kuraterade | 74 |
 | Recept | 276 |
-| Tester (vitest) | 632 i 61 filer |
+| Tester (vitest) | 641 i 62 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -163,6 +163,31 @@ coach-fallback som ändå skrivs över av `kropp.readiness` så fort passen har
 muskellast. MEN samma formel räknas på tre ställen — `facts.js` (`kropp.readiness`,
 källan för coach + karta), `App.jsx` och `MobileApp` (varsin egen headline).
 Samma tal idag, men tre beräkningar som kan driva isär — se backloggen.
+
+**LLM-vägen (BYOK) är grundad i §13 — input grundad, output grindad.** Den valfria
+språkmodell-coachen (egen Claude-nyckel, `app/llm.js`; DESKTOP-only — 2.0 och
+mobilen kör bara `coachReply`) bygger sin prompt ur `buildCoachFacts`: readiness,
+träning, vikt, kost, program och målresa kommer ur facts-blocken, var och en med
+sin **per-block-tillit**. Är tilliten svag/ingen skrivs `OBS: TUNT UNDERLAG` UT i
+kontexten — modellen ärver samma ärlighetsgrind som den deterministiska vägen.
+`goalReasoning`s recomp-mix är fortfarande ctx-grundad men flaggas EXPLICIT som
+`goal_recomp_EJ_FACTS` — ett **medvetet undantag, inte en glömska**; gränsen
+facts/ej-facts är synlig för modellen.
+
+Modellens SVAR grindas sedan mot samma kontext av `unverifiedNumbers`. Designbeslut
+värda att bevara:
+- Bara **riskenheter** granskas (`%`, `kg`, `kcal`, `g protein`) — exakt det
+  ärlighetsregeln skyddar. Tal utan riskenhet rörs aldrig, så veckodagar, set,
+  reps, klockslag och årtal ger inga falsklarm. Allowlist = alla tal i kontexten
+  (kunskapscitaten via `SL()` ligger där → automatiskt tillåtna).
+- **Rundningstolerans**: "runt 82 kg" godkänns mot facts 81,7.
+- Svaret **tystas aldrig** — det visas alltid, med en synlig varningsrad om något
+  inte kunde stämmas av. Trubbig detektion + oförstörande åtgärd = aldrig tyst på
+  falsklarm, aldrig tyst släpp.
+
+Principen: **input grundad, output grindad — i den ordningen.** En utdata-grind mot
+en ostädad kontext går inte att kalibrera; allowlisten är meningsfull först när
+kontexten är facts-grundad. Därför §13-grundningen (input) före grinden (output).
 
 `readinessFörbehåll(facts)` skiljer **utvilad** från **otränad**. Hög readiness
 betyder två helt olika saker beroende på historiken. Utan förbehållet svarade
@@ -283,7 +308,9 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
   framtida ändring. Låt båda läsa `kropp.readiness` direkt — precis som 2.0 redan
   gör (App2/CoachView/ProgressView) — så aggregeringen bara finns på ETT ställe.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
-- Måldriven LLM-coach ovanpå målresans fakta (BYOK finns).
+- LLM-coach (BYOK, desktop): **grundad i §13 + utdata-grindad** (se "Coachens
+  faktakälla"). Grunden är byggd; en mer proaktiv/måldriven coaching ovanpå
+  målresan är kvar om det önskas.
 - Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
   `role="dialog"` + Escape, aria på fält, AA-upplyst `nodata`/`border`,
   `prefers-reduced-motion`. Kvar: träffytor ≥44 px (matvyn, väntar på blick).
