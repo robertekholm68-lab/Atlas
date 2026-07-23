@@ -284,6 +284,12 @@ function TrainingMode({ muscleStates, onComplete, onExit, equip, sessions, seed 
   const [showCues, setShowCues] = useState(true);
   const [plan, setPlan] = useState(null);
   const [pickTab, setPickTab] = useState("programs");
+  // Träningsmusik — MusicSheet-mönstret från gamla monoliten: sparad Spotify-länk
+  // i localStorage + knapp som window.open:ar den. Ingen OAuth, ingen ny logik.
+  // Global nyckel (samma origin), inte lägesnamnrymden — spellistan är en preferens.
+  const [musik, setMusik] = useState(false);
+  const [spotify, setSpotify] = useState(() => { try { return localStorage.getItem("atlas.spotify") || ""; } catch (e) { return ""; } });
+  const öppnaSpotify = () => { try { localStorage.setItem("atlas.spotify", spotify); } catch (e) {} window.open(spotify || "spotify:", "_blank"); };
 
   const isTime = ex && ex.loadMode === "time";
   const isBw = ex && ex.loadMode === "bodyweight";
@@ -361,12 +367,27 @@ function TrainingMode({ muscleStates, onComplete, onExit, equip, sessions, seed 
           <span style={{ fontSize: 13, color: T.text.muted }}>{totalEx} övningar · {sets.length} set</span>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => setMusik(true)} title="Träningsmusik" aria-label="Träningsmusik" style={{ background: T.bg.raised, color: T.text.secondary, border: `1px solid ${T.bg.muted}`, borderRadius: 9, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>♫ Musik</button>
           <button onClick={complete} disabled={!sets.length || saving} style={{ ...btn.primary, background: T.accent.success, opacity: sets.length ? 1 : 0.4 }}>
             {saving ? "Sparar…" : "Avsluta pass"}
           </button>
           <button onClick={() => sets.length ? setConfirmExit(true) : onExit()} style={btn.icon}><X size={18} /></button>
         </div>
       </div>
+
+      {musik && (
+        <div onClick={() => setMusik(false)} role="dialog" aria-modal="true" aria-label="Träningsmusik" style={{ position: "fixed", inset: 0, zIndex: 950, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: T.bg.surface, border: `1px solid ${T.bg.muted}`, borderRadius: 16, padding: 20, width: "min(440px, 92vw)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: T.text.primary }}>Träningsmusik</div>
+              <button onClick={() => setMusik(false)} aria-label="Stäng" style={btn.icon}><X size={16} /></button>
+            </div>
+            <div style={{ fontSize: 13, color: T.text.muted, marginBottom: 12, lineHeight: 1.5 }}>Klistra in en Spotify-länk till din spellista, så öppnar knappen den direkt i Spotify.</div>
+            <input value={spotify} onChange={e => setSpotify(e.target.value)} onKeyDown={e => { if (e.key === "Enter") öppnaSpotify(); }} placeholder="https://open.spotify.com/playlist/…" style={{ ...input, width: "100%" }} />
+            <button onClick={öppnaSpotify} style={{ ...btn.primary, width: "100%", marginTop: 12, background: T.accent.success }}>♫ Öppna i Spotify</button>
+          </div>
+        </div>
+      )}
 
       {/* body: large map + control panel */}
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.35fr) minmax(340px, 0.85fr)" }} className="tm-grid">
