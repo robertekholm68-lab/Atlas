@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Askr — testinstruktion</title>
+<meta name="description" content="Instruktion och svarsblankett for dig som testar Askr." />
+<meta name="theme-color" content="#0A0A0A" />
+<meta name="robots" content="noindex" />
+<link rel="icon" type="image/png" href="./askr-mark.png" />
+<link rel="apple-touch-icon" href="./atlas-icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Paletten ar appens (src/atlas2/design.js). Lime ar enda accenten; svart
+     text pa lime. Faltramar hojs till #66666E for WCAG 1.4.11 (3:1). */
+  :root{
+    --bg:#0A0A0A; --card:#141414; --card2:#181818; --border:#232323;
+    --field:#66666E; --text:#FFFFFF; --text2:#C8CCD2; --muted:#8A8F98;
+    --lime:#D4FF3F; --critical:#FF5C5C;
+    --h:'Roboto Condensed','Arial Narrow',sans-serif;
+    --b:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--b);
+    -webkit-font-smoothing:antialiased; line-height:1.6; overflow-x:hidden;
+    padding:0 20px calc(56px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:620px; margin:0 auto}
+
+  header{padding:28px 0 0; display:flex; align-items:center; gap:11px}
+  .mark{width:36px; height:36px; flex:none; display:block}
+  .name{font-family:var(--h); font-weight:800; font-size:28px; letter-spacing:.02em}
+  .kicker{font-family:var(--h); font-weight:700; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); margin-left:auto}
+
+  h1{font-family:var(--h); font-weight:800; font-size:clamp(28px,8vw,40px);
+    line-height:1; letter-spacing:-.01em; margin:24px 0 0; text-transform:uppercase;
+    overflow-wrap:anywhere; word-break:break-word}
+  .lede{color:var(--text2); font-size:16px; margin:14px 0 0}
+
+  h2{font-family:var(--h); font-weight:700; font-size:15px; letter-spacing:.05em;
+    text-transform:uppercase; margin:34px 0 10px}
+
+  .card{background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:20px 22px; margin:16px 0 0}
+  .card p{margin:0 0 12px; color:var(--text2); font-size:14.5px}
+  .card p:last-child{margin-bottom:0}
+  .card ul{margin:0; padding-left:20px; color:var(--text2); font-size:14.5px}
+  .card ol{margin:0; padding-left:22px; color:var(--text2); font-size:14.5px}
+  .card li{margin:0 0 9px}
+  .card li:last-child{margin-bottom:0}
+  .card b, .lede b{color:var(--text)}
+
+  /* Den viktigaste punkten far accentens uppmarksamhet utan att bli dekoration. */
+  .vasen{border-color:var(--field)}
+  .vasen h2{color:var(--lime); margin-top:0}
+
+  /* Formular */
+  form{margin:0}
+  .fralt{margin:20px 0 0}
+  .fralt > label, legend{display:block; font-family:var(--b); font-weight:600;
+    font-size:14.5px; color:var(--text); margin:0 0 8px; padding:0}
+  .hint{color:var(--muted); font-weight:400; font-size:13px; display:block; margin-top:2px}
+  input[type=text], textarea{
+    width:100%; font-family:var(--b); font-size:16px; color:var(--text);
+    background:var(--card2); border:1px solid var(--field); border-radius:12px;
+    padding:13px 14px; line-height:1.5; -webkit-appearance:none; appearance:none;
+  }
+  textarea{min-height:96px; resize:vertical}
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--lime); outline-offset:1px; border-color:var(--lime)}
+
+  /* Radioval (Ja/Nej, 1-5) som piller */
+  .val{display:flex; flex-wrap:wrap; gap:8px; position:relative}
+  .val label{
+    display:inline-flex; align-items:center; justify-content:center; min-width:46px;
+    padding:10px 15px; border-radius:999px; border:1px solid var(--field);
+    background:var(--card2); color:var(--text2); font-size:15px; cursor:pointer;
+    user-select:none; transition:background .12s ease,color .12s ease,border-color .12s ease}
+  .val input{position:absolute; opacity:0; width:1px; height:1px}
+  .val input:checked + label{background:var(--lime); color:#0A0A0A; border-color:var(--lime); font-weight:700}
+  .val input:focus-visible + label{outline:2px solid var(--text); outline-offset:2px}
+
+  /* Knappar */
+  .actions{margin:34px 0 0; display:grid; gap:10px}
+  button{font-family:var(--h); font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+    border-radius:999px; cursor:pointer; width:100%}
+  .primar{padding:17px; font-size:18px; background:var(--lime); color:#0A0A0A; border:none;
+    transition:transform .15s ease}
+  .primar:hover{transform:translateY(-1px)}
+  .primar:focus-visible{outline:2px solid var(--text); outline-offset:3px}
+  .sekundar{padding:14px; font-size:15px; background:transparent; color:var(--text);
+    border:1px solid var(--field); text-decoration:none; display:block; text-align:center}
+  .sekundar:focus-visible{outline:2px solid var(--lime); outline-offset:2px}
+  .status{min-height:20px; text-align:center; font-size:14px; color:var(--lime);
+    font-weight:600; margin:2px 0 0}
+  .status.warn{color:var(--critical)}
+
+  footer{margin:40px 0 0; color:var(--muted); font-size:12px; text-align:center}
+  footer a{color:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+
+  /* Utskrift / Spara som PDF: svart pa vitt, doljer knappar, faltvarden syns.
+     onbeforeprint vaxer textareas sa inget klipps. */
+  @media print{
+    :root{--bg:#fff; --card:#fff; --card2:#fff; --text:#000; --text2:#111;
+      --muted:#444; --border:#bbb; --field:#888}
+    body{padding:0; color:#000}
+    .actions, .sekundar, .primar, .status, .noprint{display:none !important}
+    .kicker{color:#444}
+    h1, h2, .name{color:#000}
+    .vasen h2{color:#000}
+    .card{break-inside:avoid; border:1px solid #bbb}
+    input[type=text], textarea{background:#fff; color:#000; border:1px solid #999}
+    .val label{border:1px solid #999; color:#000}
+    .val input:checked + label{background:#000; color:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    textarea{overflow:visible}
+    a[href]:after{content:""}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img class="mark" src="./askr-mark.png" alt="" />
+    <span class="name">Askr</span>
+    <span class="kicker">För testare</span>
+  </header>
+
+  <h1>Testinstruktion</h1>
+  <p class="lede">
+    En träningsapp där <b>kroppen är gränssnittet</b>. Muskelkartan visar vad som är
+    återhämtat, och coachen svarar utifrån vad du faktiskt loggat — inte gissningar.
+  </p>
+
+  <h2>Innan du börjar</h2>
+  <div class="card">
+    <ul>
+      <li><b>Din data ligger bara på din telefon.</b> Ingen inloggning, inget konto,
+        inget skickas någonstans. Jag ser den inte.</li>
+      <li><b>Välj ETT ställe att logga på.</b> Appen på hemskärmen och appen i
+        webbläsaren har separata lagringar. Blanda inte.</li>
+      <li><b>Kör Riktigt läge, inte Demo.</b> Demo har påhittad data, och det är just
+        äktheten jag vill testa.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <p><b>Installera:</b> öppna länken i Chrome (Android) eller Safari (iPhone) →
+      menyn → ”Lägg till på startskärmen”.</p>
+  </div>
+
+  <h2>Det jag vill att du provar</h2>
+  <div class="card">
+    <ol>
+      <li><b>Kom igång</b> — välj kropp, gå igenom introduktionen. Fastnade något?</li>
+      <li><b>Logga ett riktigt pass</b> — välj program, logga set med vikter, avsluta
+        och läs kvittot.</li>
+      <li><b>Muskelkartan</b> — tryck på en muskel. Stämmer färgerna med hur du
+        faktiskt känner dig?</li>
+      <li><b>Coachen</b> — ställ frågor: ”vad ska jag träna idag”, ”hur går det för
+        mig”, ”hur mycket väger jag”. Testa både innan och efter att du loggat några
+        pass.</li>
+      <li><b>Maten</b> — sök ett livsmedel, logga en måltid, bläddra bland recepten.</li>
+      <li><b>Sätt ett mål</b> — välj måltyp och datum, titta på målresan.</li>
+      <li><b>Bakåt</b> — svep bakåt eller använd telefonens bakåtknapp. Hamnar du
+        rätt, eller kastas du ut?</li>
+      <li><b>Offline</b> — sätt på flygplansläge och öppna appen. Fungerar den?</li>
+    </ol>
+  </div>
+
+  <h2>Det jag särskilt vill veta</h2>
+  <div class="card vasen">
+    <h2>Ärlighet före allt</h2>
+    <p>Appen är byggd på en princip: <b>den ska aldrig låtsas veta mer än den vet.</b>
+      Säger coachen något tvärsäkert som den inte har underlag för? Visar den en siffra
+      som känns påhittad? Det är det värsta felet som finns — viktigare än buggar.</p>
+  </div>
+
+  <h2>Svarsblankett</h2>
+  <p class="lede noprint">Fyll i här. Tryck sedan <b>Kopiera svar</b> och klistra in i
+    ett mejl eller chatt till mig. (Eller spara sidan som PDF från webbläsarens
+    utskriftsmeny.)</p>
+
+  <form id="form" autocomplete="off">
+    <div class="fralt">
+      <label for="f0">Namn / telefonmodell</label>
+      <input type="text" id="f0" name="Namn / telefonmodell" />
+    </div>
+
+    <fieldset class="fralt" style="border:0;padding:0;margin-top:24px">
+      <legend>1. Kom du igång utan hjälp?</legend>
+      <div class="val" role="radiogroup" aria-label="Kom igång utan hjälp">
+        <input type="radio" id="q1ja" name="q1" value="Ja" /><label for="q1ja">Ja</label>
+        <input type="radio" id="q1nej" name="q1" value="Nej" /><label for="q1nej">Nej</label>
+      </div>
+      <input type="text" id="q1t" name="q1text" placeholder="Vad fastnade?" style="margin-top:10px" />
+    </fieldset>
+
+    <div class="fralt">
+      <label for="q2">2. Vad gick sönder?<span class="hint">Fel, krascher, tomma vyer — gärna vilken vy och vad du gjorde.</span></label>
+      <textarea id="q2" name="q2"></textarea>
+    </div>
+
+    <div class="fralt">
+      <label for="q3">3. Vad förstod du inte?<span class="hint">Knappar, ord, siffror.</span></label>
+      <textarea id="q3" name="q3"></textarea>
+    </div>
+
+    <div class="fralt">
+      <label for="q4">4. Sa coachen något som kändes påhittat eller översäkert?<span class="hint">Vad, ordagrant om du minns?</span></label>
+      <textarea id="q4" name="q4"></textarea>
+    </div>
+
+    <fieldset class="fralt" style="border:0;padding:0;margin-top:24px">
+      <legend>5. Stämde muskelkartan med hur du kände dig?<span class="hint">1 = inte alls, 5 = precis.</span></legend>
+      <div class="val" role="radiogroup" aria-label="Muskelkartan stämde, 1 till 5">
+        <input type="radio" id="q5-1" name="q5" value="1" /><label for="q5-1">1</label>
+        <input type="radio" id="q5-2" name="q5" value="2" /><label for="q5-2">2</label>
+        <input type="radio" id="q5-3" name="q5" value="3" /><label for="q5-3">3</label>
+        <input type="radio" id="q5-4" name="q5" value="4" /><label for="q5-4">4</label>
+        <input type="radio" id="q5-5" name="q5" value="5" /><label for="q5-5">5</label>
+      </div>
+      <input type="text" id="q5t" name="q5text" placeholder="Kommentar" style="margin-top:10px" />
+    </fieldset>
+
+    <fieldset class="fralt" style="border:0;padding:0;margin-top:24px">
+      <legend>6. Var appen snabb nog i gymmet?<span class="hint">1 = seg, 5 = snabb.</span></legend>
+      <div class="val" role="radiogroup" aria-label="Snabb nog i gymmet, 1 till 5">
+        <input type="radio" id="q6-1" name="q6" value="1" /><label for="q6-1">1</label>
+        <input type="radio" id="q6-2" name="q6" value="2" /><label for="q6-2">2</label>
+        <input type="radio" id="q6-3" name="q6" value="3" /><label for="q6-3">3</label>
+        <input type="radio" id="q6-4" name="q6" value="4" /><label for="q6-4">4</label>
+        <input type="radio" id="q6-5" name="q6" value="5" /><label for="q6-5">5</label>
+      </div>
+      <input type="text" id="q6t" name="q6text" placeholder="Kommentar" style="margin-top:10px" />
+    </fieldset>
+
+    <div class="fralt">
+      <label for="q7">7. Vad saknade du mest?</label>
+      <textarea id="q7" name="q7"></textarea>
+    </div>
+
+    <fieldset class="fralt" style="border:0;padding:0;margin-top:24px">
+      <legend>8. Skulle du fortsätta använda den?</legend>
+      <div class="val" role="radiogroup" aria-label="Fortsätta använda">
+        <input type="radio" id="q8ja" name="q8" value="Ja" /><label for="q8ja">Ja</label>
+        <input type="radio" id="q8kanske" name="q8" value="Kanske" /><label for="q8kanske">Kanske</label>
+        <input type="radio" id="q8nej" name="q8" value="Nej" /><label for="q8nej">Nej</label>
+      </div>
+      <input type="text" id="q8t" name="q8text" placeholder="Varför?" style="margin-top:10px" />
+    </fieldset>
+
+    <div class="fralt">
+      <label for="q9">9. Övrigt</label>
+      <textarea id="q9" name="q9"></textarea>
+    </div>
+
+    <div class="actions">
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <button type="button" class="primar" id="kopiera">Kopiera svar</button>
+      <a class="sekundar" id="epost" href="#">Öppna e-post i stället</a>
+    </div>
+  </form>
+
+  <footer>Askr · kroppen är gränssnittet<br />Svaren skickas inte automatiskt — du väljer själv vart de går.</footer>
+
+</div>
+
+<script>
+  // Ingen server. Svaren serialiseras till en textblock och kopieras till urklipp
+  // (primar) eller oppnas i e-postklient via mailto (sekundar).
+  var MOTTAGARE = "robert.ekholm68@gmail.com";
+
+  function val(name){
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : "";
+  }
+  function txt(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+  function rad(label, v){ return label + " " + (v || "—"); }
+
+  function bygg(){
+    var L = [];
+    L.push("ASKR — testsvar");
+    L.push("Namn / telefonmodell: " + (txt("f0") || "—"));
+    L.push("");
+    L.push(rad("1. Kom igång utan hjälp:", val("q1")) + (txt("q1t") ? " — " + txt("q1t") : ""));
+    L.push("2. Vad gick sönder: " + (txt("q2") || "—"));
+    L.push("3. Vad förstod du inte: " + (txt("q3") || "—"));
+    L.push("4. Coachen påhittat/översäkert: " + (txt("q4") || "—"));
+    L.push(rad("5. Muskelkartan stämde (1-5):", val("q5")) + (txt("q5t") ? " — " + txt("q5t") : ""));
+    L.push(rad("6. Snabb nog i gymmet (1-5):", val("q6")) + (txt("q6t") ? " — " + txt("q6t") : ""));
+    L.push("7. Saknade mest: " + (txt("q7") || "—"));
+    L.push(rad("8. Skulle fortsätta använda:", val("q8")) + (txt("q8t") ? " — " + txt("q8t") : ""));
+    L.push("9. Övrigt: " + (txt("q9") || "—"));
+    return L.join("\n");
+  }
+
+  var status = document.getElementById("status");
+  function sag(msg, warn){
+    status.textContent = msg;
+    status.className = "status" + (warn ? " warn" : "");
+  }
+
+  function fallbackCopy(text){
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.top = "-1000px";
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  document.getElementById("kopiera").addEventListener("click", function(){
+    var text = bygg();
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){
+        sag("Kopierat. Klistra in i ett mejl eller chatt till mig och skicka.");
+      }).catch(function(){
+        if (fallbackCopy(text)) sag("Kopierat. Klistra in i ett mejl eller chatt och skicka.");
+        else sag("Kunde inte kopiera automatiskt — markera texten manuellt, eller använd e-postknappen.", true);
+      });
+    } else {
+      if (fallbackCopy(text)) sag("Kopierat. Klistra in i ett mejl eller chatt och skicka.");
+      else sag("Kunde inte kopiera automatiskt — använd e-postknappen nedan.", true);
+    }
+  });
+
+  document.getElementById("epost").addEventListener("click", function(e){
+    e.preventDefault();
+    var text = bygg();
+    var url = "mailto:" + MOTTAGARE
+      + "?subject=" + encodeURIComponent("ASKR testsvar")
+      + "&body=" + encodeURIComponent(text);
+    // Langa svar kan kapas av vissa mobilklienter — kopiera ocksa som skydd.
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).catch(function(){});
+    }
+    sag("Öppnar e-post. Blir mejlet avklippt: gå tillbaka och tryck Kopiera svar i stället.");
+    window.location.href = url;
+  });
+
+  // Vaxa textareas infor utskrift sa inget innehall klipps i PDF:en.
+  window.addEventListener("beforeprint", function(){
+    var tas = document.getElementsByTagName("textarea");
+    for (var i = 0; i < tas.length; i++){
+      tas[i].dataset.h = tas[i].style.height;
+      tas[i].style.height = "auto";
+      tas[i].style.height = tas[i].scrollHeight + "px";
+    }
+  });
+  window.addEventListener("afterprint", function(){
+    var tas = document.getElementsByTagName("textarea");
+    for (var i = 0; i < tas.length; i++){ tas[i].style.height = tas[i].dataset.h || ""; }
+  });
+</script>
+</body>
+</html>
