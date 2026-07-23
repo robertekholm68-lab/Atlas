@@ -44,7 +44,9 @@ function spread(days) { const map = { 1: [2], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1,
 
 // ── Huvudanalys ──
 export function analyzeProgram({ program, sessions = [], readiness = null }) {
-  if (!program) return { observations: [], proposals: [], adherence: null, activities: [] };
+  // Ett program utan pass (workouts) finns inget att analysera i — bail tidigt i
+  // stället för att krascha på program.workouts nedan (t.ex. en minimal { name }).
+  if (!program || !Array.isArray(program.workouts) || !program.workouts.length) return { observations: [], proposals: [], adherence: null, activities: [] };
   const ps = progSessions(program, sessions);
   const adh = adherence(program, sessions);
   const acts = recentActivities(sessions);
