@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from "vitest";
-import { getLlmConfig, setLlmConfig, hasLlm, coachSystemPrompt, buildGroundingContext, CLAUDE_MODELS } from "../app/llm.js";
+import { getLlmConfig, setLlmConfig, hasLlm, coachSystemPrompt, buildGroundingContext, unverifiedNumbers, CLAUDE_MODELS } from "../app/llm.js";
 
 beforeEach(() => { try { localStorage.clear(); } catch { } });
 
@@ -59,5 +59,29 @@ describe("llm: grundning (systemprompt + kontext)", () => {
     const c = buildGroundingContext("hej", { muscleStates: {}, activeProgram: null }, {});
     expect(typeof c).toBe("string");
     expect(c).toMatch(/DATAKONTEXT/);
+  });
+});
+
+describe("llm: utdata-grind (unverifiedNumbers)", () => {
+  const ctx = '{"readiness":{"overall":72},"kost":{"proteinMål":165,"proteinIdag":150,"kaloriMål":2200,"kaloriIdag":2000},"vikt":{"senasteKg":81.7}}';
+  it("flaggar påhittad readiness/vikt/kcal som inte finns i kontexten", () => {
+    expect(unverifiedNumbers("Din beredskap är 88%.", ctx)).toContain("88%");
+    expect(unverifiedNumbers("Du väger 90 kg nu.", ctx)).toContain("90 kg");
+    expect(unverifiedNumbers("Du åt 3000 kcal.", ctx)).toContain("3000 kcal");
+  });
+  it("tillåter siffror som finns i kontexten (med rundning)", () => {
+    expect(unverifiedNumbers("Beredskap 72%.", ctx)).toEqual([]);
+    expect(unverifiedNumbers("Ditt proteinmål är 165 g protein.", ctx)).toEqual([]);
+    expect(unverifiedNumbers("Du väger 82 kg.", ctx)).toEqual([]);   // 81,7 → 82 rundning
+  });
+  it("rör aldrig tal utan riskenhet: veckodagar, årtal, set, reps, klockslag", () => {
+    expect(unverifiedNumbers("Kör 3 set × 8–12 reps på måndag kl 18, sikta mot 2026.", ctx)).toEqual([]);
+  });
+  it("g/kg-riktvärde (kunskapscitat) flaggas inte", () => {
+    expect(unverifiedNumbers("Sikta på 1,8 g/kg kroppsvikt.", ctx)).toEqual([]);
+  });
+  it("tomt/ogiltigt svar → inga träffar", () => {
+    expect(unverifiedNumbers("", ctx)).toEqual([]);
+    expect(unverifiedNumbers(null, ctx)).toEqual([]);
   });
 });

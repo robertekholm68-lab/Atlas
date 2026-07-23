@@ -121,3 +121,30 @@ export function buildGroundingContext(userText, ctx, extra = {}) {
   }
   return "DATAKONTEXT — alla block är FACTS-grundade (§13, med per-block-tillit) UTOM 'goal_recomp_EJ_FACTS'. 'tillit' = hur säkert blocket är; 'OBS: TUNT UNDERLAG' betyder att du ska uttala dig försiktigt:\n" + JSON.stringify(c, null, 1);
 }
+
+// ── Utdata-grind: fånga siffror i modellens svar som INTE finns i kontexten ──
+//
+// Förankrad i RISKENHETER (%, kg, kcal, g protein) — exakt det ärlighetsregeln
+// skyddar (readiness, vikter, kalorier, protein). Tal utan riskenhet rörs aldrig:
+// veckodagar/årtal (ingen enhet), "3 set"/"8–12 reps" (ingen riskenhet), klockslag.
+// g/kg-riktvärden matchar inte (ingen siffra står direkt före "kg" i "1,6 g/kg").
+//
+// Allowlist = alla tal i grundningskontexten (kunskapscitaten ligger DÄR, så deras
+// siffror är automatiskt tillåtna), med rundningstolerans. Medvetet bred allowlist:
+// hellre missa en påhittad siffra som råkar matcha än att falsklarma — för åtgärden
+// (visa med varning, aldrig tysta) gör en trubbig detektion ofarlig.
+//
+// Ren funktion, testbar. Returnerar de OSTÄMDA träffarna; vyn varnar, tystar aldrig.
+export function unverifiedNumbers(reply, contextText) {
+  if (!reply || typeof reply !== "string") return [];
+  const parse = s => parseFloat(String(s).replace(",", "."));
+  const allowed = (String(contextText || "").match(/\d+(?:[.,]\d+)?/g) || []).map(parse);
+  const ok = v => allowed.some(a => Math.round(a) === Math.round(v) || Math.abs(a - v) <= Math.max(1, v * 0.03));
+  const flagged = [];
+  const scan = (re, label) => { let m; while ((m = re.exec(reply))) { if (!ok(parse(m[1]))) { const t = label(m); if (!flagged.includes(t)) flagged.push(t); } } };
+  scan(/(\d+(?:[.,]\d+)?)\s*%/g, m => `${m[1]}%`);
+  scan(/(\d+(?:[.,]\d+)?)\s*(kg|kcal)\b/gi, m => `${m[1]} ${m[2].toLowerCase()}`);
+  scan(/(\d+(?:[.,]\d+)?)\s*g\s+protein/gi, m => `${m[1]} g protein`);
+  scan(/protein[^.\d]{0,24}?(\d+(?:[.,]\d+)?)\s*g\b/gi, m => `${m[1]} g protein`);
+  return flagged;
+}
