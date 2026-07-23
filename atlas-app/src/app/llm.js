@@ -2,6 +2,7 @@
 // Grundning: modellen får appens faktiska data + relevanta kunskapsbank-citat och instrueras att
 // aldrig hitta på siffror. Utan nyckel/fel → appen faller tillbaka på den deterministiska coachen.
 import { citableFacts, citableTopic, KNOWLEDGE, TOPICS } from "../data/knowledge.js";
+import { buildCoachFacts, readinessFörbehåll } from "../engines/facts.js";
 
 const LS_KEY = "atlas.llm";
 export const CLAUDE_MODELS = [
@@ -55,6 +56,8 @@ export function coachSystemPrompt() {
     "Du är Askr träningscoach. Du svarar på svenska, kort och konkret, i ett peppande men sakligt tonläge.",
     "REGLER:",
     "- Använd ENDAST siffror och fakta från datakontexten nedan. Hitta ALDRIG på siffror (readiness, vikter, kalorier, set).",
+    "- Varje datablock har en 'tillit' (ingen/svag/ok/god). Vid svag eller ingen tillit — eller när blocket har 'OBS: TUNT UNDERLAG' — säg UTTRYCKLIGEN att det bygger på tunt underlag och uttala dig försiktigt. Dra aldrig en tvärsäker slutsats ur tunn data; föreslå hellre vad användaren kan logga för att göra bedömningen säkrare.",
+    "- Blocken är FACTS-grundade (appens ärlighetsgrindar) UTOM 'goal_recomp_EJ_FACTS', som är ctx-resonemang. Grunda alla siffror om readiness, vikt, träning, kost och program på facts-blocken; använd 'goal_recomp_EJ_FACTS' som mjukt resonemang om målmixen, inte som exakta mätvärden.",
     "- Saknas data: säg det ärligt och föreslå vad användaren kan logga.",
     "- När du nämner muskelfakta: använd bara de fakta som finns under 'muscleFacts' och håll dig till dem.",
     "- När du hänvisar till en träningsprincip (t.ex. progressiv överbelastning, volym, deload): använd fakta under 'principle' och nämn gärna källan om den finns. Grunda programråd i principen.",
@@ -69,10 +72,17 @@ export function coachSystemPrompt() {
   ].join("\n");
 }
 
-// Kompakt kontext (JSON-likt) ur den data coachen redan har.
+// Kompakt kontext (JSON-likt) GRUNDAD I §13 (buildCoachFacts). Siffror OCH
+// per-block-tillit följer med, så språkmodellen ärver samma ärlighetsgrindar som
+// den deterministiska coachen: där tilliten är svag/ingen skrivs det UT ("tunt
+// underlag"), inte bara talet. Undantag: goalReasonings recomp-mix är fortfarande
+// ctx-grundad och flaggas EXPLICIT som EJ facts, så gränsen är tydlig för modellen.
 export function buildGroundingContext(userText, ctx, extra = {}) {
-  const { overallReadiness, muscleStates, activeProgram, goalReasoning: gr, nutritionTotals, nutritionTargets, profile, cycle, supplements } = ctx;
+  const { overallReadiness, goalReasoning: gr, profile, cycle, supplements } = ctx;
+  const facts = buildCoachFacts(ctx);
   const c = {};
+
+  // ── person / cykel / tillskott (ur profil, oförändrat) ──
   const age = profile && profile.age;
   const diet = profile && profile.diet;
   const kostLbl = { pescetarian: "pescetarian", vegetarian: "vegetarian", vegan: "vegan" }[diet];
@@ -83,22 +93,31 @@ export function buildGroundingContext(userText, ctx, extra = {}) {
     c.person = { ...(profile && profile.gender && profile.gender !== "unspecified" ? { kön: profile.gender === "female" ? "kvinna" : "man" } : {}), ...(typeof age === "number" && age > 0 ? { ålder: age } : {}), ...(kostLbl ? { kost: kostLbl } : {}), ...(apprLbl ? { kosthållning: apprLbl } : {}), ...(restr.length ? { restriktioner: restr } : {}) };
   if (cycle) c.menscykel = { fas: cycle.sv, dag: cycle.day, readinessJustering: cycle.readiness };
   if (Array.isArray(supplements) && supplements.length) c.tillskott = supplements.map(s => s.name);
-  if (overallReadiness != null) {
-    const st = Object.entries(muscleStates || {}).map(([id, s]) => ({ id, ...s }));
-    c.readiness = { overall: overallReadiness, fresh: st.filter(x => x.recoveryScore >= 75).slice(0, 4).map(x => x.id), tired: st.filter(x => x.recoveryScore < 55).slice(0, 4).map(x => x.id) };
-  }
-  if (activeProgram) c.activeProgram = { name: activeProgram.name, nextWorkout: extra.nextWorkoutName || null };
-  else c.activeProgram = null;
-  if (gr) c.goal = { type: gr.type, synthesis: gr.synthesis, components: gr.components.map(x => ({ del: x.label, vikt: x.weight, läge: x.text })), tradeoffs: gr.tradeoffs };
-  if (nutritionTargets) c.nutrition = { proteinMål: nutritionTargets.protein, kaloriMål: nutritionTargets.kcal, proteinIdag: nutritionTotals && nutritionTotals.protein, kaloriIdag: nutritionTotals && nutritionTotals.kcal };
-  // muskelfakta för ev. muskel i frågan (endast etablerade)
-  if (extra.muscleId && KNOWLEDGE[extra.muscleId]) {
-    c.muscleFacts = { muscle: KNOWLEDGE[extra.muscleId].title, facts: citableFacts(extra.muscleId).map(f => f.fact) };
-  }
-  // träningsprincip för ev. princip i frågan (t.ex. progressiv överbelastning, deload, uppvärmning)
+
+  // ── FACTS-GRUNDAT (§13) — varje block bär sin tillit; tunt underlag skrivs ut ──
+  const medTillit = (obj, tillit) => {
+    const svag = tillit && (tillit.nivå === "svag" || tillit.nivå === "ingen");
+    return { ...obj, tillit: tillit ? tillit.nivå : "ingen", underlag: tillit ? tillit.text : "inget underlag", ...(svag ? { OBS: "TUNT UNDERLAG — säg uttryckligen att det bygger på lite data och uttala dig försiktigt" } : {}) };
+  };
+  const kropp = facts.kropp;
+  const rd = kropp.readiness != null ? kropp.readiness : overallReadiness;   // fallback bara när §13 saknar muskellast
+  if (rd != null) c.readiness = medTillit({ overall: rd, redo: kropp.redo.map(m => m.namn).slice(0, 4), slitna: kropp.slitna.map(m => m.namn).slice(0, 4), förbehåll: readinessFörbehåll(facts) || undefined }, kropp.tillit);
+  else { const f = readinessFörbehåll(facts); if (f) c.readiness = { overall: null, förbehåll: f, tillit: kropp.tillit.nivå }; }
+  if (facts.träning.passTotalt) c.träning = medTillit({ passSenasteVeckan: facts.träning.passIVeckan, volymSenasteVeckan: facts.träning.volymIVeckan, dagarSedanPass: facts.träning.dagarSedanPass }, facts.träning.tillit);
+  if (facts.vikt.senaste != null) c.vikt = medTillit({ senasteKg: facts.vikt.senaste, förändringKg: facts.vikt.förändring }, facts.vikt.tillit);
+  if (facts.kost.harMål) c.kost = medTillit({ proteinMål: facts.kost.proteinMål, proteinIdag: facts.kost.proteinIntag, kaloriMål: facts.kost.kcalMål, kaloriIdag: facts.kost.kcalIntag, energibalansIdag: facts.kost.energibalans }, facts.kost.tillit);
+  if (facts.program.namn) c.program = medTillit({ namn: facts.program.namn, följsamhetProcent: facts.program.följsamhet, toppförslag: facts.program.förslag ? facts.program.förslag.title : null, nextWorkout: extra.nextWorkoutName || null }, facts.program.tillit);
+  else c.program = null;
+  if (facts.målresa.namn) c.målresa = medTillit({ namn: facts.målresa.namn, fas: facts.målresa.fas, veckorKvar: facts.målresa.veckorKvar, nästaDelmål: facts.målresa.nästaDelmål ? facts.målresa.nästaDelmål.namn : null, följsamhetProcent: facts.målresa.följsamhet }, facts.målresa.tillit);
+
+  // ── EJ FACTS-GRUNDAT — goalReasonings recomp-mix (ctx-resonemang), flaggat ──
+  if (gr) c.goal_recomp_EJ_FACTS = { OBS: "Detta block kommer ur ctx-resonemang (goalReasoning), INTE ur facts/§13. Siffrorna (t.ex. veckans set, vikt-/fettrend, mål-vikter) är uppskattningar — behandla som resonemang, inte exakta mätvärden. Grunda readiness/vikt/kost på facts-blocken ovan.", type: gr.type, synthesis: gr.synthesis, components: gr.components.map(x => ({ del: x.label, vikt: x.weight, läge: x.text })), tradeoffs: gr.tradeoffs };
+
+  // ── kunskapsbanken (ur SL()/citableTopic, oförändrat) ──
+  if (extra.muscleId && KNOWLEDGE[extra.muscleId]) c.muscleFacts = { muscle: KNOWLEDGE[extra.muscleId].title, facts: citableFacts(extra.muscleId).map(f => f.fact) };
   if (extra.topicId && TOPICS[extra.topicId]) {
     const tf = citableTopic(extra.topicId);
     c.principle = { titel: TOPICS[extra.topicId].title, facts: tf.map(f => f.fact), källa: (tf.find(f => f.source) || {}).source ? tf.find(f => f.source).source.name : null };
   }
-  return "DATAKONTEXT (fakta om användaren just nu):\n" + JSON.stringify(c, null, 1);
+  return "DATAKONTEXT — alla block är FACTS-grundade (§13, med per-block-tillit) UTOM 'goal_recomp_EJ_FACTS'. 'tillit' = hur säkert blocket är; 'OBS: TUNT UNDERLAG' betyder att du ska uttala dig försiktigt:\n" + JSON.stringify(c, null, 1);
 }
