@@ -15,7 +15,7 @@ import { goalReasoning, GOAL_EVIDENCE, GOAL_TYPES } from "../../engines/goal.js"
 import { buildCoachFacts, readinessFörbehåll } from "../../engines/facts.js";
 import { MUSCLES } from "../../data/muscles.js";
 import { citableFacts, citableTopic, hasKnowledge, hasTopic, KNOWLEDGE, TOPICS } from "../../data/knowledge.js";
-import { hasLlm, getLlmConfig, callClaude, coachSystemPrompt, buildGroundingContext } from "../../app/llm.js";
+import { hasLlm, getLlmConfig, callClaude, coachSystemPrompt, buildGroundingContext, unverifiedNumbers } from "../../app/llm.js";
 import { H, T, btn, now } from "../../data/tokens.js";
 
 // ── Samtalscoach: datadriven, deterministisk chatt som svarar ur appens riktiga data ──
@@ -338,7 +338,13 @@ function CoachChat({ ctx, onStartProgram, onOpenPrograms }) {
         const sys = coachSystemPrompt() + "\n\n" + buildGroundingContext(text, { ...ctx, goalReasoning: gr }, { nextWorkoutName: nw && nw.name, muscleId: mid, topicId: tid });
         const reply = await callClaude({ key: cfg.key, model: cfg.model, system: sys, messages: [...priorHist, { role: "user", content: text }], max_tokens: 600 });
         setLastTopic(mid ? { kind: "muscle", muscle: mid } : null);
-        setMessages(cur => cur.map((mm, i) => (i === cur.length - 1 && mm.pending) ? { role: "coach", text: reply || "(tomt svar)" } : mm));
+        // Utdata-grind: siffror i svaret som inte finns i grundningen (readiness/%,
+        // vikt/kg, kcal, g protein) flaggas — svaret VISAS alltid, aldrig tyst släpp.
+        const oflaggat = unverifiedNumbers(reply, sys);
+        const visat = oflaggat.length
+          ? `${reply}\n\n⚠ Jag kunde inte stämma av ${oflaggat.length === 1 ? "en siffra" : "några siffror"} mot din data (${oflaggat.join(", ")}) — dubbelkolla dem i appen.`
+          : reply;
+        setMessages(cur => cur.map((mm, i) => (i === cur.length - 1 && mm.pending) ? { role: "coach", text: visat || "(tomt svar)" } : mm));
       } catch (e) {
         const reply = coachReply(text, ctx, lastTopic);
         setLastTopic(reply.topic || null);
