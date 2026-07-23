@@ -10,6 +10,7 @@ import { primaryMission as pickPrimaryMission, missionAnalysis } from "../engine
 import { buildSession, migrateSessions } from "../engines/session.js";
 import { nextWorkout, workoutExercises } from "../engines/programs.js";
 import { derivedProgramGoal, defaultGoalProfile, goalProfileFromOnboarding } from "../engines/goal.js";
+import { coachFacts } from "../engines/facts.js";
 import { EQUIP_PROFILES, SPORTS, DEFAULT_ACTIVE_SPORTS } from "../data/exercises.js";
 import { NUTRITION_GOALS } from "../data/foods.js";
 import { DesktopLayout, MobileLayout } from "../components/layout/index.jsx";
@@ -101,9 +102,13 @@ function AtlasApp({ mode, onSwitchMode }) {
   const _logSkippedToday = logConfirmDate === "skip:" + _todayKey;
   const _useNutrition = personalizedInsights && !_logSkippedToday && (_logRel.reliable || _logConfirmedToday);
   const nutRec = _useNutrition ? nutritionRecoveryModifier({ foodLog, nutritionTargets, profile }) : { mod: 0, factors: [] }; // opt-in + logg-bekräftad
-  const trainingBase = hasRecentTraining ? Object.values(muscleStates).reduce((sum, s) => sum + s.readiness * (s.weeklyLoad / totalWeight), 0) : null;
-  const readinessWhy = hasRecentTraining ? readinessBreakdown(trainingBase, cycle, nutRec) : null;
-  const overallReadiness = readinessWhy ? readinessWhy.total : null;
+  // Readiness läses ur §13 (facts.kropp) — EN aggregering, samma lastviktade tal
+  // som coachen och 2.0-kartan visar. App.jsx räknar inte längre formeln själv
+  // (lastviktat snitt + readinessBreakdown bor i facts.js). muscleStates,
+  // totalWeight och hasRecentTraining behålls för kartan och rekommendationen.
+  const _readinessFacts = coachFacts({ sessions, cycle, nutRec }, nowMs);
+  const readinessWhy = _readinessFacts.kropp.readinessWhy;
+  const overallReadiness = _readinessFacts.kropp.readiness;
   const laggingData = laggingGroups(sessions).map(l => ({ ...l, advice: laggingMuscleAdvice(sessions, l.group) }));
   const balanceData = (profile && profile.balanceMeter) ? balanceScore({ overallReadiness, sessions, foodLog, nutritionTargets, systemicRecovery }) : null;
   const personalData = personalizedInsights ? {

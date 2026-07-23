@@ -19,6 +19,7 @@ import { ALL_TEMPLATES, copyProgram, nextWorkout, workoutExercises } from "../en
 import { Icon } from "../components/common/index.jsx";
 import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
 import { coachReply } from "../features/ai-coach/index.jsx";
+import { coachFacts } from "../engines/facts.js";
 import { SvgBody } from "../features/body-map/index.jsx";
 import { DEMO_SESSIONS, DEMO_PROGRAM as DEMO_PROG, DEMO_PROGRAMS } from "../data/demo.js";
 
@@ -140,7 +141,10 @@ export function MobileApp() {
     muscleStates[id] = { ...rec, weeklyLoad, readiness };
   });
   const totalW = Object.values(muscleStates).reduce((a, s) => a + s.weeklyLoad, 0) || 1;
-  let overall = totalW > 1 ? Math.round(Object.values(muscleStates).reduce((a, s) => a + s.readiness * (s.weeklyLoad / totalW), 0)) : null;
+  // Readiness läses ur §13 (facts.kropp) — samma lastviktade tal som webben och
+  // 2.0. Mobilen räknar inte formeln själv längre; muscleStates/totalW behålls för
+  // kartan. Check-in-nudgen (±6) är mobil-specifik och läggs på ovanpå.
+  let overall = coachFacts({ sessions }, nowMs).kropp.readiness;
   // subjektiv daglig check-in nudgar readiness (±6)
   if (overall != null && checkin) overall = Math.max(0, Math.min(100, overall + (checkin === "high" ? 6 : checkin === "low" ? -6 : 0)));
 
