@@ -1,3 +1,4 @@
+// KRÄVER: `npm i --no-save playwright-core` + byggd `dist-atlas2/` (körs ej av test/bygge).
 // Headless DOM-verifiering av Askr 2.0-bygget: mål-form, snabblogg, röstknapp.
 // Körs mot dist-atlas2 över http (file:// gör localStorage opålitligt).
 import { chromium } from "playwright-core";

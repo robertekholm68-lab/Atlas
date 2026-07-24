@@ -1,3 +1,4 @@
+// KRÄVER: `npm i --no-save playwright-core` + byggd `dist-atlas2/` (körs ej av test/bygge).
 // Headless verifiering av röstknappen i pågående pass (kräver valt program).
 import { chromium } from "playwright-core";
 import http from "http";
