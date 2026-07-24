@@ -9,7 +9,7 @@
 // Att skriva en andra coach hade betytt två sanningar om samma kropp.
 
 import { useState, useRef, useEffect } from "react";
-import { C, HFONT, BFONT, hdr, label, card } from "./design.js";
+import { C, HFONT, BFONT, hdr, label, card, volt } from "./design.js";
 import { coachReply } from "../features/ai-coach/index.jsx";
 import { bodyState, nutritionCtx } from "./store.js";
 
@@ -90,7 +90,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
               ) : (
                 <div style={{
                   maxWidth: "92%", padding: "12px 14px", borderRadius: "14px 14px 14px 3px",
-                  background: "rgba(212,255,63,.045)", border: `1px solid ${C.border}`,
+                  background: volt(.045), border: `1px solid ${C.border}`,
                   fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap",
                 }}>
                   {r.text}

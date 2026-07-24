@@ -7,7 +7,7 @@
 // ALLT här kommer ur coachFacts(). Inget skrivs ihop lokalt, ingen text hittar
 // på en siffra. Kan coachen inte belägga något säger den det i stället.
 
-import { C, HFONT, hdr, label, btnPrimary, card, statRow, statCell, orDash } from "./design.js";
+import { C, HFONT, hdr, label, btnPrimary, card, statRow, statCell, orDash, volt } from "./design.js";
 import { coachFacts, recommendation } from "./facts.js";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { bodyState } from "./store.js";
@@ -51,7 +51,7 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
       </div>
 
       {/* REKOMMENDATIONEN — appens kärna. Störst på skärmen med flit. */}
-      <div style={{ ...card, marginTop: 12, borderColor: rek.knapp ? C.lime : C.border, background: rek.knapp ? "rgba(212,255,63,0.045)" : C.card }}>
+      <div style={{ ...card, marginTop: 12, borderColor: rek.knapp ? C.lime : C.border, background: rek.knapp ? volt(0.045) : C.card }}>
         <div style={label(C.lime)}>Min rekommendation</div>
         <div style={{ fontSize: 17.5, fontWeight: 700, lineHeight: 1.4, margin: "9px 0 8px" }}>{rek.rubrik}</div>
         <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6 }}>{rek.brödtext}</div>

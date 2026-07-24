@@ -4,7 +4,7 @@
 // program, och då är det första man måste kunna göra att välja ett.
 
 import { useState } from "react";
-import { C, hdr, label, btnPrimary, btnGhost, card } from "./design.js";
+import { C, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { ALL_TEMPLATES, copyProgram } from "../engines/programs.js";
 
 export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onClose }) {
@@ -29,7 +29,7 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
       <div style={hdr(19)}>Program</div>
 
       {aktiv ? (
-        <div style={{ ...card, marginTop: 14, borderColor: C.lime, background: "rgba(212,255,63,.05)" }}>
+        <div style={{ ...card, marginTop: 14, borderColor: C.lime, background: volt(.05) }}>
           <div style={hdr(16)}>{aktiv.name}</div>
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5 }}>
             {vecka ? `Vecka ${vecka} · ` : ""}{aktiv.daysPerWeek} pass i veckan · {(aktiv.workouts || []).length} olika pass
