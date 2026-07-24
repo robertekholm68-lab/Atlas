@@ -84,6 +84,9 @@ jobs:
           # Landningssidan är den riktiga startsidan — läggs SIST så den blir
           # sajtens index.html (efter att desktop-index döpts om till app.html).
           cp landing/index.html "$site/index.html"
+          # Testarsidan: handbyggd fil som byggena inte producerar, kopieras rakt
+          # in i sajten (samma mönster som landningssidan).
+          cp landing/test.html "$site/test.html"
           # Utan .nojekyll strippar Pages filer som börjar med _ (och kan bråka
           # med andra namn). Krävs.
           touch "$site/.nojekyll"
@@ -93,7 +96,7 @@ jobs:
           set -e
           site="$GITHUB_WORKSPACE/_site"
           # Adressen får inte ändras: atlas2.html i roten.
-          for f in atlas2.html app.html mobile.html index.html sw.js sw-atlas2.js atlas2.webmanifest .nojekyll; do
+          for f in atlas2.html app.html mobile.html index.html test.html sw.js sw-atlas2.js atlas2.webmanifest .nojekyll; do
             test -f "$site/$f" || { echo "FEL: $f saknas i sajten"; exit 1; }
           done
           # Receptbilderna ska vara 134 (samma som källorna i src/assets/recipes).
