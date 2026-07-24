@@ -11,12 +11,13 @@
 // appen. Ett pass som loggas här är alltså en riktig session med riktig
 // muskellast, inte en attrapp.
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card } from "./design.js";
 import { save } from "./store.js";
 import { workoutExercises } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
+import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 
 /** Bygger passets övningslista med förslag ur historiken. */
@@ -51,7 +52,7 @@ function Ring({ kvar, av, storlek = 168 }) {
   const ss = String(kvar % 60).padStart(2, "0");
   return (
     <svg width={storlek} height={storlek} style={{ display: "block" }} aria-label={`Vila ${mm}:${ss}`}>
-      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.border} strokeWidth="8" />
+      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.track} strokeWidth="8" />
       <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.lime} strokeWidth="8"
         strokeLinecap="round" strokeDasharray={omkrets} strokeDashoffset={omkrets * (1 - andel)}
         transform={`rotate(-90 ${storlek / 2} ${storlek / 2})`}
@@ -87,6 +88,13 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const [reps, setReps] = useState(it ? it.reps : 8);
   const [vila, setVila] = useState(0);
   const timer = useRef(null);
+  // Röstinmatning: samma motor och samma grundregel som mobilen — rösten
+  // FÖRESLÅR, den sparar aldrig själv. En felhörd åtta som blir åttio skulle
+  // annars förgifta last, recovery och readiness.
+  const [röst, setRöst] = useState(null); // null | {läge:"lyssnar"} | {läge:"förslag",...} | {läge:"fel", note}
+  const stoppaRöst = useRef(null);
+  const röstStöd = useMemo(() => voiceSupport(), []);
+  useEffect(() => () => { if (stoppaRöst.current) stoppaRöst.current(); }, []);
 
   // Byt övning → hämta det nya förslaget.
   useEffect(() => {
@@ -113,6 +121,31 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const förra = klara > 0 ? it.loggade[klara - 1] : null;
 
   const saknarVikt = it.yttreVikt && !(vikt > 0);
+
+  const lyssnaSet = () => {
+    if (röst && röst.läge === "lyssnar") { if (stoppaRöst.current) stoppaRöst.current(); setRöst(null); return; }
+    if (!röstStöd.ok) { setRöst({ läge: "fel", note: röstStöd.note }); return; }
+    setRöst({ läge: "lyssnar" });
+    stoppaRöst.current = createSetListener({
+      onResult: t => {
+        if (!t.ok) {
+          setRöst({ läge: "fel", note: t.reason === "ett-tal"
+            ? "Hörde bara ett tal — säg både vikt och reps, till exempel \"åttio åtta\"."
+            : "Kunde inte tolka det som vikt och reps. Prova \"åttio kilo åtta reps\"." });
+          return;
+        }
+        if (t.repeat) {
+          const f = it.loggade.length ? it.loggade[it.loggade.length - 1] : null;
+          if (f) setRöst({ läge: "förslag", vikt: f.vikt, reps: f.reps, källa: "samma som förra setet" });
+          else setRöst({ läge: "fel", note: "Inget tidigare set att upprepa i den här övningen." });
+          return;
+        }
+        setRöst({ läge: "förslag", vikt: t.weight, reps: t.reps, källa: `hörde ”${t.raw}”` });
+      },
+      onError: (kod, note) => setRöst({ läge: "fel", note }),
+      onEnd: () => setRöst(r => (r && r.läge === "lyssnar" ? null : r)),
+    });
+  };
 
   const avslutaSet = () => {
     if (saknarVikt) return;
@@ -153,7 +186,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
           <div key={i} style={{ flex: x.set, display: "flex", gap: 2 }}>
             {Array.from({ length: x.set }).map((_, j) => (
               <div key={j} style={{ flex: 1, height: 4, borderRadius: 2,
-                background: j < x.loggade.length ? C.lime : (i === live.idx && j === klara ? C.muted : C.border) }} />
+                background: j < x.loggade.length ? C.lime : (i === live.idx && j === klara ? C.text2 : C.track) }} />
             ))}
           </div>
         ))}
@@ -201,6 +234,39 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
           {förra && (
             <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 10 }}>
               Förra setet: {förra.vikt ?? "—"} kg × {förra.reps}
+            </div>
+          )}
+
+          {/* Rösten fyller bara stegarna — "Avsluta set" är fortfarande enda
+              vägen in i loggen. */}
+          <button onClick={lyssnaSet} style={{
+            ...btnGhost, marginTop: 12,
+            borderColor: röst && röst.läge === "lyssnar" ? C.lime : C.border,
+            color: röst && röst.läge === "lyssnar" ? C.lime : C.text2,
+          }}>
+            {röst && röst.läge === "lyssnar" ? "◼ Lyssnar — tryck för att avbryta" : "🎤 Säg set — ”åttio åtta”"}
+          </button>
+
+          {röst && röst.läge === "fel" && (
+            <div style={{ textAlign: "center", fontSize: 12, color: C.recovering, lineHeight: 1.55, marginTop: 9 }}>{röst.note}</div>
+          )}
+
+          {röst && röst.läge === "förslag" && (
+            <div style={{ ...card, marginTop: 11, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: HFONT, fontWeight: 800, fontSize: 17 }}>
+                  {röst.vikt > 0 ? `${röst.vikt} kg` : "kroppsvikt"} × {röst.reps}
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{röst.källa}</div>
+              </div>
+              <button onClick={() => { setVikt(röst.vikt); setReps(röst.reps); setRöst(null); }} style={{
+                padding: "10px 16px", borderRadius: 999, border: "none", cursor: "pointer", minHeight: 44,
+                background: C.lime, color: "#0A0A0A", fontFamily: HFONT, fontSize: 12.5, fontWeight: 700,
+              }}>Använd</button>
+              <button onClick={() => setRöst(null)} style={{
+                padding: "10px 13px", borderRadius: 999, border: `1px solid ${C.border}`, cursor: "pointer", minHeight: 44,
+                background: "transparent", color: C.muted, fontSize: 12.5,
+              }}>Nej</button>
             </div>
           )}
 

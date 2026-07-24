@@ -4,7 +4,7 @@
 // fejkad tidsaxel — bara en inbjudan att sätta ett.
 
 import { useState } from "react";
-import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell } from "./design.js";
+import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, volt } from "./design.js";
 import { MÅLTYPER, skapaMål, resa, delmål, resansText } from "./journey.js";
 
 const dat = ts => new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" });
@@ -28,7 +28,7 @@ function Ny({ onSpara, onAvbryt }) {
         <button key={id} onClick={() => setTyp(id)} style={{
           width: "100%", textAlign: "left", padding: 13, marginBottom: 8, borderRadius: 13, cursor: "pointer",
           border: `1px solid ${typ === id ? C.lime : C.border}`,
-          background: typ === id ? "rgba(212,255,63,.05)" : C.card2, color: C.text,
+          background: typ === id ? volt(.05) : C.card2, color: C.text,
         }}>
           <div style={{ ...hdr(14), color: typ === id ? C.lime : C.text }}>{t.namn}</div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{t.beskrivning}</div>
@@ -41,7 +41,7 @@ function Ny({ onSpara, onAvbryt }) {
           <button key={v} onClick={() => setVeckor(v)} style={{
             flex: "1 1 60px", padding: "12px 4px", borderRadius: 12, cursor: "pointer",
             border: `1px solid ${veckor === v ? C.lime : C.border}`,
-            background: veckor === v ? "rgba(212,255,63,.05)" : C.card2,
+            background: veckor === v ? volt(.05) : C.card2,
             color: veckor === v ? C.lime : C.text, fontFamily: HFONT, fontSize: 13.5, fontWeight: 700,
           }}>{v} v</button>
         ))}
@@ -53,7 +53,7 @@ function Ny({ onSpara, onAvbryt }) {
           <button key={p} onClick={() => setPass(p)} style={{
             flex: 1, padding: "12px 0", borderRadius: 12, cursor: "pointer",
             border: `1px solid ${pass === p ? C.lime : C.border}`,
-            background: pass === p ? "rgba(212,255,63,.05)" : C.card2,
+            background: pass === p ? volt(.05) : C.card2,
             color: pass === p ? C.lime : C.text, fontFamily: HFONT, fontSize: 14, fontWeight: 700,
           }}>{p}</button>
         ))}
@@ -107,7 +107,7 @@ export function GoalSheet({ mål, setMål, sessions, onClose }) {
       </div>
 
       {r.aktivFas && (
-        <div style={{ ...card, marginTop: 16, borderColor: C.lime, background: "rgba(212,255,63,.045)" }}>
+        <div style={{ ...card, marginTop: 16, borderColor: C.lime, background: volt(.045) }}>
           <div style={label(C.lime)}>Just nu</div>
           <div style={{ ...hdr(17), marginTop: 6 }}>{r.aktivFas.namn}</div>
           <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 7 }}>{r.aktivFas.fokus}</div>

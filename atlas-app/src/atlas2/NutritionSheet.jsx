@@ -8,7 +8,7 @@
 // Fältnamnen är kcal/protein/carbs/fat — aldrig `calories`.
 
 import { useState } from "react";
-import { C, HFONT, hdr, label, btnPrimary, btnGhost, card } from "./design.js";
+import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { suggestNutritionTargets } from "../engines/index.js";
 
 // Bara siffror som faktiskt fyllts i följer med — ett tomt fält är UTELÄMNAT,
@@ -102,7 +102,7 @@ export function NutritionSheet({ mål, setMål, weights = [], profile, onClose }
                 <button key={id} onClick={() => setMålTyp(id)} style={{
                   flex: 1, padding: "9px 4px", borderRadius: 10, cursor: "pointer",
                   border: `1px solid ${målTyp === id ? C.lime : C.border}`,
-                  background: målTyp === id ? "rgba(212,255,63,.05)" : C.card2,
+                  background: målTyp === id ? volt(.05) : C.card2,
                   color: målTyp === id ? C.lime : C.text, fontFamily: HFONT, fontSize: 12, fontWeight: 700,
                 }}>{l}</button>
               ))}

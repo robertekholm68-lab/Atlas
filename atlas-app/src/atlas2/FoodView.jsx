@@ -8,11 +8,14 @@
 // något användaren sätter, inte något appen hittar på åt hen — en påhittad
 // 2000-gräns hade fått verkliga siffror att se ut som avvikelser.
 
-import { useState, useMemo } from "react";
-import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH } from "./design.js";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
 import { dagensNutrition, nyId } from "./store.js";
+import { mealDecision, estimateMeal } from "../engines/index.js";
+import { createDictation, voiceSupport } from "../engines/voice.js";
+import { buildEstimatedEntry } from "./foodlog.js";
 
 const idag = ts => {
   const d = new Date(ts), n = new Date();
@@ -30,7 +33,7 @@ function Makro({ namn, värde, mål, färg }) {
           <span style={{ color: C.muted }}> {mål ? `/ ${mål} g` : "g"}</span>
         </span>
       </div>
-      <div style={{ height: 6, borderRadius: 3, background: C.border, overflow: "hidden" }}>
+      <div style={{ height: 6, borderRadius: 3, background: C.track, overflow: "hidden" }}>
         {mål ? <div style={{ width: `${andel * 100}%`, height: "100%", background: färg, borderRadius: 3 }} /> : null}
       </div>
     </div>
@@ -42,7 +45,7 @@ function Ring({ kcal, mål }) {
   const andel = mål ? Math.min(1, kcal / mål) : 0;
   return (
     <svg width={storlek} height={storlek} aria-label={`${kcal} kcal`}>
-      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.border} strokeWidth="9" />
+      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.track} strokeWidth="9" />
       {mål > 0 && (
         <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.lime} strokeWidth="9"
           strokeLinecap="round" strokeDasharray={omkrets} strokeDashoffset={omkrets * (1 - andel)}
@@ -71,9 +74,11 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
       <div style={{ ...card, display: "flex", gap: 16, alignItems: "center" }}>
         <Ring kcal={t.kcal} mål={mål && mål.kcal} />
         <div style={{ flex: 1 }}>
+          {/* Guiden: max två accentnivåer i samma graf. Protein är hjälten
+              (volt), kolhydrater sekundär datalinje (volt dim), fett neutral. */}
           <Makro namn="Protein" värde={t.protein} mål={mål && mål.protein} färg={C.lime} />
-          <Makro namn="Kolhydrater" värde={t.carbs} mål={mål && mål.carbs} färg="#4FD8C8" />
-          <Makro namn="Fett" värde={t.fat} mål={mål && mål.fat} färg={C.recovering} />
+          <Makro namn="Kolhydrater" värde={t.carbs} mål={mål && mål.carbs} färg={C.voltDim} />
+          <Makro namn="Fett" värde={t.fat} mål={mål && mål.fat} färg={C.text2} />
         </div>
       </div>
 
@@ -115,6 +120,122 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
       })}
 
       <button onClick={onLogga} style={{ ...btnPrimary, marginTop: 22 }}>Logga måltid <span style={{ fontSize: 19 }}>+</span></button>
+    </div>
+  );
+}
+
+/* ── SNABBLOGG: beskriv eller säg ── */
+
+/**
+ * Samma Quick Log-motor som nuvarande appen (mealDecision/estimateMeal) — en
+ * regelbaserad estimator, ingen AI-modell. Den frågar vidare när beskrivningen
+ * är vag och redovisar antaganden och intervall i stället för att låta en
+ * gissning se exakt ut. Rösten FYLLER bara textfältet; ingenting loggas utan
+ * att användaren tryckt Lägg till.
+ */
+function SnabbLogg({ onLägg }) {
+  const [text, setText] = useState("");
+  const [fråga, setFråga] = useState(null);
+  const [est, setEst] = useState(null);
+  const [estText, setEstText] = useState("");
+  const [portion, setPortion] = useState("normal");
+  const [lyssnar, setLyssnar] = useState(false);
+  const [röstNote, setRöstNote] = useState(null);
+  const stoppa = useRef(null);
+  const stöd = useMemo(() => voiceSupport(), []);
+
+  // Lyssningen får aldrig överleva vyn — en mikrofon som står på i bakgrunden
+  // är värre än ingen mikrofon.
+  useEffect(() => () => { if (stoppa.current) stoppa.current(); }, []);
+
+  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); };
+
+  const uppskatta = () => {
+    if (!text.trim()) return;
+    const d = mealDecision(text);
+    if (d.kind === "described") { setEstText(text); setEst(estimateMeal(text, portion)); setFråga(null); }
+    else setFråga({ q: d.q, opts: d.opts });
+  };
+  const välj = val => {
+    const t = /^__/.test(val) ? val : text + " " + val;
+    setEstText(t); setEst(estimateMeal(t, portion)); setFråga(null);
+  };
+  const byting = p => { setPortion(p); setEst(estimateMeal(estText || text, p)); };
+  const lägg = () => {
+    const post = buildEstimatedEntry(text, estimateMeal(estText || text, portion));
+    if (post) onLägg({ id: nyId("f_"), ...post });
+    nollställ();
+  };
+
+  const lyssna = () => {
+    if (lyssnar) { if (stoppa.current) stoppa.current(); setLyssnar(false); return; }
+    if (!stöd.ok) { setRöstNote(stöd.note); return; }
+    setRöstNote(null); setLyssnar(true);
+    stoppa.current = createDictation({
+      onResult: t => setText(t),
+      onError: (kod, note) => setRöstNote(note),
+      onEnd: () => setLyssnar(false),
+    });
+  };
+
+  return (
+    <div style={{ ...card, marginBottom: 18 }}>
+      <div style={{ ...label(), marginBottom: 9 }}>Beskriv eller säg vad du åt</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={text} onChange={e => { setText(e.target.value); setEst(null); setFråga(null); }}
+          onKeyDown={e => { if (e.key === "Enter") uppskatta(); }}
+          placeholder={lyssnar ? "Lyssnar…" : "t.ex. kyckling med ris och broccoli"}
+          style={{ flex: 1, minWidth: 0, background: C.card2, color: C.text, border: `1px solid ${lyssnar ? C.lime : C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, boxSizing: "border-box" }} />
+        <button onClick={lyssna} aria-label={lyssnar ? "Sluta lyssna" : "Säg måltiden"} style={{
+          width: 46, minHeight: 44, flexShrink: 0, borderRadius: 12, cursor: "pointer",
+          border: `1px solid ${lyssnar ? C.lime : C.border}`,
+          background: lyssnar ? volt(.12) : C.card2,
+          color: stöd.ok ? (lyssnar ? C.lime : C.text) : C.muted, fontSize: 19,
+        }}>{lyssnar ? "◼" : "🎤"}</button>
+      </div>
+      {röstNote && <div style={{ fontSize: 11.5, color: C.recovering, lineHeight: 1.5, marginTop: 8 }}>{röstNote}</div>}
+
+      {!est && !fråga && (
+        <button onClick={uppskatta} disabled={!text.trim()}
+          style={{ ...btnGhost, marginTop: 12, opacity: text.trim() ? 1 : 0.4 }}>Uppskatta måltiden</button>
+      )}
+
+      {fråga && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 13, marginBottom: 9 }}>{fråga.q}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {fråga.opts.map(([val, l]) => (
+              <button key={val} onClick={() => välj(val)} style={{
+                padding: "10px 14px", minHeight: 44, borderRadius: 999, cursor: "pointer",
+                border: `1px solid ${C.border}`, background: C.card2, color: C.text2, fontSize: 12.5,
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {est && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ ...hdr(24) }}>{est.kcal}</span>
+            <span style={{ fontSize: 12, color: C.muted }}>kcal · troligen {est.estimateLow}–{est.estimateHigh}</span>
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+            P {est.protein} g · K {est.carbs} g · F {est.fat} g
+          </div>
+          <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55, marginTop: 7 }}>{est.assumptions}</div>
+          <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
+            {[["small", "Liten"], ["normal", "Normal"], ["large", "Stor"]].map(([p, l]) => (
+              <button key={p} onClick={() => byting(p)} style={{
+                flex: 1, padding: "10px 0", minHeight: 44, borderRadius: 999, cursor: "pointer", fontSize: 12.5,
+                border: `1px solid ${portion === p ? C.lime : C.border}`,
+                background: "transparent", color: portion === p ? C.lime : C.muted,
+              }}>{l}</button>
+            ))}
+          </div>
+          <button onClick={lägg} style={{ ...btnPrimary, marginTop: 13 }}>Lägg till — uppskattat <span style={{ fontSize: 18 }}>+</span></button>
+        </div>
+      )}
     </div>
   );
 }
@@ -169,6 +290,7 @@ function Logga({ onLägg }) {
 
   return (
     <div>
+      <SnabbLogg onLägg={onLägg} />
       <input value={sök} onChange={e => setSök(e.target.value)} placeholder="Sök livsmedel…"
         style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", fontSize: 15, boxSizing: "border-box" }} />
       <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>

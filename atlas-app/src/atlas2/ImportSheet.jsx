@@ -4,7 +4,7 @@
 // exakt vad som kommer in, och avgöra de fall appen inte kan avgöra själv.
 
 import { useState } from "react";
-import { C, hdr, label, btnPrimary, btnGhost, card } from "./design.js";
+import { C, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { scanna, förbered, genomför } from "./import.js";
 
 const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -83,7 +83,7 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
               return (
                 <button key={i} onClick={() => setTaMed(t => i_med ? t.filter(x => x !== m.ny) : [...t, m.ny])}
                   style={{ width: "100%", textAlign: "left", padding: 13, marginBottom: 8, borderRadius: 13, cursor: "pointer",
-                    border: `1px solid ${i_med ? C.lime : C.border}`, background: i_med ? "rgba(212,255,63,.05)" : C.card2, color: C.text }}>
+                    border: `1px solid ${i_med ? C.lime : C.border}`, background: i_med ? volt(.05) : C.card2, color: C.text }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                     <span style={{ fontSize: 13.5 }}>{m.ny.title || "Pass"}</span>
                     <span style={{ fontSize: 12, color: i_med ? C.lime : C.muted }}>{i_med ? "Tas med" : "Hoppas över"}</span>
