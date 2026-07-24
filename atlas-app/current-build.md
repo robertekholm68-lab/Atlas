@@ -267,7 +267,10 @@ Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 `node_modules/`, `dist*/`, `.git/`, cache. Tidsstämplade filnamn i svensk tid
 (`TZ=Europe/Stockholm date +%Y-%m-%d-%H%M`).
 
-Verifiering: headless Chromium / vitest framför visuell läsning.
+Verifiering: headless Chromium / vitest framför visuell läsning. Askr 2.0:s
+DOM-verifieringsskript ligger i `scripts/` (`verify-atlas2.mjs`,
+`verify-atlas2-pass.mjs`) och körs medvetet inte av test/bygge — de kräver
+`npm i --no-save playwright-core` och en byggd `dist-atlas2/`.
 **Fallgrop:** matcha alltid skiftlägesokänsligt mot knapptexter — `hdr()`
 versaliserar via CSS, och `innerText` returnerar den versaliserade texten. Det
 har gett falska larm om trasiga vyer minst fyra gånger.
