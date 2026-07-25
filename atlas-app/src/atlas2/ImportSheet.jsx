@@ -3,9 +3,10 @@
 // Visar ALLTID vad som hittats innan något skrivs. Användaren ska kunna se
 // exakt vad som kommer in, och avgöra de fall appen inte kan avgöra själv.
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { C, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { scanna, förbered, genomför } from "./import.js";
+import { buildV3Backup, v3BackupFilename, inspectV3Backup, restoreV3Backup } from "./backup2.js";
 
 const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
@@ -14,7 +15,36 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
   const [plan, setPlan] = useState(null);
   const [taMed, setTaMed] = useState([]);
   const [klart, setKlart] = useState(null);
+  const [fil, setFil] = useState(null);          // granskad backup-fil
+  const [filFel, setFilFel] = useState(null);
+  const filVäljare = useRef(null);
   const källor = scanna();
+
+  // Export: bygger filen ur lagringen och laddar ner den. Läser bara.
+  const sparaBackup = () => {
+    const b = buildV3Backup();
+    const blob = new Blob([JSON.stringify(b)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = v3BackupFilename();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+
+  // Import: granska ALLTID innan något skrivs — visa vad filen innehåller.
+  const läsFil = e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    const läsare = new FileReader();
+    läsare.onload = () => {
+      const insp = inspectV3Backup(String(läsare.result || ""));
+      if (!insp.ok) { setFilFel(insp.error); return; }
+      setFilFel(null); setFil(insp); setSteg("backup-granska");
+    };
+    läsare.onerror = () => setFilFel("Filen gick inte att läsa.");
+    läsare.readAsText(f);
+  };
 
   if (steg === "scan") {
     return (
@@ -47,7 +77,54 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
             </button>
           </>
         )}
-        <button onClick={onClose} style={{ ...btnGhost, marginTop: 10 }}>Stäng</button>
+        {/* ── DATASÄKERHET: v3-datans egen väg ut och in ── */}
+        <div style={{ ...label(), margin: "22px 0 8px" }}>Datasäkerhet</div>
+        <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>
+          Allt du loggar i Askr 2.0 bor i den här webbläsaren. Rensas webbläsar-
+          datan försvinner det — spara en backup-fil då och då, särskilt före
+          telefonbyte.
+        </div>
+        <button onClick={sparaBackup} style={btnGhost}>Spara backup-fil</button>
+        <button onClick={() => filVäljare.current && filVäljare.current.click()} style={{ ...btnGhost, marginTop: 8 }}>
+          Läs in backup-fil
+        </button>
+        <input ref={filVäljare} type="file" accept="application/json,.json" onChange={läsFil} style={{ display: "none" }} aria-hidden />
+        {filFel && (
+          <div style={{ fontSize: 12, color: C.recovering, lineHeight: 1.55, marginTop: 8 }}>{filFel}</div>
+        )}
+
+        <button onClick={onClose} style={{ ...btnGhost, marginTop: 18 }}>Stäng</button>
+      </div>
+    );
+  }
+
+  if (steg === "backup-granska") {
+    const s = fil.summary || {};
+    return (
+      <div>
+        <div style={hdr(19)}>Läs in backup</div>
+        <div style={{ ...card, marginTop: 14 }}>
+          {[["Pass", s.sessions], ["Måltider", s.foodLog], ["Viktmätningar", s.weights]].map(([l, v]) => (
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 14 }}>
+              <span style={{ color: C.muted }}>{l}</span><span style={{ fontWeight: 700 }}>{v ?? "—"}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>
+            {fil.keys} lagringsnycklar{fil.createdAt ? ` · sparad ${new Date(fil.createdAt).toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" })}` : ""}
+            {fil.ignorerade > 0 ? ` · ${fil.ignorerade} nycklar utanför 2.0 ignoreras` : ""}
+          </div>
+        </div>
+        <div style={{ fontSize: 12.5, color: C.recovering, lineHeight: 1.6, margin: "14px 0 4px" }}>
+          Det här ERSÄTTER all Askr 2.0-data i den här webbläsaren med filens
+          innehåll. Nuvarande appens och mobilens data rörs aldrig.
+        </div>
+        <button onClick={() => {
+          const r = restoreV3Backup(fil.obj);
+          if (r.ok) window.location.reload();   // hydrera om hela appen ur den nya lagringen
+        }} style={{ ...btnPrimary, marginTop: 14 }}>
+          Ersätt och läs in <span style={{ fontSize: 18 }}>→</span>
+        </button>
+        <button onClick={() => { setFil(null); setSteg("scan"); }} style={{ ...btnGhost, marginTop: 10 }}>Avbryt</button>
       </div>
     );
   }
