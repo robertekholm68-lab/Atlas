@@ -527,7 +527,12 @@ function interpretCrisis(text) {
   if (has("bakis", "bakfull", "baksmäll", "hångover", "kropps")) return "hungover";
   if (has("söt", "socker", "choklad", "godis", "glass", "kaka", "bulle", "glass")) return "sweet";
   if (has("pizza")) return "pizza";
-  if (has("snabbmat", "burg", "hamburg", "kebab", "mcdon", "pommes", "gatukök", "korv", "drive")) return "fastfood";
+  // "taco" tillagt: appens EGNA platshållartext föreslår "sug på tacos" som
+  // exempel, men ordet fanns inte i listan — exemplet föll igenom till "custom"
+  // och gav ett allmänt svar. Fredagstacos är dessutom ett av de vanligaste
+  // svenska suglägena. Hamnar under fastfood eftersom råden där handlar om
+  // portion och bättre val, vilket är precis vad läget behöver.
+  if (has("snabbmat", "burg", "hamburg", "kebab", "mcdon", "pommes", "gatukök", "korv", "drive", "taco")) return "fastfood";
   if (has("orka", "trött", "sliten", "laga", "disk", "ork", "seg")) return "nocook";
   if (has("tomt", "inget hemma", "inget i kyl", "slut på mat", "skafferi", "handlat")) return "empty";
   if (has("hungr", "svält", "utsvulten", "käk", "matt", "äta nu")) return "hungry";

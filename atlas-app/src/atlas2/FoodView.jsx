@@ -9,6 +9,7 @@
 // 2000-gräns hade fått verkliga siffror att se ut som avvikelser.
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { RescueView } from "./RescueView.jsx";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
@@ -376,7 +377,7 @@ function Recept({ onLägg }) {
 
 /* ── VYN ── */
 
-export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta }) {
+export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [] }) {
   const [flik, setFlik] = useState("oversikt");
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
   const totaler = dagensNutrition(foodLog);
@@ -386,8 +387,8 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta 
     <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Mat</div>
 
-      <div style={{ display: "flex", gap: 22, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>
-        {[["oversikt", "Översikt"], ["logga", "Logga mat"], ["recept", "Recept"]].map(([id, l]) => (
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>
+        {[["oversikt", "Översikt"], ["logga", "Logga"], ["recept", "Recept"], ["akut", "Akut"]].map(([id, l]) => (
           <button key={id} onClick={() => setFlik(id)} style={{
             background: "none", border: "none", cursor: "pointer", padding: "15px 6px 12px", minHeight: 44,
             fontFamily: HFONT, fontSize: 12.5, fontWeight: 700, letterSpacing: 1.3, textTransform: "uppercase",
@@ -400,6 +401,13 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta 
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets} onLogga={() => setFlik("logga")} onSätta={onSätta} />}
       {flik === "logga" && <Logga onLägg={lägg} />}
       {flik === "recept" && <Recept onLägg={lägg} />}
+      {/* Matakuten ligger som flik och inte som ark: skyddsräcket ber en
+          registrera valet direkt, och då ska loggen vara ett tryck bort. */}
+      {flik === "akut" && (
+        <RescueView foodLog={foodLog} nutritionTargets={nutritionTargets}
+          profile={profile} setProfile={setProfile} weights={weights}
+          onLogga={() => setFlik("logga")} />
+      )}
     </div>
   );
 }

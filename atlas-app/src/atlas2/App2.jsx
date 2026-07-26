@@ -272,6 +272,13 @@ export function Atlas2() {
   const [klart, setKlart] = useState(null);
   // Layoutläget är en hook och MÅSTE ligga före de villkorade returerna nedan.
   const layout = useLayout();
+  // Profiländringar från vyerna (t.ex. tonläget i matakuten) skrivs igenom till
+  // lagringen med en gång; annars överlever de inte en omladdning.
+  const uppdatera = uppd => setProfile(p => {
+    const ny = typeof uppd === "function" ? uppd(p) : uppd;
+    save("profile", ny);
+    return ny;
+  });
 
   useEffect(() => {
     let alive = true;
@@ -462,7 +469,8 @@ export function Atlas2() {
     );
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
-        nutritionTargets={nutritionTargets} onSätta={() => setSheet("kost")} />
+        nutritionTargets={nutritionTargets} onSätta={() => setSheet("kost")}
+        profile={profile} setProfile={uppdatera} weights={weights} />
     );
   };
 
