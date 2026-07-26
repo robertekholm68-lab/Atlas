@@ -23,6 +23,7 @@ import { NutritionSheet } from "./NutritionSheet.jsx";
 import { Shell } from "./Shell.jsx";
 import { ReadinessSheet } from "./ReadinessSheet.jsx";
 import { nutritionRecoveryModifier, logReliability } from "../engines/index.js";
+import { buildNudges, activeNudges, pruneDismissed } from "../engines/nudges.js";
 import { SessionSheet } from "./SessionSheet.jsx";
 import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
@@ -145,7 +146,7 @@ function ModeChoice({ onPick }) {
 
 /* ══════════ HEM ══════════ */
 
-function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec }) {
+function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta }) {
   const now = Date.now();
   const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
   // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
@@ -171,11 +172,35 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec }) {
   // Nyckeltalen och beskedet är samma innehåll i båda lägena — bara möblerat
   // olika. De ligger som funktioner för att slippa två kopior av samma JSX;
   // två kopior är hur en vy börjar glida isär.
-  const Besked = () => (
+  // EN plats, det mest angelägna vinner. En påminnelse som hänger på en
+  // händelse just nu är mer relevant än dagens allmänna besked — och att lägga
+  // den som ett EXTRA kort hade brutit hemskärmens scrollfrihet, som ligger på
+  // marginalen redan. Samma slot, inget tillägg i höjd.
+  const Besked = () => (nudge ? (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0,
+      margin: mobil ? "8px 0 0" : "0 0 18px", padding: "11px 13px",
+      borderRadius: 14, border: `1px solid ${C.recovering}`,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, textAlign: "left" }}>{nudge.text}</div>
+        {nudge.cta && onNudgeCta && (
+          <button onClick={onNudgeCta} style={{
+            marginTop: 8, padding: "8px 13px", borderRadius: 999, minHeight: 44, cursor: "pointer",
+            border: `1px solid ${C.lime}`, background: "transparent", color: C.lime, fontSize: 12.5,
+          }}>{nudge.cta}</button>
+        )}
+      </div>
+      <button onClick={() => onAvfärda(nudge.id)} aria-label="Avfärda påminnelsen" style={{
+        background: "none", border: "none", color: C.muted, fontSize: 19, cursor: "pointer",
+        padding: "0 2px", minHeight: 44, flexShrink: 0,
+      }}>×</button>
+    </div>
+  ) : (
     <div style={{ textAlign: "center", fontSize: besked.empty ? 15.5 : 17.5, fontWeight: 600, lineHeight: 1.4, margin: mobil ? "8px 4px 0" : "0 0 18px", color: C.text, flexShrink: 0 }}>
       {besked.text}
     </div>
-  );
+  ));
 
   const Nyckeltal = () => (
     <div style={{ ...statRow, marginTop: mobil ? 12 : 20, flexShrink: 0 }}>
@@ -299,6 +324,20 @@ export function Atlas2() {
   // för få loggade dagar går det inte att skilja en vana från en tillfällighet,
   // och då lämnas faktorn utanför i stället för att gissa. Samma hållning som
   // gamla appen: opt-in och logg-bekräftad.
+  // Händelsedrivna påminnelser. Avfärdanden lagras per HÄNDELSE (id:t bär
+  // passets id), så ett "nej tack" gäller det passet — inte påminnelsen för
+  // all framtid.
+  const [avfärdade, setAvfärdade] = useState({});
+  const nudge = useMemo(() => {
+    const alla = buildNudges({ sessions, foodLog, nutritionTargets });
+    return activeNudges(alla, avfärdade)[0] || null;
+  }, [sessions, foodLog, nutritionTargets, avfärdade]);
+  const avfärda = id => setAvfärdade(d => {
+    const ny = pruneDismissed({ ...d, [id]: Date.now() });
+    save("nudgesDismissed", ny);
+    return ny;
+  });
+
   const loggTillit = useMemo(() => logReliability(foodLog), [foodLog]);
   const nutRec = useMemo(
     () => (loggTillit.reliable
@@ -317,10 +356,11 @@ export function Atlas2() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [m, prof, sess, progs, apid, w, lv, fl, g, nt] = await Promise.all([
+      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd] = await Promise.all([
         load("mode", null), load("profile", {}), load("sessions", []), load("programs", []),
         load("activeProgramId", null), load("weights", []), load("live", null),
         load("foodLog", []), load("goal", null), load("nutritionTargets", null),
+        load("nudgesDismissed", {}),
       ]);
       if (!alive) return;
       const p = prof || {};
@@ -333,6 +373,9 @@ export function Atlas2() {
       setMode(m); setProfile(p); setSex(p.sex || null);
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
       setWeights(migr.weights); setLive(lv); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
+      // Städa avfärdanden vid boot — annars växer listan med id:n som aldrig
+      // kan återkomma, eftersom de bär passets id.
+      setAvfärdade(pruneDismissed(nd || {}));
       // step sätts EFTER laddningen så en befintlig användare aldrig blinkar
       // förbi onboarding innan lagringen hunnit läsas.
       setStep(m ? "app" : "start");
@@ -491,7 +534,8 @@ export function Atlas2() {
     }
     if (flik === "hem") return (
       <Home sessions={sessions} activeProgram={activeProgram}
-        onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec} />
+        onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec}
+        nudge={nudge} onAvfärda={avfärda} onNudgeCta={() => setFlik("mat")} />
     );
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
