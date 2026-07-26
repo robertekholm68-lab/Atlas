@@ -1261,9 +1261,31 @@ function progressionSuggestion(exId, sessions, targetReps, bias = 0) {
   if (!prev || prev.weight == null) return null;
   const inc = /squat|deadlift|press|bench|row|ohp|rdl|hip_thrust/.test(exId) ? 2.5 : 1.25;
   const t = targetReps || prev.reps || 8;
-  let weight = prev.weight, reps = t, note, riktning = "håll";
+  let weight = prev.weight, reps = t, note, riktning = "håll", kapad = false;
   if (prev.rpe && prev.rpe >= 9.5) { weight = roundInc(prev.weight * 0.95); note = `Tungt sist (RPE ${prev.rpe}) — backa lite.`; riktning = "ner"; }
-  else if ((prev.reps || 0) >= t && (!prev.rpe || prev.rpe <= 8)) { weight = prev.weight + inc; note = "Klart sist — öka vikten."; riktning = "upp"; }
+  else if ((prev.reps || 0) >= t && (!prev.rpe || prev.rpe <= 8)) {
+    // KLIVET SKALAS MOT ÖVERSKOTTET. Ett fast steg gav samma förslag för 8 reps
+    // som för 20 på en vikt tänkt för 8 — plus 2,5 kg, vilket är löjligt lågt
+    // när någon just gjort tolv extra. Epley uppskattar ett 1RM ur vikt och
+    // reps, och därifrån räknas den vikt som borde ge målrepsen.
+    const est = roundInc(epley1RM(prev.weight, prev.reps || t) / (1 + t / 30));
+    // Aldrig mindre än det vanliga steget: klarade man precis målet ska det
+    // fortfarande bli en ökning.
+    let mål = Math.max(prev.weight + inc, est);
+    // TAKET. Formeln kan vilja mycket (20 reps på en åtta-vikt pekar mot +30 %)
+    // och matematiskt har den rätt — men att bli serverad ett sådant hopp utan
+    // förklaring är otryggt, och uppskattningen bygger på ETT set. Max 10 % per
+    // pass, och appen säger till när formeln ville mer.
+    const tak = roundInc(prev.weight * 1.10);
+    kapad = mål > tak;
+    weight = Math.min(mål, tak);
+    note = kapad
+      ? `Klart sist med god marginal (${prev.reps} reps) — vi tar det i etapper.`
+      : weight > prev.weight + inc
+        ? `Klart sist med marginal (${prev.reps} reps) — öka mer än vanligt.`
+        : "Klart sist — öka vikten.";
+    riktning = "upp";
+  }
   else if ((prev.reps || 0) < t) { weight = prev.weight; reps = Math.min(t, (prev.reps || 0) + 1); note = "Sikta på en rep till på samma vikt."; }
   else { weight = prev.weight + inc; note = "Öka lätt."; riktning = "upp"; }
 
@@ -1276,12 +1298,18 @@ function progressionSuggestion(exId, sessions, targetReps, bias = 0) {
     note = "Samma vikt som sist.";
     anledning = "Du har angett sömn, smärta eller trötthet som skäl flera gånger den senaste tiden.";
   } else if (riktning === "upp" && bias > 0) {
-    weight = prev.weight + inc * 2;
-    note = "Klart sist — och du har svarat att det kändes lätt. Ta ett större kliv.";
-    anledning = "Dina egna svar efter passen pekar på att förslagen legat för lågt.";
+    // Ett kliv till, men taket gäller även här — biasen bygger på en tendens
+    // över tre veckor och ska inte kunna köra över säkerhetsmarginalen.
+    const tak = roundInc(prev.weight * 1.10);
+    const nytt = Math.min(tak, weight + inc);
+    if (nytt > weight) {
+      weight = nytt;
+      note = "Klart sist — och du har svarat att det kändes lätt. Ta ett större kliv.";
+      anledning = "Dina egna svar efter passen pekar på att förslagen legat för lågt.";
+    }
   }
 
-  return { weight: roundInc(weight), reps, prev, note, riktning, biasAnledning: anledning };
+  return { weight: roundInc(weight), reps, prev, note, riktning, kapad, biasAnledning: anledning };
 }
 
 // Kanonisk mätvärdes-tidsserie: measurements[] = [{date, weight?, waist?, bodyFat?, ...}] är enda källan.

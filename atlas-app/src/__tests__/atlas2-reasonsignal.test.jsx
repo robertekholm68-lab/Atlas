@@ -32,6 +32,43 @@ const pass = (dagarSen, weight, reps = 8, rpe = null, id = "s" + dagarSen) => bu
 });
 const medSkäl = (p, code) => attachReason(p, code, { exerciseId: ÖVN, direction: "down" });
 
+describe.skipIf(!finns)("klivet skalas mot överskottet", () => {
+  it("precis målreps ger det vanliga steget", () => {
+    const p = progressionSuggestion(ÖVN, [pass(3, 100, 8, 7)], 8);
+    expect(p.weight).toBe(102.5);
+    expect(p.kapad).toBe(false);
+  });
+
+  it("reps ÖVER målet ger ett större kliv — ett fast steg vore löjligt lågt", () => {
+    // 100 kg × 12 på en vikt tänkt för 8: tolv extra reps ska inte belönas med
+    // samma 2,5 kg som den som precis klarade målet.
+    const p = progressionSuggestion(ÖVN, [pass(3, 100, 12, 7)], 8);
+    expect(p.weight).toBeGreaterThan(105);
+    expect(p.note).toMatch(/marginal/i);
+  });
+
+  it("fler reps ger monotont större kliv", () => {
+    const w = n => progressionSuggestion(ÖVN, [pass(3, 100, n, 7)], 8).weight;
+    expect(w(8)).toBeLessThanOrEqual(w(10));
+    expect(w(10)).toBeLessThanOrEqual(w(12));
+  });
+
+  it("taket håller vid 10 % — formeln får inte servera ett otryggt hopp", () => {
+    // 20 reps på en åtta-vikt pekar mot +30 %. Matematiskt rätt, men bygger på
+    // ETT set och är otryggt att bli serverad utan förklaring.
+    const p = progressionSuggestion(ÖVN, [pass(3, 100, 20, 7)], 8);
+    expect(p.weight).toBeLessThanOrEqual(110);
+    expect(p.kapad).toBe(true);
+    expect(p.note).toMatch(/etapper/i);
+  });
+
+  it("under målreps skalas ingenting — då gäller en rep till på samma vikt", () => {
+    const p = progressionSuggestion(ÖVN, [pass(3, 100, 6, 7)], 8);
+    expect(p.weight).toBe(100);
+    expect(p.reps).toBe(7);
+  });
+});
+
 describe.skipIf(!finns)("biasen dämpar och förstärker — men vänder aldrig", () => {
   it("utan bias är förslaget oförändrat (gamla anropare påverkas inte)", () => {
     const s = [pass(3, 100, 8, 7)];
@@ -67,6 +104,16 @@ describe.skipIf(!finns)("biasen dämpar och förstärker — men vänder aldrig"
     expect(med.weight).toBe(utan.weight);
     expect(med.weight).toBeLessThan(100);
     expect(med.biasAnledning).toBe(null);
+  });
+
+  it("positiv bias kringgår inte taket", () => {
+    // Biasen bygger på en tendens över tre veckor och ska inte kunna köra över
+    // säkerhetsmarginalen som det enskilda passet satt.
+    const s = [pass(3, 100, 20, 7)];
+    const utan = progressionSuggestion(ÖVN, s, 8, 0);
+    const med = progressionSuggestion(ÖVN, s, 8, 1);
+    expect(utan.kapad).toBe(true);
+    expect(med.weight).toBe(utan.weight);
   });
 
   it("negativ bias backar inte ytterligare på ett pass som redan håller", () => {
