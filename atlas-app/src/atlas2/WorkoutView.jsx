@@ -12,11 +12,12 @@
 // muskellast, inte en attrapp.
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { C, HFONT, hdr, label, btnPrimary, btnGhost, card } from "./design.js";
+import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card } from "./design.js";
 import { save } from "./store.js";
 import { workoutExercises } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
+import { buildPostSession, attachReason } from "../engines/post-session.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 
@@ -294,9 +295,39 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   );
 }
 
-/** Efter passet: kvitto på vad som faktiskt loggades. */
-export function DoneView({ resultat, onHome }) {
+/**
+ * Efter passet: kvitto på vad som faktiskt loggades — plus sammanfattningen och
+ * EN fråga, om passet gav anledning till en.
+ *
+ * Sammanfattningen kommer ur samma motor som nuvarande appen (buildPostSession):
+ * deterministisk, lokalt räknad, tre–fyra meningar. Ingen LLM möter en efter
+ * sista setet.
+ *
+ * Frågan följer husregeln: appen FRÅGAR, användaren svarar, ingenting antas.
+ * Den ställs bara när passet faktiskt avvek från förra gången, den går alltid
+ * att hoppa över, och svaret sparas på passet (attachReason) så att
+ * reasonSignal kan dra en slutsats när det finns ett mönster — inte efter ett
+ * enstaka svar.
+ */
+export function DoneView({ resultat, sessions = [], onReason, onHome }) {
   const { session, minuter } = resultat;
+  // Passet självt jämförs mot HISTORIKEN, inte mot sig självt. Motorn lägger
+  // tillbaka det där volymen räknas (medPasset), så filtret här är rätt.
+  const post = useMemo(
+    () => buildPostSession({
+      session,
+      sessions: (sessions || []).filter(x => x && x.id !== session.id),
+      exercises: EXERCISES,
+      now: Date.now(),
+    }),
+    [session.id]
+  );
+  const [svarat, setSvarat] = useState(null);
+  const svara = code => {
+    setSvarat(code);
+    if (code !== "skip" && onReason) onReason(attachReason(session, code, post.question));
+  };
+
   const sets = session.sets || [];
   const volym = sets.reduce((a, s) => a + (s.weight || 0) * (s.reps || 0), 0);
   const perÖvning = {};
@@ -325,6 +356,45 @@ export function DoneView({ resultat, onHome }) {
           </div>
         ))}
       </div>
+
+      {post.lines.length > 0 && (
+        <>
+          <div style={{ ...label(), marginTop: 24, marginBottom: 4 }}>Sammanfattning</div>
+          {post.lines.map((l, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "7px 0" }}>
+              <span style={{ marginTop: 7, width: 6, height: 6, borderRadius: 3, flexShrink: 0,
+                background: l.tone === "warn" ? C.critical : l.tone === "good" ? C.ready : l.tone === "low" ? C.muted : C.lime }} />
+              <span style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.55 }}>{l.text}</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {post.question && (
+        <div style={{ ...card, marginTop: 18 }}>
+          {svarat ? (
+            <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.55 }}>
+              {svarat === "skip"
+                ? "Inget svar sparat."
+                : "Tack — svaret vägs in när det finns fler av samma slag."}
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55 }}>{post.question.prompt}</div>
+              <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                {post.question.options.map(o => (
+                  <button key={o.code} onClick={() => svara(o.code)} style={{
+                    padding: "12px 14px", borderRadius: 12, minHeight: 44, cursor: "pointer",
+                    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                    fontFamily: BFONT, fontSize: 13.5, textAlign: "left",
+                  }}>{o.label}</button>
+                ))}
+              </div>
+              <button onClick={() => svara("skip")} style={{ ...btnText, marginTop: 6 }}>Hoppa över</button>
+            </>
+          )}
+        </div>
+      )}
 
       <div style={{ ...label(), marginTop: 24, marginBottom: 6 }}>Övningar</div>
       {Object.entries(perÖvning).map(([id, o]) => (

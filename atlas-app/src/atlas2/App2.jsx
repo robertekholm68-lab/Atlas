@@ -20,6 +20,8 @@ import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
 import { GoalSheet } from "./GoalSheet.jsx";
 import { NutritionSheet } from "./NutritionSheet.jsx";
+import { SessionSheet } from "./SessionSheet.jsx";
+import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
@@ -341,7 +343,8 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "import" ? "Historik"
-    : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj" : "Ark";
+    : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
+    : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
 
   const pickMode = m => {
     setMode(m); save("mode", m);
@@ -372,7 +375,13 @@ export function Atlas2() {
   };
 
   const vy = () => {
-    if (klart) return <DoneView resultat={klart} onHome={() => { setKlart(null); setFlik("hem"); }} />;
+    if (klart) return (
+      <DoneView resultat={klart} sessions={sessions}
+        // Svaret på varför-frågan sparas på passet självt. replaceSession bumpar
+        // updatedAt men behåller id — synken ska se en ÄNDRING, inte en ny post.
+        onReason={uppdaterat => setSessions(s => replaceSession(s, uppdaterat))}
+        onHome={() => { setKlart(null); setFlik("hem"); }} />
+    );
     if (flik === "pass") {
       if (live) return (
         <WorkoutView live={live} setLive={setLive} sessions={sessions} setSessions={setSessions}
@@ -401,7 +410,8 @@ export function Atlas2() {
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} />
     );
     if (flik === "framsteg") return (
-      <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} />
+      <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram}
+        onOpenSession={id => setSheet("pass:" + id)} />
     );
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
@@ -425,6 +435,12 @@ export function Atlas2() {
                 weights={weights} profile={profile} onClose={() => setSheet(null)} />
             ) : typeof sheet === "string" && sheet.startsWith("muskel:") ? (
               <MuscleSheet regionId={sheet.slice(7)} sessions={sessions} onClose={() => setSheet(null)} />
+            ) : typeof sheet === "string" && sheet.startsWith("pass:") ? (
+              <SessionSheet
+                session={sessions.find(s => s && s.id === sheet.slice(5)) || null}
+                onSpara={p => { setSessions(s => replaceSession(s, p)); setSheet(null); }}
+                onRadera={id => { setSessions(s => removeSession(s, id)); setSheet(null); }}
+                onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
               <ImportSheet sessions={sessions} setSessions={setSessions}
                 setWeights={setWeights} setFoodLog={setFoodLog}

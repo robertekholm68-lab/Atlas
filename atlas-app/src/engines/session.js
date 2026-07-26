@@ -86,6 +86,47 @@ function deleteSet(session, setId, bodyweight) {
   return recomputeSession({ ...session, sets }, bodyweight);
 }
 
+// ── Redigering på LISTNIVÅ (2.0:s redigera/radera pass) ──────────────────────
+// updateSet/deleteSet ovan ändrar ETT pass. Här ligger de två operationer som rör
+// själva historiken: byt ut ett pass, ta bort ett pass.
+//
+// VARFÖR touchSession finns: synkformen i store.js fyller bara fält som SAKNAS
+// (stämplingen är idempotent med flit). En redigerad post skulle därför behålla
+// sin gamla `updatedAt`, och en framtida last-write-wins-merge skulle inte se
+// ändringen alls — den skulle tyst tappas bort mot en äldre kopia från en annan
+// enhet. Identiteten (`id`) rörs däremot ALDRIG: synken ska se en ÄNDRING, inte
+// en radering plus en ny post.
+function touchSession(session, now = Date.now()) {
+  if (!session || typeof session !== "object") return session;
+  return { ...session, updatedAt: now };
+}
+
+// Ersätt ett pass i listan. Finns id:t inte kvar returneras listan oförändrad —
+// hellre ingen ändring än ett pass som återuppstår ur en gammal vy.
+function replaceSession(sessions, next, now = Date.now()) {
+  const arr = Array.isArray(sessions) ? sessions : [];
+  if (!next || next.id == null) return arr;
+  if (!arr.some(s => s && s.id === next.id)) return arr;
+  return arr.map(s => (s && s.id === next.id ? touchSession(next, now) : s));
+}
+
+// Ta bort ett pass. Belastningen försvinner därmed ur recovery, readiness och
+// veckovolym vid nästa beräkning — inget skuggregister behålls.
+function removeSession(sessions, id) {
+  const arr = Array.isArray(sessions) ? sessions : [];
+  if (id == null) return arr;
+  return arr.filter(s => !(s && s.id === id));
+}
+
+// Bär passet någon belastning alls? Ett pass vars sista set redigerats bort är
+// kvar som post men väger noll — det ska sägas rakt ut i gränssnittet, inte
+// döljas bakom en tom lista.
+function sessionHasLoad(session) {
+  if (!session) return false;
+  if ((session.sets || []).length > 0) return true;
+  return Object.values(session.muscleLoads || {}).some(v => v > 0);
+}
+
 // ── Säker migrering/fallback för äldre lokalt lagrade pass ────────────────────
 // Backfill:ar id/tidsstämplar/entryId/schemaV UTAN att hitta på set som aldrig fanns.
 // muscleLoads bevaras alltid (räknas bara om det saknas OCH set finns) → historik ändras inte.
@@ -116,4 +157,8 @@ function migrateSessions(list) {
   return { sessions, changed };
 }
 
-export { uid, buildSet, buildSession, recomputeSession, updateSet, deleteSet, normalizeSession, migrateSessions };
+export {
+  uid, buildSet, buildSession, recomputeSession, updateSet, deleteSet,
+  touchSession, replaceSession, removeSession, sessionHasLoad,
+  normalizeSession, migrateSessions,
+};
