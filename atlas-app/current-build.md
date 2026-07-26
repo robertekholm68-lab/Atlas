@@ -4,7 +4,7 @@ Datalagret. Här slås siffror, struktur, status och backlog upp. Koden i
 `atlas-app/` är ground truth — den här filen sammanfattar, den bestämmer inte.
 Uppdatera filen när bygget ändras.
 
-*Senast verifierad mot koden: 2026-07-26 (efter #40). Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-07-26 (efter #42). Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -81,7 +81,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 776 i 72 filer |
+| Tester (vitest) | 801 i 73 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -131,7 +131,7 @@ härledda tillstånd + `sessionVolume` + synk-form), `import.js` (historikimport
 `BodyMap2.jsx`, `Nav.jsx`, `WorkoutView.jsx`, `FoodView.jsx`, `CoachView.jsx`,
 `CoachChat.jsx`, `ProgressView.jsx`, `ProgramSheet.jsx`, `ImportSheet.jsx`,
 `MuscleSheet.jsx`, `GoalSheet.jsx`, `NutritionSheet.jsx`, `SessionSheet.jsx`,
-`ReadinessSheet.jsx`, `RescueView.jsx`, `MealPrepView.jsx`,
+`ReadinessSheet.jsx`, `RescueView.jsx`, `MealPrepView.jsx`, `SportView.jsx`,
 `SupplementsPanel.jsx`, `Shell.jsx` (skrivbordsskal), `layout.js` (brytpunkt,
 dvh, navhöjd), `foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent),
 `App2.jsx`, `main2.jsx`, `body_regions.json`.
@@ -158,6 +158,27 @@ gång i `App2` och matas till hem, coach och framsteg, så vyerna inte kan glida
 isär. Den gatas av `logReliability` (≥3 loggade dagar av 5); under tröskeln
 blir modifieraren `{ mod: 0 }` och kosten påverkar ingenting. Arket säger rakt
 ut när kosten inte räknas in och varför.
+
+**Sport och cardio loggas.** `SportView` täpper till den största luckan mot
+gamla appen: sprang man en mil visste 2.0 ingenting, och readiness låg kvar för
+högt. Mottagarsidan var redan byggd — `bodyState` kör `computeSystemicFatigue`
+och drar av upp till 18 poäng (`cardioPenalty`), och `muscleLoads` färgar
+kartan. Vyn lägger till vägen in: 94 aktiviteter i tio kategorier ur
+`sportLibrary.js`, minuter, intensitet och HIIT, med **förhandsvisning av
+belastningen INNAN passet sparas**. Lasten räknas av `computeSportLoad` och
+`computeCardioLoad` — ingen egen matematik i vyn.
+
+Passet går genom `buildSession` som alla andra: `sport: true`,
+`source: "sport"`, **inga sets**, plus `minutes`. Utan `buildSession` saknar
+posten `id` och v3-backupen tappar den. `minutes` är ett tillägg mot gamla
+appens form, med flit — den sparar inte tiden, och att räkna baklänges ur
+`cardioLoad` hade krävt intensitet och cardio-faktor som inte heller sparas.
+
+Ärligheten följer med: aktiviteter utan detaljmodell (`fromLibrary`) märks som
+**kategoriestimat** i klartext, och **kalorier uppskattas aldrig** — appen har
+ingen energimodell för aktivitet, och en gissad siffra vore värre än ingen.
+`DoneView` och `ProgressView` tål frånvaron av set och visar kondition och
+minuter i stället för "0 set".
 
 **Matakuten och meal prep.** `RescueView` kopplar in den befintliga motorn
 (`RESCUE_SITUATIONS`, `interpretCrisis`, `recentIntakeSummary`, `buildRescue`);
@@ -381,7 +402,8 @@ Verifiering: headless Chromium / vitest framför visuell läsning. Askr 2.0:s
 DOM-verifieringsskript ligger i `scripts/` (`verify-atlas2.mjs`,
 `verify-atlas2-pass.mjs`, `verify-atlas2-backup.mjs`,
 `verify-atlas2-passredigering.mjs`, `-layout.mjs` (tre bredder), `-matakut.mjs`,
-`-mealprep.mjs`, `-readiness.mjs`, `-tillskott.mjs`) och körs medvetet inte av
+`-mealprep.mjs`, `-readiness.mjs`, `-tillskott.mjs`, `-sport.mjs`) och körs
+medvetet inte av
 test/bygge — de kräver `npm i --no-save playwright-core` och en byggd
 `dist-atlas2/`. Samtliga hittar webbläsaren via `chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
 sökvägarna, annars letas revisionskatalogen upp. **Hårdkoda aldrig
@@ -400,7 +422,8 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd, rätta och radera
 loggade pass, varför-frågan efter passet, backup-fil för v3-datan,
 skrivbordslayout med sidopanel, förklarbart readiness-ark, matakuten,
 meal prep med veckomeny och inköpslista, dagliga tillskott,
-händelsedrivna påminnelser, och varför-svar som styr progression och tillit.
+händelsedrivna påminnelser, varför-svar som styr progression och tillit,
+och sport- och cardiologgning.
 - **OS-bakåtknappen** (`pushState`/`popstate`, `atlas2/backnav.js`): bakåt
   stänger öppet ark, går till hem från annan flik, backar genom onboarding-steg,
   och lämnar appen först på hem/start. Bygger inte upp historik vid flikbyten.
