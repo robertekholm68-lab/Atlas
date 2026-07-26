@@ -80,6 +80,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, SLV-databasen | 2606 |
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
+| Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
 | Tester (vitest) | 669 i 65 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
@@ -282,6 +283,12 @@ stoppar deployen), bygger alla tre målen, sätter samman sajten i CI, skriver
 längre in** — den byggs från noll i CI. Ett verifieringssteg kräver att
 receptbilderna är 134 (samma som `src/assets/recipes/`); färre stoppar
 publiceringen (då har `import.meta.glob` missat filer).
+
+**Bildtäckningen är 140 recept, inte 134.** Filerna är 134, men `PHOTO_ALIASES`
+i `features/recipes/index.jsx` pekar ytterligare sex recept mot en befintlig
+bild där rätten i praktiken är densamma (dubbletter som äpple + mandlar, eller
+räkpasta som återanvänder bowl-bilden). Räkna alltså **filer + alias** innan
+nya bilder beställs — annars genereras bilder som redan finns.
 
 Sajtens rot: `index.html` (landning, källa `atlas-app/landing/`), `app.html`
 (desktop), `mobile.html` + `sw.js`, `atlas2.html` + `sw-atlas2.js` +
