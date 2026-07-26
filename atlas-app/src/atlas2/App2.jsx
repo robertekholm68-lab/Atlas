@@ -24,6 +24,7 @@ import { Shell } from "./Shell.jsx";
 import { ReadinessSheet } from "./ReadinessSheet.jsx";
 import { nutritionRecoveryModifier, logReliability } from "../engines/index.js";
 import { buildNudges, activeNudges, pruneDismissed } from "../engines/nudges.js";
+import { toggleToday, pruneLog } from "../engines/supplements.js";
 import { SessionSheet } from "./SessionSheet.jsx";
 import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
@@ -328,6 +329,19 @@ export function Atlas2() {
   // passets id), så ett "nej tack" gäller det passet — inte påminnelsen för
   // all framtid.
   const [avfärdade, setAvfärdade] = useState({});
+  // Dagliga tillskott: vad användaren tar (på profilen) och vad som bockats
+  // av per dag. Kryssrutor, inte alarm — kunskapsbanken säger att det är det
+  // dagliga intaget över tid som räknas, inte klockslaget.
+  const [suppLog, setSuppLog] = useState([]);
+  const bockaSupp = id => setSuppLog(l => {
+    const ny = pruneLog(toggleToday(l, id));
+    save("supplementLog", ny);
+    return ny;
+  });
+  const ändraSupp = id => uppdatera(p => {
+    const nu = p.supplements || [];
+    return { ...p, supplements: nu.includes(id) ? nu.filter(x => x !== id) : [...nu, id] };
+  });
   const nudge = useMemo(() => {
     const alla = buildNudges({ sessions, foodLog, nutritionTargets });
     return activeNudges(alla, avfärdade)[0] || null;
@@ -356,11 +370,11 @@ export function Atlas2() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd] = await Promise.all([
+      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl] = await Promise.all([
         load("mode", null), load("profile", {}), load("sessions", []), load("programs", []),
         load("activeProgramId", null), load("weights", []), load("live", null),
         load("foodLog", []), load("goal", null), load("nutritionTargets", null),
-        load("nudgesDismissed", {}),
+        load("nudgesDismissed", {}), load("supplementLog", []),
       ]);
       if (!alive) return;
       const p = prof || {};
@@ -376,6 +390,7 @@ export function Atlas2() {
       // Städa avfärdanden vid boot — annars växer listan med id:n som aldrig
       // kan återkomma, eftersom de bär passets id.
       setAvfärdade(pruneDismissed(nd || {}));
+      setSuppLog(pruneLog(sl || []));
       // step sätts EFTER laddningen så en befintlig användare aldrig blinkar
       // förbi onboarding innan lagringen hunnit läsas.
       setStep(m ? "app" : "start");
@@ -549,7 +564,8 @@ export function Atlas2() {
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
         nutritionTargets={nutritionTargets} onSätta={() => setSheet("kost")}
-        profile={profile} setProfile={uppdatera} weights={weights} />
+        profile={profile} setProfile={uppdatera} weights={weights}
+        supplements={{ mina: profile.supplements || [], logg: suppLog, onBocka: bockaSupp, onÄndra: ändraSupp }} />
     );
   };
 
