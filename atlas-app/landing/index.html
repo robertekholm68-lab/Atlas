@@ -10,16 +10,34 @@
 <link rel="apple-touch-icon" href="./atlas-icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<!-- SAMMA typografi som appen: Archivo (Expanded via wdth-axeln) för display,
+     Inter för brödtext, JetBrains Mono för labels och data. Sidan laddade
+     tidigare Roboto Condensed och saknade Mono helt — därför såg den aldrig ut
+     som det man sedan öppnade. -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..900&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-  /* Paletten är appens. Statusfärgerna är DATA och betyder något — de får
-     aldrig bytas mot accenten för att det blir snyggare. */
+  /* TOKENS = ASKR Brand & UI Style Guide v1.1, identiska med src/atlas2/design.js.
+     Sidan ligger utanför React-bygget och kan inte importera design.js — den enda
+     platsen i kodbasen där paletten med nödvändighet finns i två exemplar.
+     Ändras design.js MÅSTE den här listan ändras i samma commit.
+
+     Statusfärgerna är DATA, inte dekoration: de betyder exakt det de betyder i
+     kartan, och sidan lär dig läsa dem innan du ens öppnat appen. */
   :root{
-    --bg:#0A0A0A; --card:#141414; --border:#232323;
-    --text:#FFFFFF; --text2:#C8CCD2; --muted:#8A8F98; --lime:#D4FF3F;
-    --ready:#39D98A; --recovering:#FFD166; --critical:#FF5C5C; --nodata:#5E6673;
-    --h:'Roboto Condensed','Arial Narrow',sans-serif;
+    --bg:#0A0A0A;          /* Ink */
+    --card:#141414;        /* Surface 1 */
+    --card2:#1B1B1B;       /* Surface 2 */
+    --hairline:#2A2A2A;    /* dekorativa kanter och avdelare */
+    --control:#66666E;     /* kontrollramar — 3:1 mot ytan (WCAG 1.4.11) */
+    --text:#F5F5F5;        /* Bone */
+    --text2:#9A9A9A;       /* Text 2 — sekundär text och labels */
+    --text3:#5C5C5C;       /* Text 3 — metadata */
+    --volt:#D4FF00;        /* Volt — primär accent. Aldrig en annan kulör. */
+    --ready:#39D98A; --recovering:#FFD166; --critical:#FF5C5C;
+    --nodata:#818997;      /* upplyst till AA: "för lite data" ska SYNAS */
+    --h:'Archivo','Archivo Expanded','Arial Narrow',sans-serif;
     --b:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --m:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
   }
   *{box-sizing:border-box}
   body{
@@ -29,9 +47,18 @@
   }
   .wrap{max-width:560px; margin:0 auto}
 
+  /* Display: Archivo Expanded Bold, versaler, tracking +2 % — guidens regel.
+     font-stretch:125% aktiverar wdth-axeln, alltså den EXPANDED som guiden
+     föreskriver; utan den blir Archivo en helt vanlig grotesk. */
+  .disp{font-family:var(--h); font-weight:800; font-stretch:125%;
+        text-transform:uppercase; letter-spacing:.02em; line-height:1.1}
+  /* Mikrolabel: Mono, versaler, tracking +8 %. */
+  .lbl{font-family:var(--m); font-size:10px; font-weight:500;
+       text-transform:uppercase; letter-spacing:.08em; color:var(--text2)}
+
   header{padding:30px 0 0; display:flex; align-items:center; gap:10px}
   .mark{width:34px; height:34px; flex:none; display:block; transform:translateY(2px)}
-  .name{font-family:var(--h); font-weight:800; font-size:27px; letter-spacing:.02em}
+  .name{font-size:27px}
 
   /* Rygg mot rygg. Båda bilderna är vända åt vänster i original, så kvinnan
      speglas och vänds utåt. Bilderna är beskurna till bålens kant, vilket gör
@@ -46,55 +73,74 @@
       linear-gradient(180deg,rgba(10,10,10,.35) 0%,transparent 20%,transparent 52%,rgba(10,10,10,.9) 88%,var(--bg) 100%);
   }
 
-  h1{
-    font-family:var(--h); font-weight:800; font-size:clamp(42px,13vw,62px);
-    line-height:.95; letter-spacing:-.01em; margin:4px 0 0; text-transform:uppercase;
-  }
-  h1 em{font-style:normal; color:var(--lime); display:block}
-  .lede{color:var(--text2); font-size:16px; margin:20px 0 0; max-width:44ch}
+  h1{font-size:clamp(40px,12vw,58px); margin:4px 0 0}
+  h1 em{font-style:normal; color:var(--volt); display:block}
+  .lede{color:var(--text2); font-size:15px; line-height:1.6; margin:20px 0 0; max-width:44ch}
 
   /* SIGNATUREN: figuren tillsammans med sin egen färgnyckel. Färgerna är inte
      dekoration — de är avläsningen, och sidan lär dig läsa dem innan du ens
      öppnat appen. */
   .figur{
     display:grid; grid-template-columns:132px 1fr; gap:26px; align-items:center;
-    margin:38px 0 0; padding:24px 22px; background:var(--card);
-    border:1px solid var(--border); border-radius:18px;
+    margin:38px 0 0; padding:20px; background:var(--card);
+    border:1px solid var(--hairline); border-radius:20px;
   }
   .figur img{width:100%; display:block; opacity:.92}
   .nyckel{list-style:none; margin:0; padding:0; display:grid; gap:13px}
   .nyckel li{display:flex; gap:11px; align-items:flex-start}
   .prick{width:9px; height:9px; border-radius:50%; flex:none; margin-top:7px}
-  .nyckel b{font-family:var(--h); font-weight:700; font-size:14.5px; letter-spacing:.03em; text-transform:uppercase; display:block}
-  .nyckel span{color:var(--muted); font-size:12.5px; line-height:1.45}
+  .nyckel b{font-family:var(--h); font-weight:800; font-stretch:125%; font-size:13px;
+            letter-spacing:.03em; text-transform:uppercase; display:block}
+  .nyckel span{color:var(--text2); font-size:12.5px; line-height:1.5}
 
   .cta{
-    display:block; margin:26px 0 0; padding:17px; border-radius:999px;
-    background:var(--lime); color:#0A0A0A; text-decoration:none; text-align:center;
-    font-family:var(--h); font-weight:800; font-size:19px; letter-spacing:.03em;
-    text-transform:uppercase; transition:transform .15s ease;
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    margin:26px 0 0; padding:17px; border-radius:12px; min-height:44px;
+    background:var(--volt); color:#0A0A0A; text-decoration:none;
+    font-family:var(--b); font-size:16px; font-weight:600;
+    transition:background 150ms ease-out;
   }
-  .cta:hover{transform:translateY(-1px)}
-  .cta:focus-visible{outline:2px solid var(--text); outline-offset:3px}
-  .under{color:var(--muted); font-size:12.5px; text-align:center; margin:11px 0 0}
+  .cta:hover{background:#9BBF00}                 /* Volt Dim — hover på volt */
+  .cta:focus-visible{outline:2px solid var(--volt); outline-offset:3px}
+  .under{color:var(--text2); font-size:12.5px; text-align:center; margin:11px 0 0}
 
-  .punkter{margin:44px 0 0; display:grid; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:16px; overflow:hidden}
-  .punkt{background:var(--card); padding:20px 22px}
-  .punkt h2{font-family:var(--h); font-weight:700; font-size:15px; letter-spacing:.05em; text-transform:uppercase; margin:0 0 6px}
-  .punkt p{margin:0; color:var(--text2); font-size:14px}
+  /* Djup skapas med yta, aldrig med skugga: korten skiljs av 1 px hairline. */
+  .punkter{margin:44px 0 0; display:grid; gap:1px; background:var(--hairline);
+           border:1px solid var(--hairline); border-radius:20px; overflow:hidden}
+  .punkt{background:var(--card); padding:20px}
+  .punkt h2{font-family:var(--h); font-weight:800; font-stretch:125%; font-size:14px;
+            letter-spacing:.03em; text-transform:uppercase; margin:0 0 7px}
+  .punkt p{margin:0; color:var(--text2); font-size:13.5px; line-height:1.6}
 
-  .andra{margin:40px 0 0; padding:20px 22px; border:1px solid var(--border); border-radius:16px}
-  .andra h2{font-family:var(--h); font-weight:700; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 14px}
-  .andra a{display:block; color:var(--text); text-decoration:none; padding:9px 0; font-size:14.5px; border-bottom:1px solid var(--border)}
+  .andra{margin:40px 0 0; padding:20px; border:1px solid var(--hairline); border-radius:20px}
+  .andra h2{margin:0 0 14px}
+  .andra a{display:block; color:var(--text); text-decoration:none; padding:10px 0; font-size:14.5px; border-bottom:1px solid var(--hairline)}
   .andra a:last-of-type{border-bottom:0}
-  .andra a span{color:var(--muted); font-size:12.5px; display:block; margin-top:2px}
-  .andra a:hover span, .andra a:focus-visible span{color:var(--text2)}
-  .andra a:focus-visible{outline:2px solid var(--lime); outline-offset:2px; border-radius:4px}
+  .andra a span{color:var(--text2); font-size:12.5px; display:block; margin-top:3px}
+  .andra a:hover span, .andra a:focus-visible span{color:var(--text)}
+  .andra a:focus-visible{outline:2px solid var(--volt); outline-offset:2px; border-radius:6px}
 
-  footer{margin:34px 0 0; color:var(--muted); font-size:12px; text-align:center}
-  footer a{color:var(--muted); text-decoration:none; display:inline-block; margin-top:6px; border-bottom:1px solid var(--border)}
-  footer a:hover, footer a:focus-visible{color:var(--text2)}
+  footer{margin:34px 0 0; color:var(--text3); font-size:12px; text-align:center}
+  footer a{color:var(--text2); text-decoration:none; display:inline-block; margin-top:6px; border-bottom:1px solid var(--hairline)}
+  footer a:hover, footer a:focus-visible{color:var(--text)}
 
+  /* På stor skärm går hjältebilden och texten bredvid varandra, färgnyckeln
+     blir tvåspaltig och punkterna lägger sig som tre kort. Samma innehåll,
+     samma tokens — bara luften fördelad efter ytan som finns. */
+  @media (min-width:900px){
+    body{padding:0 40px 64px}
+    .wrap{max-width:1100px}
+    .hero{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:48px; align-items:center; margin-top:14px}
+    .par{margin:0; height:420px; border-radius:20px}
+    .par::after{background:linear-gradient(180deg,rgba(10,10,10,.3) 0%,transparent 30%,transparent 62%,rgba(10,10,10,.75) 100%)}
+    h1{font-size:64px}
+    .lede{font-size:16px}
+    .figur{grid-template-columns:180px 1fr; gap:34px; padding:26px}
+    .nyckel{grid-template-columns:1fr 1fr; gap:18px 26px}
+    .cta{max-width:320px}
+    .punkter{grid-template-columns:1fr 1fr 1fr}
+    .andra{max-width:560px}
+  }
   @media (max-width:420px){
     .figur{grid-template-columns:104px 1fr; gap:18px; padding:20px 18px}
   }
@@ -108,20 +154,27 @@
 
   <header>
     <img class="mark" src="./askr-mark.webp" alt="" />
-    <span class="name">Askr</span>
+    <span class="name disp">Askr</span>
   </header>
 
-  <div class="par">
-    <img src="./startsida-man.webp" alt="" />
-    <img class="spegel" src="./startsida-kvinna.webp" alt="" />
+  <div class="hero">
+    <div class="par">
+      <img src="./startsida-man.webp" alt="" />
+      <img class="spegel" src="./startsida-kvinna.webp" alt="" />
+    </div>
+
+    <div>
+      <h1 class="disp">Fråga<em>kroppen.</em></h1>
+
+      <p class="lede">
+        Askr visar vilka muskler som är återhämtade och vad de tål idag — härlett
+        ur det du faktiskt loggar, inte ur en gissning.
+      </p>
+
+      <a class="cta" href="./atlas2.html">Öppna Askr <span aria-hidden="true">→</span></a>
+      <p class="under">Fungerar i webbläsaren. Lägg till på hemskärmen för att köra den som app.</p>
+    </div>
   </div>
-
-  <h1>Fråga<em>kroppen.</em></h1>
-
-  <p class="lede">
-    Askr visar vilka muskler som är återhämtade och vad de tål idag — härlett ur
-    det du faktiskt loggar, inte ur en gissning.
-  </p>
 
   <div class="figur">
     <img src="./figur-fram.webp" alt="Anatomisk figur som visar musklerna framifrån" />
@@ -136,9 +189,6 @@
         <div><b>Ingen data</b><span>Inget loggat pass har belastat den. Då säger appen det.</span></div></li>
     </ul>
   </div>
-
-  <a class="cta" href="./atlas2.html">Öppna Askr <span aria-hidden="true">→</span></a>
-  <p class="under">Fungerar i webbläsaren. Lägg till på hemskärmen för att köra den som app.</p>
 
   <div class="punkter">
     <div class="punkt">
@@ -156,7 +206,7 @@
   </div>
 
   <nav class="andra">
-    <h2>Äldre versioner</h2>
+    <h2 class="lbl">Äldre versioner</h2>
     <a href="./app.html">Webbversionen<span>Full funktionalitet, byggd för stor skärm.</span></a>
     <a href="./mobile.html">Mobilkompanjonen<span>Föregångaren till Askr. Egen datalagring.</span></a>
   </nav>
