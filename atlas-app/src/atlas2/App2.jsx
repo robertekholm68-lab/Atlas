@@ -21,6 +21,8 @@ import { MuscleSheet } from "./MuscleSheet.jsx";
 import { GoalSheet } from "./GoalSheet.jsx";
 import { NutritionSheet } from "./NutritionSheet.jsx";
 import { Shell } from "./Shell.jsx";
+import { ReadinessSheet } from "./ReadinessSheet.jsx";
+import { nutritionRecoveryModifier, logReliability } from "../engines/index.js";
 import { SessionSheet } from "./SessionSheet.jsx";
 import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
@@ -143,12 +145,19 @@ function ModeChoice({ onPick }) {
 
 /* ══════════ HEM ══════════ */
 
-function Home({ sessions, activeProgram, onStart, onOpen, layout }) {
+function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec }) {
   const now = Date.now();
   const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
   // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
   // så hela appen visar EN readiness — lastviktad, inte ett platt snitt.
-  const rd = useMemo(() => coachFacts({ sessions, activeProgram }, now).kropp.readiness, [sessions.length]);
+  // EN readiness i hela appen, och nu med kosten inräknad. `nutRec` kommer
+  // uppifrån så att hem, coach och framsteg matas med exakt samma ingredienser
+  // — räknades den lokalt skulle vyerna kunna glida isär.
+  const kropp = useMemo(
+    () => coachFacts({ sessions, activeProgram, nutRec }, now).kropp,
+    [sessions.length, nutRec]
+  );
+  const rd = kropp.readiness;
   const besked = todaysMessage(states, sessions.length);
   const nw = activeProgram ? nextWorkout(activeProgram, sessions) : null;
   const vecka = weekSessions(sessions, now).length;
@@ -171,15 +180,28 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout }) {
   const Nyckeltal = () => (
     <div style={{ ...statRow, marginTop: mobil ? 12 : 20, flexShrink: 0 }}>
       {[["Readiness", orDash(rd), osäkert ? "osäkert underlag" : null,
-          rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical],
-        ["Veckans pass", sessions.length ? vecka : DASH, null, C.text],
-        ["Senast", senast || DASH, null, C.text]].map(([l, v, sub, col], i) => (
-        <div key={l} style={{ ...statCell(i), padding: mobil ? "10px 4px" : "14px 4px" }}>
-          <div style={label()}>{l}</div>
-          <div style={{ ...hdr(mobil ? 19 : 21, col), marginTop: 3 }}>{v}</div>
-          {sub && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>}
-        </div>
-      ))}
+          rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical, true],
+        ["Veckans pass", sessions.length ? vecka : DASH, null, C.text, false],
+        ["Senast", senast || DASH, null, C.text, false]].map(([l, v, sub, col, tryckbar], i) => {
+        const innehåll = (
+          <>
+            <div style={label()}>{l}</div>
+            <div style={{ ...hdr(mobil ? 19 : 21, col), marginTop: 3 }}>{v}</div>
+            {sub && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>}
+          </>
+        );
+        const stil = { ...statCell(i), padding: mobil ? "10px 4px" : "14px 4px" };
+        // Readiness är det enda talet som går att fråga varför. De andra två är
+        // räknade fakta utan uppdelning — en knapp där hade lovat något som
+        // inte finns.
+        return tryckbar ? (
+          <button key={l} onClick={() => onOpen("readiness")} aria-label="Varför den här readiness-siffran?"
+            style={{ ...stil, background: "none", cursor: "pointer", minHeight: 44, color: C.text }}>
+            {innehåll}
+            <div style={{ ...label(C.lime), marginTop: 3, fontSize: 8 }}>Varför?</div>
+          </button>
+        ) : <div key={l} style={stil}>{innehåll}</div>;
+      })}
     </div>
   );
 
@@ -272,6 +294,18 @@ export function Atlas2() {
   const [klart, setKlart] = useState(null);
   // Layoutläget är en hook och MÅSTE ligga före de villkorade returerna nedan.
   const layout = useLayout();
+
+  // Kostens påverkan på readiness. Grindad på loggens tillförlitlighet — med
+  // för få loggade dagar går det inte att skilja en vana från en tillfällighet,
+  // och då lämnas faktorn utanför i stället för att gissa. Samma hållning som
+  // gamla appen: opt-in och logg-bekräftad.
+  const loggTillit = useMemo(() => logReliability(foodLog), [foodLog]);
+  const nutRec = useMemo(
+    () => (loggTillit.reliable
+      ? nutritionRecoveryModifier({ foodLog, nutritionTargets, profile })
+      : { mod: 0, factors: [] }),
+    [foodLog, nutritionTargets, profile, loggTillit.reliable]
+  );
   // Profiländringar från vyerna (t.ex. tonläget i matakuten) skrivs igenom till
   // lagringen med en gång; annars överlever de inte en omladdning.
   const uppdatera = uppd => setProfile(p => {
@@ -396,7 +430,8 @@ export function Atlas2() {
   const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
-    s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "import" ? "Historik"
+    s === "readiness" ? "Din readiness"
+    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
 
@@ -456,15 +491,15 @@ export function Atlas2() {
     }
     if (flik === "hem") return (
       <Home sessions={sessions} activeProgram={activeProgram}
-        onStart={startaPass} onOpen={setSheet} layout={layout} />
+        onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec} />
     );
     if (flik === "coachen") return (
-      <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights}
+      <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
         profile={profile} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} />
     );
     if (flik === "framsteg") return (
-      <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram}
+      <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} nutRec={nutRec}
         onOpenSession={id => setSheet("pass:" + id)} />
     );
     return (
@@ -512,6 +547,13 @@ export function Atlas2() {
                 session={sessions.find(s => s && s.id === sheet.slice(5)) || null}
                 onSpara={p => { setSessions(s => replaceSession(s, p)); setSheet(null); }}
                 onRadera={id => { setSessions(s => removeSession(s, id)); setSheet(null); }}
+                onClose={() => setSheet(null)} />
+            ) : sheet === "readiness" ? (
+              <ReadinessSheet
+                why={coachFacts({ sessions, activeProgram, nutRec }).kropp.readinessWhy}
+                readiness={coachFacts({ sessions, activeProgram, nutRec }).kropp.readiness}
+                logg={loggTillit}
+                onKost={() => { setSheet(null); setFlik("mat"); }}
                 onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
               <ImportSheet sessions={sessions} setSessions={setSessions}

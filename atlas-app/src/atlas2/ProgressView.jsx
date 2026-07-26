@@ -19,10 +19,10 @@ const TRÖSKEL = 3;
 // men vyn ska inte bli en oändlig logg — de senaste veckorna är det man rättar.
 const LISTA_STEG = 8;
 
-export function ProgressView({ sessions = [], weights = [], activeProgram, onOpenSession }) {
+export function ProgressView({ sessions = [], weights = [], activeProgram, nutRec, onOpenSession }) {
   const now = Date.now();
   const done = sessions.filter(s => s && s.completedAt);
-  const facts = coachFacts({ sessions, activeProgram, weights }, now);
+  const facts = coachFacts({ sessions, activeProgram, weights, nutRec }, now);
 
   // Åtta veckor bakåt, äldst först.
   const veckor = [];
