@@ -76,7 +76,15 @@ async function mountReal(width, sessions) {
   Object.defineProperty(window, "innerWidth", { value: width, writable: true, configurable: true });
   const el = document.createElement("div"); document.body.appendChild(el);
   createRoot(el).render(<Atlas />);
-  await new Promise(r => setTimeout(r, 240));
+  // VÄNTA PÅ INNEHÅLL, inte på klockan. Den fasta pausen på 240 ms gjorde
+  // testet beroende av hur hårt lastad sviten var: kört ensamt hann appen
+  // rendera, i full svit gjorde den det inte, och assertionen mätte en tom
+  // container med bara <style> i. Det såg ut som ett demo-läckage men var en
+  // kapplöpning. Nu pollas tills appen faktiskt ritat något, med tak.
+  for (let i = 0; i < 80 && el.querySelectorAll("button").length === 0; i++) {
+    await new Promise(r => setTimeout(r, 25));
+  }
+  await new Promise(r => setTimeout(r, 60));   // låt effekter efter första ritningen landa
   return el;
 }
 const DEMO_LEAKS = ["678", "Build stronger legs", "7h 45m", "68 ms", "48 bpm", "8,342", "2,4 L", "Next Milestone"];

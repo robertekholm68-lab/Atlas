@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
 import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout, identitet, migrera, stämplaLista, stämplaPost, identitetSync } from "./store.js";
-import { AtlasLogo, FeatureIcon } from "../components/brand.jsx";
+import { AskrWordmark, AskrLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { BottomNav } from "./Nav.jsx";
 import { CoachView } from "./CoachView.jsx";
@@ -38,7 +38,7 @@ function Start({ onNext }) {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "22px 20px 0" }}><AtlasLogo size={34} hfont={HFONT} /></div>
+      <div style={{ padding: "20px 20px 0", display: "flex", justifyContent: "center" }}><AskrLogo höjd={104} /></div>
 
       <div style={{ position: "relative", height: 330, marginTop: 10, display: "flex", justifyContent: "center", overflow: "hidden" }}>
         {["m", "f"].map(k => (bildOk[k] && visa(k)) ? (
@@ -207,7 +207,7 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ minWidth: 0 }}>
-          <AtlasLogo size={24} hfont={HFONT} tagline={null} />
+          <AskrWordmark höjd={26} />
           <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, textTransform: "capitalize" }}>{datum}</div>
         </div>
         <button aria-label="Meny" onClick={() => onOpen("import")} style={{ background: "none", border: "none", padding: 10, cursor: "pointer", flexShrink: 0 }}>
@@ -406,7 +406,7 @@ export function Atlas2() {
   // användare se onboarding blinka förbi innan datan lästs in.
   if (!hydrated) return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <AtlasLogo size={30} hfont={HFONT} tagline={null} />
+      <AskrWordmark höjd={30} />
     </div>
   );
   if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setSex(s); setProfile(p); save("profile", p); setStep("mode"); }} />;

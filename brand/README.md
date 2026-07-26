@@ -38,15 +38,30 @@ varianterna ovan — skapa aldrig egna genom att transformera en befintlig.
 Vite-configerna sätter `assetsInlineLimit` som en funktion:
 
 ```js
-assetsInlineLimit: (filePath) => !/\.(webp|png|jpe?g|avif)$/i.test(filePath),
+assetsInlineLimit: (filePath) =>
+  /assets[\\/]brand[\\/]/i.test(filePath) || !/\.(webp|png|jpe?g|avif)$/i.test(filePath),
 ```
+
+Regeln går på **roll, inte filformat**:
+
+> Identitet bäddas in i bygget. Innehåll ligger utanför.
 
 Det gäller **bara filer appen importerar** ur `src/assets/`:
 
-- **WebP/PNG/JPG/AVIF** emitteras som separata filer (inlinas inte — håller
-  HTML-filerna små).
-- **SVG** (och allt som inte är rasterbild) **inlinas i HTML**. En liten
-  symbol-SVG är rätt att inlina; en tung SVG sväller HTML — exportera då WebP
-  i stället.
+- **Allt under `src/assets/brand/`** bäddas in i HTML:en oavsett format. De ÄR
+  appen och ska aldrig hinna blinka förbi som textfallback medan en separat fil
+  laddas — eller utebli helt om den inte hittas.
+- **Övriga rasterbilder** (receptfoton, startsidans fotografier) emitteras som
+  separata filer. De är innehåll och degraderar snyggt.
+- **SVG och allt som inte är rasterbild** inlinas som förut.
+
+Priset för inbäddning: servicearbetaren kan inte cacha filerna separat, och
+HTML:en växer. `dist-atlas2/atlas2.html` gick 1 177 → 1 385 kB (gzip 268 → 428)
+när de fem identitetsfilerna bäddades in.
+
+**Importeras filen inte av något som faktiskt renderas skakas den bort** —
+Rollup tar inte med död kod. `askr-symbol.webp` importeras av `brand.jsx` men
+ligger i en variant som inget bygge ritar, så den skickas inte med i någon
+HTML. Symbolen når appen via `public/`-kopian (faviconen) i stället.
 
 `brand/` i repo-roten rör aldrig bygget.

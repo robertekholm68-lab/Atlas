@@ -5,7 +5,19 @@ import { useState } from "react";
 // ingenting i filstorlek, och färgen kan följa temat i stället för att vara
 // inbränd i en PNG.
 
-const LIME = "#D4FF3F";
+// Volt hämtas ur designsystemet i stället för att skrivas av. Den här filen
+// hade "#D4FF3F" — en HELT annan, gulare grön än guidens Volt #D4FF00 — och
+// samma felskrivning hade hunnit spridas till fyra andra filer. Att kopiera en
+// hex är hur en palett glider isär; därför importeras den.
+import { C } from "../atlas2/design.js";
+// Importerade (inte URL-byggda) så att Vite kan bädda in dem i bygget. Skrevs
+// de som `new URL(..., document.baseURI)` blev de systerfiler som en fristående
+// HTML-fil aldrig hittade — och headern visade textfallbacken i stället för
+// märket. Se assetsInlineLimit i vite-konfigurationerna.
+import ordmarke from "../assets/brand/askr-wordmark.webp";
+import symbol from "../assets/brand/askr-symbol.webp";
+import primarlogo from "../assets/brand/askr-logo.webp";
+const LIME = C.lime;
 
 /**
  * A-märket: ett kantigt "A" byggt av två sneda ben och en tvärslå, där högra
@@ -25,32 +37,70 @@ export function AtlasMark({ size = 34, color = LIME, style }) {
   );
 }
 
-/** Hela ordmärket: A + Askr + undertext. */
-/** Bildmärket med vektorfallback. */
-function LogoMark({ size, fallbackColor }) {
+/**
+ * VARUMÄRKESFILERNA, enligt ASKR Brand & UI Style Guide v1.1.
+ *
+ * GRÄNSEN FÖR VAD SOM BÄDDAS IN: identitet bäddas in i bygget, innehåll ligger
+ * utanför. Ordmärke, primärlogotyp, symbol och kroppsfigurerna ÄR appen och ska
+ * aldrig hinna blinka förbi som textfallback. Fotografier och receptbilder är
+ * innehåll — de får ladda i efterhand och saknas de degraderar vyn snyggt.
+ *
+ * Det som gällde förut var fel på två sätt. Vektorfallbacken ritade ett kantigt
+ * "A" — ATLAS-erans märke, från innan produkten hette Askr. Och rasterfilen som
+ * användes som primär logotyp var METALLSYMBOLEN, som guiden uttryckligen bara
+ * tillåter dekorativt. Båda tillgängliga märkena var alltså fel märke.
+ *
+ * Nu används guidens egna varianter:
+ *   · Ordmärke horisontellt  → headers och sidfötter (den vanligaste ytan)
+ *   · Primär mörk            → startsidan, där det finns yta för hela låset
+ *   · Symbol                 → app-ikon och dekor, aldrig som primär logotyp
+ *
+ * Filerna bär tagline och bokstäver som DESIGNAD grafik. Därför sätts ingen
+ * Archivo-text bredvid dem längre — det hade visat namnet två gånger.
+ *
+ * Storleken anges som HÖJD. Bredden följer av bildens förhållande, så låset
+ * aldrig skevas — guiden: logotypen roteras, skevas eller färgläggs aldrig om.
+ */
+function Märke({ fil, höjd, förhållande, alt = "", style }) {
   const [ok, setOk] = useState(true);
-  if (!ok) return <AtlasMark size={size} color={fallbackColor} />;
+  // `fil` är antingen en importerad (inbäddad) resurs eller ett filnamn som
+  // slås upp mot sidans adress — den stora primärlogotypen ligger kvar externt
+  // eftersom den bara visas en gång, under onboarding.
+  const src = /^(data:|https?:|blob:)/.test(fil) ? fil : new URL(fil, document.baseURI).href;
+  // Faller tillbaka på ren text om filen saknas (offline, trasig deploy).
+  // Aldrig tillbaka på det gamla A-märket — hellre bara namnet än fel märke.
+  if (!ok) return (
+    <span style={{ fontFamily: "'Archivo',sans-serif", fontStretch: "125%", fontWeight: 800,
+      fontSize: höjd * 0.7, letterSpacing: "0.06em", color: "#F5F5F5", lineHeight: 1, ...style }}>ASKR</span>
+  );
   return (
-    <img src={new URL("askr-mark.webp", document.baseURI).href} alt="" onError={() => setOk(false)}
-      style={{ width: size * 1.15, height: size * 1.15, display: "block", flex: "none" }} />
+    <img src={src} alt={alt} onError={() => setOk(false)}
+      style={{ height: höjd, width: höjd * förhållande, display: "block", flex: "none", ...style }} />
   );
 }
 
-export function AtlasLogo({ size = 34, color = "#FFFFFF", mark = LIME, tagline = "FRÅGA KROPPEN.", hfont, style }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: size * 0.32, ...style }}>
-      {/* Märket är en bild, inte en vektor: metallytan och den glödande
-          ryggraden går inte att återge i SVG utan att tappa det som gör den.
-          Faller tillbaka till vektormärket om filen saknas. */}
-      <LogoMark size={size} fallbackColor={mark} />
-      <div>
-        <div style={{ fontFamily: hfont, fontSize: size * 0.92, fontWeight: 800, letterSpacing: size * 0.11, color, lineHeight: 1 }}>Askr</div>
-        {tagline && (
-          <div style={{ fontFamily: hfont, fontSize: size * 0.26, letterSpacing: size * 0.055, color: "#8A8F98", marginTop: size * 0.11 }}>{tagline}</div>
-        )}
-      </div>
-    </div>
-  );
+/** Ordmärket, horisontellt. Guidens variant för headers och sidfötter. */
+export function AskrWordmark({ höjd = 30, style }) {
+  return <Märke fil={ordmarke} höjd={höjd} förhållande={5.0} alt="Askr" style={style} />;
+}
+
+/** Primär mörk — hela låset med symbol, ordmärke och tagline. */
+export function AskrLogo({ höjd = 150, style }) {
+  return <Märke fil={primarlogo} höjd={höjd} förhållande={1.0} alt="Askr" style={style} />;
+}
+
+/** Symbolen ensam. Dekorativt bruk och app-ikon — aldrig som primär logotyp. */
+export function AskrSymbol({ höjd = 40, style }) {
+  return <Märke fil={symbol} höjd={höjd} förhållande={0.86} style={style} />;
+}
+
+/**
+ * Bakåtkompatibel omslagning: mobilkompanjonen och äldre anrop skickar `size`
+ * och `tagline`. Taglinen bor numera i bildfilen, så flaggan ignoreras.
+ * Nya vyer bör anropa AskrWordmark/AskrLogo direkt.
+ */
+export function AtlasLogo({ size = 34, hfont, style }) {
+  return <AskrWordmark höjd={size * 1.15} style={style} />;
 }
 
 /**
