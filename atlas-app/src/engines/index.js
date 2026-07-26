@@ -1241,19 +1241,47 @@ function best1RM(sessions, exId) {
   return best;
 }
 
-function progressionSuggestion(exId, sessions, targetReps) {
+/**
+ * Nästa vikt och reps för en övning.
+ *
+ * `bias` kommer från reasonSignal (post-session.js) och är användarens EGNA svar
+ * på varför-frågan, sammanvägda över tre veckor: −1 när sömn, smärta eller
+ * trötthet återkommit som skäl, +1 när "det kändes lätt" gjort det.
+ *
+ * HÅRD REGEL: biasen får DÄMPA eller FÖRSTÄRKA en riktning, aldrig vända den.
+ * Har förra passet RPE 9.5 ska ett "kändes lätt"-mönster inte kunna göra om en
+ * backning till en ökning — det som hände i går väger tyngre än en tendens över
+ * tre veckor, och en signal som kan vända säkerhetsregler är farligare än ingen
+ * signal alls. Därför appliceras biasen EFTER att riktningen bestämts.
+ */
+function progressionSuggestion(exId, sessions, targetReps, bias = 0) {
   const ex = EXERCISES.find(e => e.id === exId);
   if (!ex || ex.loadMode !== "external") return null;
   const prev = lastPerformance(sessions, exId);
   if (!prev || prev.weight == null) return null;
   const inc = /squat|deadlift|press|bench|row|ohp|rdl|hip_thrust/.test(exId) ? 2.5 : 1.25;
   const t = targetReps || prev.reps || 8;
-  let weight = prev.weight, reps = t, note;
-  if (prev.rpe && prev.rpe >= 9.5) { weight = roundInc(prev.weight * 0.95); note = `Tungt sist (RPE ${prev.rpe}) — backa lite.`; }
-  else if ((prev.reps || 0) >= t && (!prev.rpe || prev.rpe <= 8)) { weight = prev.weight + inc; note = "Klart sist — öka vikten."; }
+  let weight = prev.weight, reps = t, note, riktning = "håll";
+  if (prev.rpe && prev.rpe >= 9.5) { weight = roundInc(prev.weight * 0.95); note = `Tungt sist (RPE ${prev.rpe}) — backa lite.`; riktning = "ner"; }
+  else if ((prev.reps || 0) >= t && (!prev.rpe || prev.rpe <= 8)) { weight = prev.weight + inc; note = "Klart sist — öka vikten."; riktning = "upp"; }
   else if ((prev.reps || 0) < t) { weight = prev.weight; reps = Math.min(t, (prev.reps || 0) + 1); note = "Sikta på en rep till på samma vikt."; }
-  else { weight = prev.weight + inc; note = "Öka lätt."; }
-  return { weight: roundInc(weight), reps, prev, note };
+  else { weight = prev.weight + inc; note = "Öka lätt."; riktning = "upp"; }
+
+  // Biasen rör bara ökningar. En backning eller ett "håll" lämnas i fred åt
+  // båda hållen: att pressa på trots RPE 9.5 vore fel, och att backa ytterligare
+  // på ett pass som redan håller vore att straffa ärlighet.
+  let anledning = null;
+  if (riktning === "upp" && bias < 0) {
+    weight = prev.weight;
+    note = "Samma vikt som sist.";
+    anledning = "Du har angett sömn, smärta eller trötthet som skäl flera gånger den senaste tiden.";
+  } else if (riktning === "upp" && bias > 0) {
+    weight = prev.weight + inc * 2;
+    note = "Klart sist — och du har svarat att det kändes lätt. Ta ett större kliv.";
+    anledning = "Dina egna svar efter passen pekar på att förslagen legat för lågt.";
+  }
+
+  return { weight: roundInc(weight), reps, prev, note, riktning, biasAnledning: anledning };
 }
 
 // Kanonisk mätvärdes-tidsserie: measurements[] = [{date, weight?, waist?, bodyFat?, ...}] är enda källan.

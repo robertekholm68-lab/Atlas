@@ -26,7 +26,12 @@ function Rad({ text }) {
 }
 
 export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec }) {
-  const facts = coachFacts({ sessions, activeProgram, weights, goal, nutRec });
+  // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
+  // låtsas. Motorn kräver minst tre svar inom tre veckor: två är ingen tendens.
+  // Signalen räknas FÖRE facts eftersom den sänker tilliten till readiness inuti
+  // coachFacts — ordningen är alltså inte kosmetisk.
+  const signal = reasonSignal(sessions);
+  const facts = coachFacts({ sessions, activeProgram, weights, goal, nutRec, reasonSignal: signal });
   const rek = recommendation(facts);
   const namn = (profile && profile.name) || null;
   // Skälen är det man läser EN gång och sedan hoppar över. De fälls därför ihop
@@ -35,10 +40,6 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
   // Chatten är en egen syssla, inte något man läser förbi på väg till svaret.
   // Den låg sist i vyn och tog 372 px av 979 — nu ligger den bakom ett tryck.
   const [visaChatt, setVisaChatt] = useState(false);
-  // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
-  // låtsas. Motorn kräver minst tre svar inom tre veckor innan den säger något:
-  // två svar är ingen tendens. Utan mönster returneras null och kortet uteblir.
-  const signal = reasonSignal(sessions);
 
   return (
     <div style={{ padding: "16px 18px 72px" }}>
@@ -64,9 +65,13 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         <div style={label(C.lime)}>Min rekommendation</div>
         <div style={{ fontSize: 17.5, fontWeight: 700, lineHeight: 1.4, margin: "9px 0 8px" }}>{rek.rubrik}</div>
         <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6 }}>{rek.brödtext}</div>
-        {rek.reservation && (
+        {(rek.reservation || facts.kropp.tillit.sänkt) && (
           <div style={{ fontSize: 11.5, color: C.recovering, marginTop: 9 }}>
             Osäkert underlag — {facts.kropp.tillit.text}.
+            {/* Sänkt tillit har ett eget skäl: användarens svar efter passen
+                säger något readiness inte mäter. Utan raden skulle siffran
+                tappa vikt utan att någon fick veta varför. */}
+            {facts.kropp.tillit.skäl && ` ${facts.kropp.tillit.skäl}`}
           </div>
         )}
         {rek.knapp && activeProgram && (

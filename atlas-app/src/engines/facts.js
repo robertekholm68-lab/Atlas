@@ -46,6 +46,30 @@ function tillit(n, tröskel = 3) {
 }
 
 const ORDNING = { ingen: 0, svag: 1, ok: 2, god: 3 };
+const NIVÅER = ["ingen", "svag", "ok", "god"];
+
+/**
+ * Sänker tilliten ett steg när användarens egna svar efter passen säger att
+ * readiness inte fångar hela bilden.
+ *
+ * VARFÖR TILLITEN OCH INTE SIFFRAN: readiness räknas ur loggad BELASTNING. Att
+ * någon sovit dåligt tre nätter syns inte där, och att dra ner talet självt
+ * skulle förfalska en beräkning som är korrekt utifrån det den mäter. Det som
+ * ska sjunka är hur mycket vikt man ska lägga på talet — och det är en annan
+ * sak än talets värde.
+ */
+function sänkTillit(bas, signal) {
+  const straff = (signal && signal.confidencePenalty) || 0;
+  if (!straff || bas.nivå === "ingen") return bas;
+  const i = Math.max(0, NIVÅER.indexOf(bas.nivå) - 1);
+  return {
+    ...bas,
+    nivå: NIVÅER[i],
+    sänkt: true,
+    skäl: "Dina egna svar efter passen pekar på något readiness inte mäter.",
+    text: `${bas.text} — men se skälet nedan`,
+  };
+}
 
 /**
  * @param ctx  { sessions, activeProgram, weights, foodLog }
@@ -86,7 +110,9 @@ export function coachFacts(ctx = {}, now = Date.now()) {
     redo: sorterad.filter(([, s]) => s.readiness >= 76).map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
     slitna: sorterad.filter(([, s]) => s.readiness < 56).reverse().map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
     otränade: Object.entries(states).filter(([, s]) => s.status === "no_data").map(([id]) => ({ id, namn: namn(id) })),
-    tillit: tillit(sessions.length),
+    // Tilliten sänks av reasonSignal, aldrig siffran självt. Skickas ingen
+    // signal in är beteendet oförändrat — gamla appen påverkas inte.
+    tillit: sänkTillit(tillit(sessions.length), ctx.reasonSignal),
   };
 
   // ── träningen ──────────────────────────────────────────────────────────

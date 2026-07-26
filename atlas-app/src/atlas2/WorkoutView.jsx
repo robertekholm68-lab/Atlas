@@ -17,14 +17,17 @@ import { save } from "./store.js";
 import { workoutExercises } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
-import { buildPostSession, attachReason } from "../engines/post-session.js";
+import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 
 /** Bygger passets övningslista med förslag ur historiken. */
 export function buildLive(program, workout, sessions) {
   const items = workoutExercises(workout).map(x => {
-    const sug = progressionSuggestion(x.exId, sessions, x.repMax);
+    // Användarens egna svar efter tidigare pass justerar förslaget. Biasen kan
+    // dämpa eller förstärka en ökning, aldrig vända en backning.
+    const bias = (reasonSignal(sessions) || {}).progressionBias || 0;
+    const sug = progressionSuggestion(x.exId, sessions, x.repMax, bias);
     const lp = lastPerformance(sessions, x.exId);
     return {
       exId: x.exId,
