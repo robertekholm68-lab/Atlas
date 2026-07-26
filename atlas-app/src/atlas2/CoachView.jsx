@@ -41,24 +41,28 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
   // Den låg sist i vyn och tog 372 px av 979 — nu ligger den bakom ett tryck.
   const [visaChatt, setVisaChatt] = useState(false);
 
+  // Naven är 62 px. 68 ger den luft som behövs utan att äta skärm.
   return (
-    <div style={{ padding: "16px 18px 72px" }}>
+    <div style={{ padding: "16px 18px 68px" }}>
       <div style={{ textAlign: "center", marginBottom: 4 }}>
         <div style={hdr(20)}>Coachen</div>
         <div style={{ ...label(C.lime), marginTop: 3 }}>Nästa bästa beslut</div>
       </div>
 
-      {/* Hälsningen låg i ett eget kort på 111 px. Ordalydelsen är oförändrad —
-          det är ramen som togs bort, inte det coachen säger om underlaget.
-          Namnet används bara om det finns; ingen "Hej !". */}
+      {/* Hälsningen låg i ett eget kort på 111 px; ramen togs bort i
+          layoutpaketet. Nu står den bara kvar när den SÄGER något: vid tunt
+          eller obefintligt underlag är den ett förbehåll användaren behöver.
+          Vid gott underlag löd den "Här är min analys och mitt förslag" — en
+          upprepning av rubriken "Nästa bästa beslut" och av kortet direkt
+          under. 36 px som inte bar någon information. */}
+      {facts.datalage.svagast !== "ok" && facts.datalage.svagast !== "god" && (
       <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, margin: "14px 2px 0" }}>
         <span style={{ color: C.text, fontWeight: 600 }}>{namn ? `Hej ${namn}!` : "Hej!"}</span>{" "}
         {facts.datalage.svagast === "ingen"
           ? "Jag vet ingenting om din kropp än. Logga ett pass så börjar jag kunna säga något som betyder något."
-          : facts.datalage.svagast === "svag"
-            ? "Jag har lite att gå på än, så ta det jag säger med en nypa salt tills det finns fler pass."
-            : "Här är min analys och mitt förslag på nästa steg."}
+          : "Jag har lite att gå på än, så ta det jag säger med en nypa salt tills det finns fler pass."}
       </div>
+      )}
 
       {/* REKOMMENDATIONEN — appens kärna. Störst på skärmen med flit. */}
       <div style={{ ...card, marginTop: 12, borderColor: rek.knapp ? C.lime : C.border, background: rek.knapp ? volt(0.045) : C.card }}>
@@ -105,8 +109,11 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         </div>
       </button>
 
+      {/* En hopfälld rad är EN rad. 18 px topp och botten kring ett 44 px
+          träffområde var mer ram än innehåll; 10 px räcker och träffytan är
+          oförändrad. */}
       {rek.skäl.length > 0 && (
-        <div style={{ ...card, marginTop: 12 }}>
+        <div style={{ ...card, marginTop: 12, paddingTop: 10, paddingBottom: 10 }}>
           <button onClick={() => setVisaSkäl(v => !v)} aria-expanded={visaSkäl} style={{
             display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
             width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", minHeight: 44,
@@ -134,7 +141,8 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
 
           Readiness-siffran finns kvar i texten ovan där den betyder något för
           rekommendationen; det som togs bort var siffran utan sammanhang. */}
-      <div style={{ height: 1, background: C.hairline, margin: "22px 0 16px" }} />
+      {/* 39 px luft kring en 1 px-linje var mer avstånd än gränsen behövde. */}
+      <div style={{ height: 1, background: C.hairline, margin: "16px 0 12px" }} />
 
       {visaChatt ? (
         <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
@@ -143,6 +151,7 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         <button onClick={() => setVisaChatt(true)} style={{
           ...card, width: "100%", textAlign: "left", cursor: "pointer", color: C.text,
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+          paddingTop: 12, paddingBottom: 12, minHeight: 44,
         }}>
           <span style={{ minWidth: 0 }}>
             <span style={{ ...label(C.lime), display: "block" }}>Fråga coachen</span>
@@ -156,7 +165,7 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
 
       {/* Ärlighetsraden. Står kvar även när underlaget är gott — den är en
           egenskap hos produkten, inte en ursäkt när det går dåligt. */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center", marginTop: 20, fontSize: 11.5, color: C.muted, textAlign: "center" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center", marginTop: 16, fontSize: 11.5, color: C.muted, textAlign: "center" }}>
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
           <path d="M12 3 L20 6.5 v6 c0 5.5 -3.5 8.5 -8 10 -4.5 -1.5 -8 -4.5 -8 -10 v-6 Z" fill="none" stroke={C.muted} strokeWidth="1.5" strokeLinejoin="round" />
         </svg>
