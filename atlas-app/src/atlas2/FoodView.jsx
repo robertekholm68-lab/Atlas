@@ -11,6 +11,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { RescueView } from "./RescueView.jsx";
 import { MealPrepView } from "./MealPrepView.jsx";
+import { SupplementsPanel } from "./SupplementsPanel.jsx";
 import { filterRecipes } from "../engines/recipes.js";
 import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
@@ -124,6 +125,7 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
       })}
 
       <button onClick={onLogga} style={{ ...btnPrimary, marginTop: 22 }}>Logga måltid <span style={{ fontSize: 19 }}>+</span></button>
+
     </div>
   );
 }
@@ -415,7 +417,7 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred }) {
 
 /* ── VYN ── */
 
-export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [] }) {
+export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [], supplements }) {
   const [flik, setFlik] = useState("oversikt");
   const layout = useLayout();
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
@@ -426,11 +428,11 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
     <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Mat</div>
 
-      <div style={{ display: "flex", gap: 16, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>
-        {[["oversikt", "Översikt"], ["logga", "Logga"], ["recept", "Recept"], ["akut", "Akut"]].map(([id, l]) => (
+      <div style={{ display: "flex", gap: 7, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}`, overflowX: "auto" }}>
+        {[["oversikt", "Idag"], ["logga", "Logga"], ["recept", "Recept"], ["akut", "Akut"], ["tillskott", "Tillskott"]].map(([id, l]) => (
           <button key={id} onClick={() => setFlik(id)} style={{
-            background: "none", border: "none", cursor: "pointer", padding: "15px 6px 12px", minHeight: 44,
-            fontFamily: HFONT, fontSize: 12.5, fontWeight: 700, letterSpacing: 1.3, textTransform: "uppercase",
+            background: "none", border: "none", cursor: "pointer", padding: "15px 4px 12px", minHeight: 44,
+            fontFamily: HFONT, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", whiteSpace: "nowrap",
             color: flik === id ? C.lime : C.muted,
             borderBottom: `2px solid ${flik === id ? C.lime : "transparent"}`, marginBottom: -1,
           }}>{l}</button>
@@ -445,6 +447,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       )}
       {/* Matakuten ligger som flik och inte som ark: skyddsräcket ber en
           registrera valet direkt, och då ska loggen vara ett tryck bort. */}
+      {flik === "tillskott" && supplements && <SupplementsPanel {...supplements} />}
       {flik === "akut" && (
         <RescueView foodLog={foodLog} nutritionTargets={nutritionTargets}
           profile={profile} setProfile={setProfile} weights={weights}
