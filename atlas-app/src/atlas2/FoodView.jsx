@@ -383,7 +383,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta 
   const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
 
   return (
-    <div style={{ padding: "16px 18px 92px" }}>
+    <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Mat</div>
 
       <div style={{ display: "flex", gap: 22, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>

@@ -57,7 +57,7 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, onOpe
   const visade = historik.slice(0, antalVisade);
 
   return (
-    <div style={{ padding: "16px 18px 92px" }}>
+    <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Framsteg</div>
 
       <div style={{ ...statRow, marginTop: 18 }}>
