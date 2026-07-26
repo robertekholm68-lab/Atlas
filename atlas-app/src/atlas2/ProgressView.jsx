@@ -120,7 +120,11 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Pass"}</div>
                   <div style={{ fontSize: 11.5, color: C.muted, marginTop: 3 }}>
-                    {fmt(s.completedAt)} · {antalSet} set{volym > 0 ? ` · ${volym} kg` : ""}
+                    {/* Ett sportpass har inga set. "0 set" hade sett ut som ett
+                        misslyckat pass i stället för ett annat sorts pass. */}
+                    {s.sport
+                      ? `${fmt(s.completedAt)}${s.minutes ? ` · ${s.minutes} min` : ""}${s.cardioLoad ? ` · ${Math.round(s.cardioLoad)} kondition` : ""}`
+                      : `${fmt(s.completedAt)} · ${antalSet} set${volym > 0 ? ` · ${volym} kg` : ""}`}
                   </div>
                 </div>
                 {onOpenSession && <span style={{ color: C.muted, fontSize: 19, flexShrink: 0 }}>›</span>}
