@@ -6,7 +6,8 @@
 // brus, inte utveckling, och en linje mellan dem påstår en riktning som inte
 // finns. Under tröskeln visas en tom ram som säger hur mycket som saknas.
 
-import { C, hdr, label, card, statRow, statCell, orDash, DASH } from "./design.js";
+import { useState } from "react";
+import { C, HFONT, hdr, label, card, statRow, statCell, orDash, DASH } from "./design.js";
 import { coachFacts } from "./facts.js";
 import { weekSessions, sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
@@ -14,7 +15,11 @@ import { EXERCISES } from "../data/exercises.js";
 const VECKA = 6048e5;
 const TRÖSKEL = 3;
 
-export function ProgressView({ sessions = [], weights = [], activeProgram }) {
+// Hur många pass som listas innan "visa fler". Historiken ska gå att bläddra,
+// men vyn ska inte bli en oändlig logg — de senaste veckorna är det man rättar.
+const LISTA_STEG = 8;
+
+export function ProgressView({ sessions = [], weights = [], activeProgram, onOpenSession }) {
   const now = Date.now();
   const done = sessions.filter(s => s && s.completedAt);
   const facts = coachFacts({ sessions, activeProgram, weights }, now);
@@ -43,6 +48,13 @@ export function ProgressView({ sessions = [], weights = [], activeProgram }) {
 
   const vikt = weights.slice().sort((a, b) => a.ts - b.ts);
   const fmt = ts => new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+
+  // Loggade pass, senaste först. Vägen in till att rätta eller ta bort ett pass
+  // — utan den vore en felknappad vikt permanent, och hela readiness-kedjan
+  // ovanför skulle bygga på en siffra användaren vet är fel.
+  const [antalVisade, setAntalVisade] = useState(LISTA_STEG);
+  const historik = done.slice().sort((a, b) => b.completedAt - a.completedAt);
+  const visade = historik.slice(0, antalVisade);
 
   return (
     <div style={{ padding: "16px 18px 92px" }}>
@@ -94,6 +106,46 @@ export function ProgressView({ sessions = [], weights = [], activeProgram }) {
               </span>
             </div>
           ))}
+        </>
+      )}
+
+      {visade.length > 0 && (
+        <>
+          <div style={{ ...label(), marginTop: 24, marginBottom: 4 }}>Loggade pass</div>
+          {visade.map(s => {
+            const volym = Math.round(sessionVolume(s));
+            const antalSet = (s.sets || []).length;
+            const rad = (
+              <>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Pass"}</div>
+                  <div style={{ fontSize: 11.5, color: C.muted, marginTop: 3 }}>
+                    {fmt(s.completedAt)} · {antalSet} set{volym > 0 ? ` · ${volym} kg` : ""}
+                  </div>
+                </div>
+                {onOpenSession && <span style={{ color: C.muted, fontSize: 19, flexShrink: 0 }}>›</span>}
+              </>
+            );
+            const stil = {
+              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+              width: "100%", textAlign: "left", padding: "12px 2px",
+              borderBottom: `1px solid ${C.hairline}`, background: "none", border: "none",
+              borderBottomStyle: "solid", color: C.text,
+            };
+            return onOpenSession ? (
+              <button key={s.id} onClick={() => onOpenSession(s.id)}
+                style={{ ...stil, cursor: "pointer", borderBottom: `1px solid ${C.hairline}` }}>{rad}</button>
+            ) : (
+              <div key={s.id} style={stil}>{rad}</div>
+            );
+          })}
+          {historik.length > antalVisade && (
+            <button onClick={() => setAntalVisade(n => n + LISTA_STEG)}
+              style={{ background: "none", border: "none", color: C.text2, fontFamily: HFONT, fontSize: 12,
+                textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer", padding: "14px 2px", minHeight: 44 }}>
+              Visa fler ({historik.length - antalVisade} kvar)
+            </button>
+          )}
         </>
       )}
 

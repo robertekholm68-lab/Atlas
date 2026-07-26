@@ -12,6 +12,7 @@ import { coachFacts, recommendation } from "./facts.js";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { bodyState } from "./store.js";
 import { CoachChat } from "./CoachChat.jsx";
+import { reasonSignal } from "../engines/post-session.js";
 
 function Rad({ text }) {
   return (
@@ -30,6 +31,10 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
   const rek = recommendation(facts);
   const { states } = bodyState(sessions);
   const namn = (profile && profile.name) || null;
+  // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
+  // låtsas. Motorn kräver minst tre svar inom tre veckor innan den säger något:
+  // två svar är ingen tendens. Utan mönster returneras null och kortet uteblir.
+  const signal = reasonSignal(sessions);
 
   return (
     <div style={{ padding: "16px 18px 92px" }}>
@@ -95,6 +100,13 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         <div style={{ ...card, marginTop: 12 }}>
           <div style={label(C.lime)}>Varför denna rekommendation?</div>
           <div style={{ marginTop: 8 }}>{rek.skäl.map(s => <Rad key={s} text={s} />)}</div>
+        </div>
+      )}
+
+      {signal && (
+        <div style={{ ...card, marginTop: 12, borderColor: signal.kind === "recovery" ? C.recovering : C.hairline }}>
+          <div style={label(signal.kind === "recovery" ? C.recovering : C.lime)}>Vad dina svar säger</div>
+          <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 8 }}>{signal.text}</div>
         </div>
       )}
 
