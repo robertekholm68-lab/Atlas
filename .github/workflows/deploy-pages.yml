@@ -105,6 +105,25 @@ jobs:
           n=$(find "$site" -maxdepth 1 -type f \( -name 'g_*.webp' -o -name 'r_*.webp' \) | wc -l)
           echo "Receptbilder i sajten: $n (förväntat 134)"
           test "$n" -eq 134 || { echo "FEL: fel antal receptbilder ($n != 134) — import.meta.glob har troligen missat filer"; exit 1; }
+          # Varje bild som sidorna PEKAR PÅ måste också finnas. Listan härleds ur
+          # HTML:en i stället för att skrivas för hand — en handskriven lista
+          # driver isär från verkligheten, och det är just den sortens fel som
+          # ska fångas. Utan det här steget kan en raderad public/-fil
+          # publiceras som en trasig bild eller en 404-favicon utan att något
+          # larmar (hände när askr-mark.* togs bort).
+          saknas=0
+          for html in "$site"/index.html "$site"/test.html "$site"/atlas2.html; do
+            test -f "$html" || continue
+            for ref in $(grep -ohE '(href|src)="\./[^"]+\.(webp|png|jpg|json)"' "$html" \
+                         | sed -E 's/.*"\.\/([^"]+)".*/\1/' | sort -u); do
+              if [ ! -f "$site/$ref" ]; then
+                echo "FEL: $(basename "$html") pekar på $ref som inte finns i sajten"
+                saknas=1
+              fi
+            done
+          done
+          test "$saknas" -eq 0 || { echo "Publicering stoppad: brutna bildreferenser."; exit 1; }
+          echo "Alla bildreferenser i sidorna finns i sajten."
 
       - name: Ladda upp Pages-artefakt
         uses: actions/upload-pages-artifact@v3
