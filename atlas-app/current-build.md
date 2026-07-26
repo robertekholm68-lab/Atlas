@@ -4,7 +4,7 @@ Datalagret. Här slås siffror, struktur, status och backlog upp. Koden i
 `atlas-app/` är ground truth — den här filen sammanfattar, den bestämmer inte.
 Uppdatera filen när bygget ändras.
 
-*Senast verifierad mot koden: 2026-07-23. Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-07-26. Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -69,7 +69,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-07-23)
+## Aktuella siffror (avlästa 2026-07-26)
 
 | Sak | Antal |
 |---|---|
@@ -78,9 +78,9 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Muskler (taxonomi) | 21 |
 | Programmallar | 31 |
 | Livsmedel, SLV-databasen | 2606 |
-| Livsmedel, kuraterade | 74 |
+| Livsmedel, kuraterade | 69 |
 | Recept | 276 |
-| Tester (vitest) | 641 i 62 filer |
+| Tester (vitest) | 669 i 65 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -104,10 +104,38 @@ progress, calendar, profile, machines, chamber, onboarding, settings.
 härledda tillstånd + `sessionVolume` + synk-form), `import.js` (historikimport),
 `BodyMap2.jsx`, `Nav.jsx`, `WorkoutView.jsx`, `FoodView.jsx`, `CoachView.jsx`,
 `CoachChat.jsx`, `ProgressView.jsx`, `ProgramSheet.jsx`, `ImportSheet.jsx`,
-`MuscleSheet.jsx`, `GoalSheet.jsx`, `NutritionSheet.jsx`, `backnav.js`
-(OS-bakåtbeslut, rent), `App2.jsx`, `main2.jsx`, `body_regions.json`.
+`MuscleSheet.jsx`, `GoalSheet.jsx`, `NutritionSheet.jsx`, `SessionSheet.jsx`,
+`foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent), `App2.jsx`,
+`main2.jsx`, `body_regions.json`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
+
+**Rätta och radera pass.** Motorn kunde det redan (`updateSet`, `deleteSet`,
+`recomputeSession`); det som saknades var en väg dit. `ProgressView` listar
+loggade pass (senaste först, åtta i taget) och öppnar `SessionSheet`: rätta
+vikt/reps, ta bort enskilda set, ta bort hela passet med bekräftelse i två steg.
+Volym och last räknas om medan man skriver, så konsekvensen syns före Spara.
+Omräkningen använder passets egen `bodyweightAtLog`, inte dagens vikt — att
+räkna om ett gammalt pass med ny kroppsvikt vore att skriva om historien.
+Radering är permanent; inget skuggregister.
+
+`engines/session.js` har fyra exports till: `touchSession`, `replaceSession`,
+`removeSession`, `sessionHasLoad`. **`touchSession` finns av synkskäl:**
+stämplingen i `store.js` fyller bara fält som SAKNAS (idempotent med flit), så
+en redigerad post hade behållit sin gamla `updatedAt` och tyst tappats mot en
+äldre kopia i en framtida last-write-wins-merge. `id` rörs aldrig — synken ska
+se en ÄNDRING, inte radering plus ny post.
+
+**Varför-frågan.** `DoneView` kör `buildPostSession` och visar
+sammanfattningen plus högst EN fråga, med "Hoppa över" alltid tillgängligt.
+Svaret sparas med `attachReason` på passet. `CoachView` visar `reasonSignal`
+när mönster finns (motorn kräver ≥3 svar inom 21 dagar). Signalen styr ännu
+inte progression eller readiness-tillit — det rör `facts.js` och är eget steg.
+
+**Backup av v3-datan.** `backup2.js` (`buildV3Backup`, `v3BackupFilename`,
+`inspectV3Backup`, `restoreV3Backup`) ger hela v3-lagringen som en JSON-fil.
+`ImportSheet` har en "Datasäkerhet"-sektion för att spara och läsa in filen,
+och ett granskningssteg som ALLTID visar innehållet innan något skrivs.
 
 **PWA:** `vite.atlas2.config.js` emitterar `sw-atlas2.js` och
 `atlas2.webmanifest` som riktiga filer. Service workers får enligt spec inte
@@ -116,7 +144,10 @@ registreras från blob:-adresser. Dokument hämtas network-first **med
 så en ny publicering slår igenom utan hård omladdning); allt annat cache-first
 för offlinestöd. Cachenamn `atlas2-<byggtid>`, gamla rensas vid `activate`.
 Ikoner: `atlas-icon-192.png`, `-512.webp`, `-512-mask.webp` i `public/`, delade
-med mobilen.
+med **landningssidan** — inte med mobilen. Mobilen bäddar in en egen
+base64-ikon i `mobile.html` och har ingen manifest-ikon. Android-skalet har
+dessutom helt egna `ic_launcher.png` i `android-app/res/mipmap-*`; ett byte i
+`public/` når varken mobilen eller den installerade appen.
 
 ### `src/data/`
 tokens, muscles (21-taxonomi + vektorpaths), exercises, machines, gyms, foods
@@ -160,9 +191,9 @@ programförslagen. Båda apparna gör samma bedömning av när data får uttalas
 belastar mer väger tyngre) + cykel/kost — överallt. Det gamla platta snittet
 (`bodyState.overall`) visas inte längre någonstans; det finns kvar som en
 coach-fallback som ändå skrivs över av `kropp.readiness` så fort passen har
-muskellast. MEN samma formel räknas på tre ställen — `facts.js` (`kropp.readiness`,
-källan för coach + karta), `App.jsx` och `MobileApp` (varsin egen headline).
-Samma tal idag, men tre beräkningar som kan driva isär — se backloggen.
+muskellast. Formeln räknas numera på **ett** ställe: `facts.js`
+(`kropp.readiness`). `App.jsx` och `MobileApp.jsx` läser den därifrån i stället
+för att räkna parallellt, så talet kan inte driva isär mellan vyerna.
 
 **LLM-vägen (BYOK) är grundad i §13 — input grundad, output grindad.** Den valfria
 språkmodell-coachen (egen Claude-nyckel, `app/llm.js`; DESKTOP-only — 2.0 och
@@ -254,12 +285,31 @@ publiceringen (då har `import.meta.glob` missat filer).
 
 Sajtens rot: `index.html` (landning, källa `atlas-app/landing/`), `app.html`
 (desktop), `mobile.html` + `sw.js`, `atlas2.html` + `sw-atlas2.js` +
-`atlas2.webmanifest`, receptbilder, `public/`-assets, `TESTARE.md`, `.nojekyll`.
+`atlas2.webmanifest`, `test.html` (testarsidan, källa `atlas-app/landing/`),
+receptbilder, `public/`-assets, `TESTARE.md`, `.nojekyll`.
 **Adressen får inte ändras** — Android-skalet har `…/Atlas/atlas2.html`
 hårdkodad. De döda TWA-resterna `manifest.webmanifest` och
 `.well-known/assetlinks.json` (paket `com.atlas.twa`) togs bort.
 
-Den gamla handbyggda `docs/` i repot är vilande och kan tas bort separat.
+Den gamla handbyggda `docs/` **är borttagen** — Actions bygger sajten från noll.
+
+**Testarsidan** (`landing/test.html`) är självbärande HTML med inline CSS och JS
+utanför byggena, precis som landningssidan. Instruktion plus ifyllbar
+svarsblankett: svaren serialiseras till ett textblock, och **urklipp är primär
+väg** (`navigator.clipboard.writeText` med `execCommand`-fallback) eftersom
+mailto med lång body kapas av många mobilklienter — mailto ligger som sekundär
+knapp. `@media print` ger svart på vitt med knapparna dolda och textareas som
+växer, så sidan kan sparas som PDF ur webbläsaren i stället för att underhållas
+som separat fil. Landningssidan länkar dit diskret i foten. Verifieringssteget i
+deployen kräver att `test.html` finns; försvinner den stoppas publiceringen.
+
+**Landningssidan har en egen palett.** Den är handskriven HTML utanför
+React-bygget, så `design.js` når den inte och regeln "en hårdkodad hex utanför
+design.js är en bugg" kan inte gälla där. Tokens från brand guide v1.1 ligger
+därför i `:root` i filen. **Det är kodbasens enda kända dubblering — ändras
+`design.js` måste listan i `landing/index.html` ändras i samma commit.**
+Desktopbrytpunkt vid 900 px: hjältebild och text bredvid varandra, tvåspaltig
+färgnyckel, tre kort.
 
 ## Leverans
 
@@ -269,8 +319,13 @@ Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 
 Verifiering: headless Chromium / vitest framför visuell läsning. Askr 2.0:s
 DOM-verifieringsskript ligger i `scripts/` (`verify-atlas2.mjs`,
-`verify-atlas2-pass.mjs`) och körs medvetet inte av test/bygge — de kräver
-`npm i --no-save playwright-core` och en byggd `dist-atlas2/`.
+`verify-atlas2-pass.mjs`, `verify-atlas2-backup.mjs`,
+`verify-atlas2-passredigering.mjs`) och körs medvetet inte av test/bygge — de
+kräver `npm i --no-save playwright-core` och en byggd `dist-atlas2/`. Alla fyra
+hittar webbläsaren via `chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
+sökvägarna, annars letas revisionskatalogen upp. **Hårdkoda aldrig
+`/opt/pw-browsers/chromium`** — den finns inte i alla containrar, och skripten
+dör direkt vid start när den saknas.
 **Fallgrop:** matcha alltid skiftlägesokänsligt mot knapptexter — `hdr()`
 versaliserar via CSS, och `innerText` returnerar den versaliserade texten. Det
 har gett falska larm om trasiga vyer minst fyra gånger.
@@ -280,7 +335,8 @@ har gett falska larm om trasiga vyer minst fyra gånger.
 **Askr 2.0 — klart:** startsida, lägesval, hem med anatomisk karta,
 bottennavigering, pågående pass med riktig loggning, kvitto, programväljare,
 matvy (översikt/logga/recept), coachvy med skäl, framstegsvy, historikimport,
-muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
+muskeldetaljvy, målresa, installerbar PWA med offlinestöd, rätta och radera
+loggade pass, varför-frågan efter passet, backup-fil för v3-datan.
 - **OS-bakåtknappen** (`pushState`/`popstate`, `atlas2/backnav.js`): bakåt
   stänger öppet ark, går till hem från annan flik, backar genom onboarding-steg,
   och lämnar appen först på hem/start. Bygger inte upp historik vid flikbyten.
@@ -304,12 +360,14 @@ muskeldetaljvy, målresa, installerbar PWA med offlinestöd.
   träning, vikt, målresa, kost och program (siffror + per-block-tillit ur §13).
   Kvar: BARA mål-grenens recomp-resonemang (`goalReasoning`) — en egen sak från
   programförslagen (`analyzeProgram`, nu i `facts.program`).
-- **Ena headline-readiness mot `kropp.readiness`.** `App.jsx` (`trainingBase` +
-  `readinessBreakdown`) och `MobileApp.jsx` (rad 143) räknar sitt readiness-tal
-  parallellt med en egen kopia av samma lastviktade formel. Samma tal som
-  `facts.kropp.readiness` idag, men tre beräkningar som kan driva isär vid en
-  framtida ändring. Låt båda läsa `kropp.readiness` direkt — precis som 2.0 redan
-  gör (App2/CoachView/ProgressView) — så aggregeringen bara finns på ETT ställe.
+- **`reasonSignal` till progression och readiness-tillit.** Varför-svaren syns
+  för användaren i coachens text, men `progressionBias`/`confidencePenalty`
+  styr ännu inte progressionsförslag eller readiness-tillit. Det rör `facts.js`
+  och coachlogiken — eget steg, egen testrunda.
+- **Redigera passets datum eller titel** är medvetet utelämnat: att flytta ett
+  pass i tiden ändrar hela recovery-kurvan och behöver ett eget beslut. Att
+  lägga TILL ett set i ett sparat pass saknas också — bara rätta och ta bort
+  finns.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - LLM-coach (BYOK, desktop): **grundad i §13 + utdata-grindad** (se "Coachens
   faktakälla"). Grunden är byggd; en mer proaktiv/måldriven coaching ovanpå
