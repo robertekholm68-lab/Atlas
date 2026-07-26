@@ -25,8 +25,8 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal }) {
-  const facts = coachFacts({ sessions, activeProgram, weights, goal });
+export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec }) {
+  const facts = coachFacts({ sessions, activeProgram, weights, goal, nutRec });
   const rek = recommendation(facts);
   const namn = (profile && profile.name) || null;
   // Skälen är det man läser EN gång och sedan hoppar över. De fälls därför ihop
