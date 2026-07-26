@@ -20,6 +20,7 @@ import { buildSession } from "../engines/session.js";
 import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
+import { MUSCLES } from "../data/muscles.js";
 
 /** Bygger passets övningslista med förslag ur historiken. */
 export function buildLive(program, workout, sessions) {
@@ -353,7 +354,12 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
       </div>
 
       <div style={{ ...card, marginTop: 16, display: "flex", padding: "12px 4px" }}>
-        {[["Tid", minuter, "min"], ["Set", sets.length, "totalt"], ["Volym", Math.round(volym), "kg"]].map(([l, v, e], i) => (
+        {/* Ett sportpass har inga sets. Att visa "0 set · 0 kg" vore att svara
+            på en fråga som inte ställdes — kortet byter innehåll i stället. */}
+        {(session.sport
+          ? [["Tid", minuter, "min"], ["Kondition", Math.round(session.cardioLoad || 0), "last"], ["Muskler", Object.keys(session.muscleLoads || {}).length, "belastade"]]
+          : [["Tid", minuter, "min"], ["Set", sets.length, "totalt"], ["Volym", Math.round(volym), "kg"]]
+        ).map(([l, v, e], i) => (
           <div key={l} style={{ flex: 1, textAlign: "center", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
             <div style={label()}>{l}</div>
             <div style={{ ...hdr(23), marginTop: 3 }}>{v}</div>
@@ -408,6 +414,17 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
           <span style={{ color: C.muted }}>{o.set} set · {o.max} kg</span>
         </div>
       ))}
+
+      {/* Sportpasset har ingen övningslista — visa vad det faktiskt belastade,
+          samma siffror som förhandsvisningen lovade innan det sparades. */}
+      {session.sport && Object.entries(session.muscleLoads || {})
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([id, v]) => (
+          <div key={id} style={{ display: "flex", justifyContent: "space-between", padding: "12px 2px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
+            <span>{(MUSCLES[id] && MUSCLES[id].name) || id}</span>
+            <span style={{ color: C.muted }}>{Math.round(v)} last</span>
+          </div>
+        ))}
 
       <button onClick={onHome} style={{ ...btnPrimary, marginTop: 20 }}>Tillbaka till hem <span style={{ fontSize: 19 }}>→</span></button>
     </div>

@@ -14,6 +14,7 @@ import { CoachView } from "./CoachView.jsx";
 import { coachFacts } from "./facts.js";
 import { ProgressView } from "./ProgressView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
+import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
@@ -544,6 +545,12 @@ export function Atlas2() {
           <button onClick={startaPass} style={btnPrimary}>
             {activeProgram ? "Starta pass" : "Välj program"} <span style={{ fontSize: 19 }}>→</span>
           </button>
+          {/* Sport och kondition belastar kroppen lika mycket som gympass.
+              Loggas de inte ligger readiness kvar för högt. */}
+          <div style={{ fontSize: 12.5, color: C.muted, margin: "20px 0 10px" }}>
+            Tränat något annat?
+          </div>
+          <button onClick={() => setSheet("sport")} style={btnGhost}>Logga aktivitet</button>
         </div>
       );
     }
@@ -595,7 +602,20 @@ export function Atlas2() {
               padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto",
             }}>
             {!desktop && <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />}
-            {sheet === "mal" ? (
+            {sheet === "sport" ? (
+              // Sportpasset läggs i samma lista som gympassen och stämplas med
+              // id av stämplaLista i effekten — utan det tappar v3-backupen det.
+              <SportView
+                onLogg={p => {
+                  setSessions(s => [...s, p]);
+                  setSheet(null);
+                  // Samma kvitto som efter ett gympass. Passet bär redan sitt
+                  // id från buildSession, så varför-frågan kan fästas på rätt
+                  // post om motorn ställer en.
+                  setKlart({ session: p, minuter: p.minutes });
+                }}
+                onClose={() => setSheet(null)} />
+            ) : sheet === "mal" ? (
               <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "kost" ? (
               <NutritionSheet mål={nutritionTargets} setMål={setNutritionTargets}
