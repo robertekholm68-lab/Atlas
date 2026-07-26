@@ -7,10 +7,9 @@
 // ALLT här kommer ur coachFacts(). Inget skrivs ihop lokalt, ingen text hittar
 // på en siffra. Kan coachen inte belägga något säger den det i stället.
 
-import { C, HFONT, hdr, label, btnPrimary, card, statRow, statCell, orDash, volt } from "./design.js";
+import { useState } from "react";
+import { C, HFONT, hdr, label, btnPrimary, card, volt } from "./design.js";
 import { coachFacts, recommendation } from "./facts.js";
-import { BodyMap2 } from "./BodyMap2.jsx";
-import { bodyState } from "./store.js";
 import { CoachChat } from "./CoachChat.jsx";
 import { reasonSignal } from "../engines/post-session.js";
 
@@ -29,30 +28,35 @@ function Rad({ text }) {
 export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal }) {
   const facts = coachFacts({ sessions, activeProgram, weights, goal });
   const rek = recommendation(facts);
-  const { states } = bodyState(sessions);
   const namn = (profile && profile.name) || null;
+  // Skälen är det man läser EN gång och sedan hoppar över. De fälls därför ihop
+  // som standard: rekommendationen ska mötas först, inte motiveringen till den.
+  const [visaSkäl, setVisaSkäl] = useState(false);
+  // Chatten är en egen syssla, inte något man läser förbi på väg till svaret.
+  // Den låg sist i vyn och tog 372 px av 979 — nu ligger den bakom ett tryck.
+  const [visaChatt, setVisaChatt] = useState(false);
   // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
   // låtsas. Motorn kräver minst tre svar inom tre veckor innan den säger något:
   // två svar är ingen tendens. Utan mönster returneras null och kortet uteblir.
   const signal = reasonSignal(sessions);
 
   return (
-    <div style={{ padding: "16px 18px 92px" }}>
+    <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", marginBottom: 4 }}>
         <div style={hdr(20)}>Coachen</div>
         <div style={{ ...label(C.lime), marginTop: 3 }}>Nästa bästa beslut</div>
       </div>
 
-      {/* Hälsning. Namnet används bara om det finns — ingen "Hej !" */}
-      <div style={{ ...card, marginTop: 16 }}>
-        <div style={{ fontSize: 19, fontWeight: 700 }}>{namn ? `Hej ${namn}!` : "Hej!"}</div>
-        <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 7 }}>
-          {facts.datalage.svagast === "ingen"
-            ? "Jag vet ingenting om din kropp än. Logga ett pass så börjar jag kunna säga något som betyder något."
-            : facts.datalage.svagast === "svag"
-              ? "Jag har lite att gå på än, så ta det jag säger med en nypa salt tills det finns fler pass."
-              : "Här är min analys och mitt förslag på nästa steg."}
-        </div>
+      {/* Hälsningen låg i ett eget kort på 111 px. Ordalydelsen är oförändrad —
+          det är ramen som togs bort, inte det coachen säger om underlaget.
+          Namnet används bara om det finns; ingen "Hej !". */}
+      <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, margin: "14px 2px 0" }}>
+        <span style={{ color: C.text, fontWeight: 600 }}>{namn ? `Hej ${namn}!` : "Hej!"}</span>{" "}
+        {facts.datalage.svagast === "ingen"
+          ? "Jag vet ingenting om din kropp än. Logga ett pass så börjar jag kunna säga något som betyder något."
+          : facts.datalage.svagast === "svag"
+            ? "Jag har lite att gå på än, så ta det jag säger med en nypa salt tills det finns fler pass."
+            : "Här är min analys och mitt förslag på nästa steg."}
       </div>
 
       {/* REKOMMENDATIONEN — appens kärna. Störst på skärmen med flit. */}
@@ -98,8 +102,14 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
 
       {rek.skäl.length > 0 && (
         <div style={{ ...card, marginTop: 12 }}>
-          <div style={label(C.lime)}>Varför denna rekommendation?</div>
-          <div style={{ marginTop: 8 }}>{rek.skäl.map(s => <Rad key={s} text={s} />)}</div>
+          <button onClick={() => setVisaSkäl(v => !v)} aria-expanded={visaSkäl} style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+            width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", minHeight: 44,
+          }}>
+            <span style={label(C.lime)}>Varför denna rekommendation?</span>
+            <span style={{ color: C.muted, fontSize: 15, transform: visaSkäl ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span>
+          </button>
+          {visaSkäl && <div style={{ marginTop: 8 }}>{rek.skäl.map(s => <Rad key={s} text={s} />)}</div>}
         </div>
       )}
 
@@ -110,26 +120,34 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         </div>
       )}
 
-      <div style={{ ...card, marginTop: 12, padding: "16px 12px" }}>
-        <div style={{ ...label(), textAlign: "center", marginBottom: 10 }}>Kroppens status</div>
-        <BodyMap2 muscleStates={states} height={210} legend={false} />
-      </div>
+      {/* HÄR LÅG EN ANDRA MUSKELKARTA (210 px) och en nyckeltalsrad som visade
+          samma readiness och samma veckopass som hemskärmen just visat.
+          Tillsammans ~430 px upprepning i en vy som var 257 % av skärmen på en
+          liten telefon. Borttaget med flit: en skärm, ett jobb. Hem äger kartan
+          och nuläget, coachen äger rekommendationen och skälen. Kartan är ett
+          tryck bort i bottennaven — den behöver inte ritas två gånger.
 
-      <div style={{ ...statRow, marginTop: 16 }}>
-        {[["Readiness", orDash(facts.kropp.readiness)],
-          ["Veckans pass", facts.träning.passIVeckan],
-          ["Pass totalt", facts.träning.passTotalt]].map(([l, v], i) => (
-          <div key={l} style={statCell(i)}>
-            <div style={label()}>{l}</div>
-            <div style={{ ...hdr(20), marginTop: 4 }}>{v}</div>
-          </div>
-        ))}
-      </div>
+          Readiness-siffran finns kvar i texten ovan där den betyder något för
+          rekommendationen; det som togs bort var siffran utan sammanhang. */}
+      <div style={{ height: 1, background: C.hairline, margin: "22px 0 16px" }} />
 
-      <div style={{ height: 1, background: C.border, margin: "26px 0 20px" }} />
-
-      <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
-        foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
+      {visaChatt ? (
+        <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
+          foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
+      ) : (
+        <button onClick={() => setVisaChatt(true)} style={{
+          ...card, width: "100%", textAlign: "left", cursor: "pointer", color: C.text,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        }}>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ ...label(C.lime), display: "block" }}>Fråga coachen</span>
+            <span style={{ display: "block", fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>
+              Om din återhämtning, ditt program eller din kost.
+            </span>
+          </span>
+          <span style={{ color: C.muted, fontSize: 20, flexShrink: 0 }}>›</span>
+        </button>
+      )}
 
       {/* Ärlighetsraden. Står kvar även när underlaget är gott — den är en
           egenskap hos produkten, inte en ursäkt när det går dåligt. */}

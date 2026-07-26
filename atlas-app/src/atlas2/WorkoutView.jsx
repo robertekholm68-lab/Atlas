@@ -174,7 +174,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const allaKlara = klaraSet >= totaltSet;
 
   return (
-    <div style={{ padding: "14px 18px 92px" }}>
+    <div style={{ padding: "14px 18px 72px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button onClick={onAbort} style={{ background: "none", border: "none", color: C.text, fontSize: 22, cursor: "pointer", padding: 6 }} aria-label="Tillbaka">‹</button>
         <div style={hdr(15)}>Pågående pass</div>
@@ -337,17 +337,19 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
   });
 
   return (
-    <div style={{ padding: "22px 18px 92px" }}>
-      <div style={{ textAlign: "center" }}>
-        <svg width="76" height="76" viewBox="0 0 76 76" style={{ display: "block", margin: "6px auto 14px" }} aria-hidden>
-          <circle cx="38" cy="38" r="34" fill="none" stroke={C.lime} strokeWidth="2.5" />
-          <path d="M23 39 l10 10 l20 -22" fill="none" stroke={C.lime} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+    <div style={{ padding: "16px 18px 72px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <svg width="42" height="42" viewBox="0 0 76 76" style={{ display: "block", flexShrink: 0 }} aria-hidden>
+          <circle cx="38" cy="38" r="34" fill="none" stroke={C.lime} strokeWidth="3" />
+          <path d="M23 39 l10 10 l20 -22" fill="none" stroke={C.lime} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <div style={hdr(26)}>Passet är loggat</div>
-        <div style={{ fontSize: 13.5, color: C.muted, marginTop: 7 }}>{session.title}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={hdr(20)}>Passet är loggat</div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>{session.title}</div>
+        </div>
       </div>
 
-      <div style={{ ...card, marginTop: 22, display: "flex", padding: "15px 4px" }}>
+      <div style={{ ...card, marginTop: 16, display: "flex", padding: "12px 4px" }}>
         {[["Tid", minuter, "min"], ["Set", sets.length, "totalt"], ["Volym", Math.round(volym), "kg"]].map(([l, v, e], i) => (
           <div key={l} style={{ flex: 1, textAlign: "center", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
             <div style={label()}>{l}</div>
@@ -359,7 +361,7 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
 
       {post.lines.length > 0 && (
         <>
-          <div style={{ ...label(), marginTop: 24, marginBottom: 4 }}>Sammanfattning</div>
+          <div style={{ ...label(), marginTop: 18, marginBottom: 4 }}>Sammanfattning</div>
           {post.lines.map((l, i) => (
             <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "7px 0" }}>
               <span style={{ marginTop: 7, width: 6, height: 6, borderRadius: 3, flexShrink: 0,
@@ -381,12 +383,12 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
           ) : (
             <>
               <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55 }}>{post.question.prompt}</div>
-              <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
                 {post.question.options.map(o => (
                   <button key={o.code} onClick={() => svara(o.code)} style={{
-                    padding: "12px 14px", borderRadius: 12, minHeight: 44, cursor: "pointer",
+                    padding: "11px 12px", borderRadius: 12, minHeight: 44, cursor: "pointer",
                     border: `1px solid ${C.border}`, background: C.card2, color: C.text,
-                    fontFamily: BFONT, fontSize: 13.5, textAlign: "left",
+                    fontFamily: BFONT, fontSize: 13, textAlign: "left", lineHeight: 1.3,
                   }}>{o.label}</button>
                 ))}
               </div>
@@ -396,7 +398,7 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
         </div>
       )}
 
-      <div style={{ ...label(), marginTop: 24, marginBottom: 6 }}>Övningar</div>
+      <div style={{ ...label(), marginTop: 18, marginBottom: 6 }}>Övningar</div>
       {Object.entries(perÖvning).map(([id, o]) => (
         <div key={id} style={{ display: "flex", justifyContent: "space-between", padding: "12px 2px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
           <span>{(EXERCISES.find(e => e.id === id) || {}).name || id}</span>
@@ -404,7 +406,7 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
         </div>
       ))}
 
-      <button onClick={onHome} style={{ ...btnPrimary, marginTop: 26 }}>Tillbaka till hem <span style={{ fontSize: 19 }}>→</span></button>
+      <button onClick={onHome} style={{ ...btnPrimary, marginTop: 20 }}>Tillbaka till hem <span style={{ fontSize: 19 }}>→</span></button>
     </div>
   );
 }

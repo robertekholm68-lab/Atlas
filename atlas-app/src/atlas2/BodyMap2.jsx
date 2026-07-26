@@ -119,13 +119,25 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
  * Fram och bak sida vid sida, som i skisserna. Ingen bakgrund, ingen gloria,
  * ingen platta — figurerna står mot appens svärta.
  */
-export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true }) {
+export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true, kompakt = false, fyll = false }) {
   const [rör, setRör] = useState(null);
   const st = rör ? regionState(rör, muscleStates) : null;
 
+  // `fyll` betyder: ta den höjd som finns kvar i föräldern i stället för ett
+  // bestämt antal pixlar. Föräldern är då en flex-kolumn, och kartan är den som
+  // får resten — kroppen är gränssnittet, alltså är det kartan som ska växa när
+  // det finns plats och krympa när det inte gör det. `minHeight: 0` krävs för
+  // att en flex-child ska FÅ krympa; utan den växer den ur skärmen i stället.
+  const yttre = fyll
+    ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }
+    : {};
+  const figurer = fyll
+    ? { display: "flex", gap: 10, justifyContent: "center", flex: 1, minHeight: 0 }
+    : { display: "flex", gap: 10, height, justifyContent: "center" };
+
   return (
-    <div>
-      <div style={{ display: "flex", gap: 10, height, justifyContent: "center" }}>
+    <div style={yttre}>
+      <div style={figurer}>
         {["front", "back"].map(v => (
           <div key={v} style={{ flex: 1, maxWidth: "48%", height: "100%" }}>
             <Figur vy={v} states={muscleStates} onSelect={onSelect} rör={rör} setRör={setRör} />
@@ -135,16 +147,21 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
 
       {/* Namnet på muskeln man rör vid, med dess faktiska siffra. Utan underlag
           sägs det rakt ut i stället för att visa en nolla. */}
-      <div style={{ textAlign: "center", minHeight: 20, marginTop: 8, fontFamily: HFONT, fontSize: 12.5, letterSpacing: 1.2, textTransform: "uppercase", color: rör ? C.text : "transparent" }}>
+      <div style={{ textAlign: "center", minHeight: kompakt ? 16 : 20, marginTop: kompakt ? 5 : 8, flexShrink: 0, fontFamily: HFONT, fontSize: kompakt ? 11.5 : 12.5, letterSpacing: 1.2, textTransform: "uppercase", color: rör ? C.text : "transparent" }}>
         {rör ? `${NAMN[rör] || rör}${st ? ` · ${Math.round(st.readiness)}%` : " · ingen data"}` : "·"}
       </div>
 
+      {/* Färgnyckeln får ALDRIG tas bort för att spara höjd: färgerna är
+          avläsningen, och en karta man inte kan läsa är dekoration. Däremot får
+          den bli kortare — samma fem betydelser, färre tecken. */}
       {legend && (
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", marginTop: 6 }}>
-          {[["Redo att träna", C.ready], ["Återhämtar sig", C.recovering],
-            ["Överbelastad", C.critical], ["Behöver träning", C.undertrained], ["Ej tränad", GRUNDTON]].map(([l, c]) => (
-            <span key={l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.muted }}>
-              <span style={{ width: 8, height: 8, borderRadius: 4, background: c }} />{l}
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: kompakt ? "3px 10px" : "6px 14px", marginTop: kompakt ? 4 : 6, flexShrink: 0 }}>
+          {(kompakt
+            ? [["Redo", C.ready], ["Återhämtar", C.recovering], ["Överbelastad", C.critical], ["Otränad", C.undertrained], ["Ingen data", GRUNDTON]]
+            : [["Redo att träna", C.ready], ["Återhämtar sig", C.recovering], ["Överbelastad", C.critical], ["Behöver träning", C.undertrained], ["Ej tränad", GRUNDTON]]
+          ).map(([l, c]) => (
+            <span key={l} style={{ display: "flex", alignItems: "center", gap: kompakt ? 4 : 6, fontSize: kompakt ? 10 : 11, color: C.muted }}>
+              <span style={{ width: kompakt ? 7 : 8, height: kompakt ? 7 : 8, borderRadius: 4, background: c }} />{l}
             </span>
           ))}
         </div>

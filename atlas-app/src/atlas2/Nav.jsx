@@ -6,6 +6,7 @@
 // betyda "du är här".
 
 import { C, HFONT } from "./design.js";
+import { MOBIL_MAX } from "./layout.js";
 
 export function NavIcon({ name, size = 24, color = C.muted }) {
   const p = { fill: "none", stroke: color, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -28,7 +29,10 @@ export function NavIcon({ name, size = 24, color = C.muted }) {
   );
 }
 
-const FLIKAR = [
+// EN lista, två skal. Bottennaven (mobil) och sidopanelen (desktop) läser samma
+// flikar — annars är det bara en tidsfråga innan den ena får en flik den andra
+// saknar, precis som paletten en gång låg på fyra ställen.
+export const FLIKAR = [
   ["hem", "Hem"], ["pass", "Pass"], ["mat", "Mat"], ["framsteg", "Framsteg"], ["coachen", "Coachen"],
 ];
 
@@ -36,7 +40,7 @@ export function BottomNav({ aktiv, onChange }) {
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
-      maxWidth: 480, margin: "0 auto",
+      maxWidth: MOBIL_MAX, margin: "0 auto",
       background: "rgba(10,10,10,0.94)", backdropFilter: "blur(12px)",
       borderTop: `1px solid ${C.border}`,
       display: "flex", paddingBottom: "env(safe-area-inset-bottom)",
@@ -46,8 +50,8 @@ export function BottomNav({ aktiv, onChange }) {
         return (
           <button key={id} onClick={() => onChange(id)} aria-current={på ? "page" : undefined} style={{
             flex: 1, background: "none", border: "none", cursor: "pointer",
-            padding: "10px 0 12px", display: "flex", flexDirection: "column",
-            alignItems: "center", gap: 5, color: på ? C.lime : C.muted,
+            padding: "9px 0 11px", display: "flex", flexDirection: "column",
+            alignItems: "center", gap: 4, color: på ? C.lime : C.muted,
           }}>
             <NavIcon name={id} size={23} color={på ? C.lime : C.muted} />
             <span style={{ fontFamily: HFONT, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase" }}>{l}</span>

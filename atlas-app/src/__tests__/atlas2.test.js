@@ -553,6 +553,11 @@ describe("Askr 2.0 — OS-bakåtknappen (beslutet)", () => {
 });
 
 describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
+  // Bredden sätts EXPLICIT: appen har numera två skal, och de här testerna
+  // prövar mobilens (bottennav, bottenark, OS-bakåtknapp). Utan raden ärvs
+  // jsdom:s 1024 px och appen renderar sidopanelen — testet skulle mäta fel sak.
+  beforeEach(() => { Object.defineProperty(window, "innerWidth", { value: 390, configurable: true, writable: true }); });
+
   const roots = [];
   let box;
   beforeEach(() => {
@@ -832,6 +837,11 @@ describe("Askr 2.0 — id-policy: slump vid skapande, hash bara vid migrering", 
 });
 
 describe("Askr 2.0 — tillgänglighet: ark som dialog", () => {
+  // Bredden sätts EXPLICIT: appen har numera två skal, och de här testerna
+  // prövar mobilens (bottennav, bottenark, OS-bakåtknapp). Utan raden ärvs
+  // jsdom:s 1024 px och appen renderar sidopanelen — testet skulle mäta fel sak.
+  beforeEach(() => { Object.defineProperty(window, "innerWidth", { value: 390, configurable: true, writable: true }); });
+
   const roots = [];
   let box;
   beforeEach(() => {

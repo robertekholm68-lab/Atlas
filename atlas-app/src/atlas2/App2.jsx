@@ -20,9 +20,11 @@ import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
 import { GoalSheet } from "./GoalSheet.jsx";
 import { NutritionSheet } from "./NutritionSheet.jsx";
+import { Shell } from "./Shell.jsx";
 import { SessionSheet } from "./SessionSheet.jsx";
 import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
+import { useLayout, UTAN_NAV, MOBIL_MAX, PANEL_BREDD, INNEHÅLL_MAX, FULL_HÖJD } from "./layout.js";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
@@ -141,7 +143,7 @@ function ModeChoice({ onPick }) {
 
 /* ══════════ HEM ══════════ */
 
-function Home({ sessions, activeProgram, onStart, onOpen }) {
+function Home({ sessions, activeProgram, onStart, onOpen, layout }) {
   const now = Date.now();
   const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
   // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
@@ -155,47 +157,90 @@ function Home({ sessions, activeProgram, onStart, onOpen }) {
 
   const datum = new Date(now).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" });
 
-  return (
-    <div style={{ padding: "16px 18px 90px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <AtlasLogo size={26} hfont={HFONT} tagline={null} />
-        <button aria-label="Meny" onClick={() => onOpen("import")} style={{ background: "none", border: "none", padding: 10, cursor: "pointer" }}>
-          {[0, 1, 2].map(i => <div key={i} style={{ width: 21, height: 2, background: C.text, marginBottom: i < 2 ? 5 : 0 }} />)}
-        </button>
-      </div>
-      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, textTransform: "capitalize" }}>{datum}</div>
+  const mobil = layout.mobil;
 
-      {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot svärtan
-          och det enda som lyser är muskler med faktiskt underlag. */}
-      <div style={{ marginTop: 12 }}>
-        <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} height={300} />
-      </div>
+  // Nyckeltalen och beskedet är samma innehåll i båda lägena — bara möblerat
+  // olika. De ligger som funktioner för att slippa två kopior av samma JSX;
+  // två kopior är hur en vy börjar glida isär.
+  const Besked = () => (
+    <div style={{ textAlign: "center", fontSize: besked.empty ? 15.5 : 17.5, fontWeight: 600, lineHeight: 1.4, margin: mobil ? "8px 4px 0" : "0 0 18px", color: C.text, flexShrink: 0 }}>
+      {besked.text}
+    </div>
+  );
 
-      <div style={{ textAlign: "center", fontSize: besked.empty ? 15.5 : 17.5, fontWeight: 600, lineHeight: 1.45, margin: "12px 6px 0", color: C.text }}>
-        {besked.text}
-      </div>
+  const Nyckeltal = () => (
+    <div style={{ ...statRow, marginTop: mobil ? 12 : 20, flexShrink: 0 }}>
+      {[["Readiness", orDash(rd), osäkert ? "osäkert underlag" : null,
+          rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical],
+        ["Veckans pass", sessions.length ? vecka : DASH, null, C.text],
+        ["Senast", senast || DASH, null, C.text]].map(([l, v, sub, col], i) => (
+        <div key={l} style={{ ...statCell(i), padding: mobil ? "10px 4px" : "14px 4px" }}>
+          <div style={label()}>{l}</div>
+          <div style={{ ...hdr(mobil ? 19 : 21, col), marginTop: 3 }}>{v}</div>
+          {sub && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>}
+        </div>
+      ))}
+    </div>
+  );
 
-      <button onClick={activeProgram ? onStart : () => onOpen("program")} style={{ ...btnPrimary, marginTop: 16 }}>
+  const Start = () => (
+    <>
+      <button onClick={activeProgram ? onStart : () => onOpen("program")} style={{ ...btnPrimary, marginTop: mobil ? 10 : 0, flexShrink: 0 }}>
         {!activeProgram ? "Välj program" : besked.empty ? "Starta första passet" : "Starta pass"}
         <span style={{ fontSize: 20 }}>→</span>
       </button>
-      <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 9 }}>
+      <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 7, flexShrink: 0 }}>
         {nw ? `Föreslaget: ${nw.workout.name}` : activeProgram ? "Inga pass kvar i veckan." : "Inget program valt än."}
       </div>
+    </>
+  );
 
-      <div style={{ ...statRow, marginTop: 20 }}>
-        {[["Readiness", orDash(rd), osäkert ? "osäkert underlag" : null,
-            rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical],
-          ["Veckans pass", sessions.length ? vecka : DASH, null, C.text],
-          ["Senast", senast || DASH, null, C.text]].map(([l, v, sub, col], i) => (
-          <div key={l} style={statCell(i)}>
-            <div style={label()}>{l}</div>
-            <div style={{ ...hdr(21, col), marginTop: 4 }}>{v}</div>
-            {sub && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>}
-          </div>
-        ))}
+  // ── MOBIL: en skärm, ingen scroll ────────────────────────────────────────
+  // Höjden låses till skärmen minus bottennaven, och kartan är `flex: 1`.
+  // Webbläsaren räknar då ut kartans höjd åt oss vid varje skärmstorlek —
+  // säkrare än en pixelbudget som blir fel på nästa telefon.
+  if (mobil) return (
+    <div style={{
+      padding: "12px 18px 8px", boxSizing: "border-box",
+      height: UTAN_NAV,
+      display: "flex", flexDirection: "column",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ minWidth: 0 }}>
+          <AtlasLogo size={24} hfont={HFONT} tagline={null} />
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, textTransform: "capitalize" }}>{datum}</div>
+        </div>
+        <button aria-label="Meny" onClick={() => onOpen("import")} style={{ background: "none", border: "none", padding: 10, cursor: "pointer", flexShrink: 0 }}>
+          {[0, 1, 2].map(i => <div key={i} style={{ width: 21, height: 2, background: C.text, marginBottom: i < 2 ? 5 : 0 }} />)}
+        </button>
       </div>
 
+      {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot
+          svärtan och det enda som lyser är muskler med faktiskt underlag. */}
+      <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)}
+        fyll kompakt={layout.kompaktNyckel} />
+
+      <Besked />
+      <Start />
+      <Nyckeltal />
+    </div>
+  );
+
+  // ── DESKTOP: kartan får ytan, besluten står bredvid ───────────────────────
+  return (
+    <div style={{ padding: "8px 0 40px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.05fr) minmax(0,.95fr)", gap: 48, alignItems: "center", minHeight: "72vh" }}>
+        <div style={{ display: "flex", flexDirection: "column", height: "76vh", minHeight: 460 }}>
+          <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} fyll />
+        </div>
+        <div>
+          <div style={{ ...label(C.lime), marginBottom: 10 }}>Idag</div>
+          <div style={{ ...hdr(30), marginBottom: 16, textTransform: "capitalize" }}>{datum}</div>
+          <Besked />
+          <Start />
+          <Nyckeltal />
+        </div>
+      </div>
     </div>
   );
 }
@@ -225,6 +270,8 @@ export function Atlas2() {
   const [sheet, setSheet] = useState(null);
   const [flik, setFlik] = useState("hem");
   const [klart, setKlart] = useState(null);
+  // Layoutläget är en hook och MÅSTE ligga före de villkorade returerna nedan.
+  const layout = useLayout();
 
   useEffect(() => {
     let alive = true;
@@ -402,7 +449,7 @@ export function Atlas2() {
     }
     if (flik === "hem") return (
       <Home sessions={sessions} activeProgram={activeProgram}
-        onStart={startaPass} onOpen={setSheet} />
+        onStart={startaPass} onOpen={setSheet} layout={layout} />
     );
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights}
@@ -419,15 +466,32 @@ export function Atlas2() {
     );
   };
 
+  const desktop = layout.desktop;
+
   return (
-    <div className="askr-app" style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BFONT, maxWidth: 480, margin: "0 auto" }}>
-      {vy()}
-      <BottomNav aktiv={flik} onChange={setFlik} />
+    <div className="askr-app" style={{
+      minHeight: FULL_HÖJD, background: C.bg, color: C.text, fontFamily: BFONT,
+      // Telefonkolumnen gäller bara i mobilläget. På desktop bär Shell ytan.
+      maxWidth: desktop ? "none" : MOBIL_MAX, margin: "0 auto",
+    }}>
+      {desktop
+        ? <Shell aktiv={flik} onChange={setFlik} onMeny={() => setSheet("import")}>{vy()}</Shell>
+        : <>{vy()}<BottomNav aktiv={flik} onChange={setFlik} /></>}
       {sheet && (
-        <div onClick={() => setSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
+        <div onClick={() => setSheet(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60,
+          display: "flex", alignItems: desktop ? "center" : "flex-end", justifyContent: "center", padding: desktop ? 24 : 0,
+        }}>
           <div ref={arkRef} role="dialog" aria-modal="true" aria-label={arkEtikett(sheet)} tabIndex={-1}
-            onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto" }}>
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
+            onClick={e => e.stopPropagation()} style={{
+              width: "100%", maxWidth: desktop ? 560 : MOBIL_MAX, margin: "0 auto", background: C.card,
+              // Modaler har radie 28 i guiden; bottenarket behåller sin rundade
+              // överkant och sitter kvar mot skärmkanten.
+              borderRadius: desktop ? 28 : "22px 22px 0 0",
+              border: desktop ? `1px solid ${C.hairline}` : "none",
+              padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto",
+            }}>
+            {!desktop && <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />}
             {sheet === "mal" ? (
               <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "kost" ? (
