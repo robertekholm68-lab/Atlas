@@ -4,7 +4,7 @@ Datalagret. Här slås siffror, struktur, status och backlog upp. Koden i
 `atlas-app/` är ground truth — den här filen sammanfattar, den bestämmer inte.
 Uppdatera filen när bygget ändras.
 
-*Senast verifierad mot koden: 2026-07-26. Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-07-26 (efter #40). Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -81,7 +81,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 669 i 65 filer |
+| Tester (vitest) | 776 i 72 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -94,7 +94,32 @@ dataConfidence), `session.js`, `programs.js`, `goal.js`, `mission.js`,
 `bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
 samt de som tidigare saknades i dokumentationen: `voice.js`, `post-session.js`,
 `geofence.js`, `nfc.js`, `hr.js`, `platform.js`, `bridge.js`, `backup.js`,
-`cues.js`.
+`cues.js`, `nudges.js` (händelsedrivna påminnelser), `supplements.js`
+(följsamhet för dagliga tillskott).
+
+**Varför-svaren får konsekvenser.** `reasonSignal` (ur `post-session.js`, kräver
+≥3 svar inom 21 dagar) styr två saker — och två saker den INTE gör:
+
+- **`progressionSuggestion(exId, sessions, targetReps, bias = 0)`.** Biasen får
+  DÄMPA eller FÖRSTÄRKA en riktning, **aldrig vända den** — den appliceras
+  efter att riktningen bestämts, så ett "kändes lätt"-mönster kan inte göra om
+  en RPE 9.5-backning till en ökning. Den rör bara ökningar: ett pass som redan
+  håller backas inte ytterligare, för det vore att straffa ärlighet.
+- **Tilliten i `facts.kropp`, aldrig readiness-SIFFRAN.** Talet räknas ur loggad
+  belastning och är korrekt för det den mäter; att dra ner det självt skulle
+  förfalska en riktig beräkning. Det som sjunker är hur mycket vikt man ska
+  lägga på talet — ett steg, med golv, och `"ingen"` rörs inte.
+
+`bias = 0` är standard och `ctx.reasonSignal` är valfri, så desktop och mobilen
+är opåverkade — bara 2.0 skickar in dem.
+
+**Progressionsklivet skalas mot överskottet.** Ett fast steg gav samma förslag
+för 8 reps som för 20 på en vikt tänkt för 8. Epley uppskattar 1RM ur vikt och
+reps, och därifrån räknas vikten som borde ge målrepsen: 100 kg × 12 föreslår
+110 i stället för 102,5. **Golv:** aldrig mindre än vanliga steget. **Tak:**
+10 % per pass — formeln kan matematiskt vilja +30 %, men uppskattningen bygger
+på ETT set, och appen säger till när den ville mer i stället för att tyst kapa.
+Den här delen ligger i `index.js` och gäller därför alla tre byggmålen.
 
 ### `src/features/` — nuvarande appen
 dashboard, body-map, training, programs, nutrition, recipes, goals, ai-coach,
@@ -106,10 +131,38 @@ härledda tillstånd + `sessionVolume` + synk-form), `import.js` (historikimport
 `BodyMap2.jsx`, `Nav.jsx`, `WorkoutView.jsx`, `FoodView.jsx`, `CoachView.jsx`,
 `CoachChat.jsx`, `ProgressView.jsx`, `ProgramSheet.jsx`, `ImportSheet.jsx`,
 `MuscleSheet.jsx`, `GoalSheet.jsx`, `NutritionSheet.jsx`, `SessionSheet.jsx`,
-`foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent), `App2.jsx`,
-`main2.jsx`, `body_regions.json`.
+`ReadinessSheet.jsx`, `RescueView.jsx`, `MealPrepView.jsx`,
+`SupplementsPanel.jsx`, `Shell.jsx` (skrivbordsskal), `layout.js` (brytpunkt,
+dvh, navhöjd), `foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent),
+`App2.jsx`, `main2.jsx`, `body_regions.json`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
+
+**Två skal, en uppsättning vyer.** Under brytpunkten (`layout.js`) bottennav,
+över den `Shell.jsx` med sidopanel och ark som centrerade modaler. Vyerna
+forkas INTE — de får veta hur brett de har och möblerar därefter. `FLIKAR`
+bryts ut ur `Nav.jsx` och läses av båda skalen, så navigeringen inte kan glida
+isär. Kartan har ingen fast höjd: vyerna är flex-kolumner där kartan är
+`flex: 1` med `minHeight: 0`, så webbläsaren räknar. Mätt 299 px på iPhone SE,
+638 på desktop — kroppen är gränssnittet, alltså får kroppen ytan som blir
+över. `100dvh`, inte `100vh`: `vh` räknar in iOS adressfält.
+
+**Readiness går att fråga varför.** Talet på hem är en knapp som öppnar
+`ReadinessSheet` — basen plus varje modifierare med sitt tecken, hämtat ur
+motorns `readinessBreakdown`. De andra två cellerna är räknade fakta utan
+uppdelning och har medvetet ingen knapp. Utan underlag förklaras ingenting
+bort: arket säger att talet saknas.
+
+**Kosten påverkar readiness — men bara med underlag.** `nutRec` beräknas en
+gång i `App2` och matas till hem, coach och framsteg, så vyerna inte kan glida
+isär. Den gatas av `logReliability` (≥3 loggade dagar av 5); under tröskeln
+blir modifieraren `{ mod: 0 }` och kosten påverkar ingenting. Arket säger rakt
+ut när kosten inte räknas in och varför.
+
+**Matakuten och meal prep.** `RescueView` kopplar in den befintliga motorn
+(`RESCUE_SITUATIONS`, `interpretCrisis`, `recentIntakeSummary`, `buildRescue`);
+tonläget bor i `profile.nutStyle`. `MealPrepView` bygger veckomeny och
+inköpslista ur `engines/recipes.js` med kostval och variationsspärr.
 
 **Rätta och radera pass.** Motorn kunde det redan (`updateSet`, `deleteSet`,
 `recomputeSession`); det som saknades var en väg dit. `ProgressView` listar
@@ -327,9 +380,10 @@ Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 Verifiering: headless Chromium / vitest framför visuell läsning. Askr 2.0:s
 DOM-verifieringsskript ligger i `scripts/` (`verify-atlas2.mjs`,
 `verify-atlas2-pass.mjs`, `verify-atlas2-backup.mjs`,
-`verify-atlas2-passredigering.mjs`) och körs medvetet inte av test/bygge — de
-kräver `npm i --no-save playwright-core` och en byggd `dist-atlas2/`. Alla fyra
-hittar webbläsaren via `chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
+`verify-atlas2-passredigering.mjs`, `-layout.mjs` (tre bredder), `-matakut.mjs`,
+`-mealprep.mjs`, `-readiness.mjs`, `-tillskott.mjs`) och körs medvetet inte av
+test/bygge — de kräver `npm i --no-save playwright-core` och en byggd
+`dist-atlas2/`. Samtliga hittar webbläsaren via `chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
 sökvägarna, annars letas revisionskatalogen upp. **Hårdkoda aldrig
 `/opt/pw-browsers/chromium`** — den finns inte i alla containrar, och skripten
 dör direkt vid start när den saknas.
@@ -343,7 +397,10 @@ har gett falska larm om trasiga vyer minst fyra gånger.
 bottennavigering, pågående pass med riktig loggning, kvitto, programväljare,
 matvy (översikt/logga/recept), coachvy med skäl, framstegsvy, historikimport,
 muskeldetaljvy, målresa, installerbar PWA med offlinestöd, rätta och radera
-loggade pass, varför-frågan efter passet, backup-fil för v3-datan.
+loggade pass, varför-frågan efter passet, backup-fil för v3-datan,
+skrivbordslayout med sidopanel, förklarbart readiness-ark, matakuten,
+meal prep med veckomeny och inköpslista, dagliga tillskott,
+händelsedrivna påminnelser, och varför-svar som styr progression och tillit.
 - **OS-bakåtknappen** (`pushState`/`popstate`, `atlas2/backnav.js`): bakåt
   stänger öppet ark, går till hem från annan flik, backar genom onboarding-steg,
   och lämnar appen först på hem/start. Bygger inte upp historik vid flikbyten.
@@ -367,10 +424,6 @@ loggade pass, varför-frågan efter passet, backup-fil för v3-datan.
   träning, vikt, målresa, kost och program (siffror + per-block-tillit ur §13).
   Kvar: BARA mål-grenens recomp-resonemang (`goalReasoning`) — en egen sak från
   programförslagen (`analyzeProgram`, nu i `facts.program`).
-- **`reasonSignal` till progression och readiness-tillit.** Varför-svaren syns
-  för användaren i coachens text, men `progressionBias`/`confidencePenalty`
-  styr ännu inte progressionsförslag eller readiness-tillit. Det rör `facts.js`
-  och coachlogiken — eget steg, egen testrunda.
 - **Redigera passets datum eller titel** är medvetet utelämnat: att flytta ett
   pass i tiden ändrar hela recovery-kurvan och behöver ett eget beslut. Att
   lägga TILL ett set i ett sparat pass saknas också — bara rätta och ta bort
