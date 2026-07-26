@@ -106,12 +106,25 @@ export function generateWeekMenu({ targets, diet, restrictions, dietApproach, da
   // Ungefärlig fördelning av dagens energi över måltiderna.
   const SHARE = { breakfast: 0.25, lunch: 0.32, dinner: 0.33, snack: 0.10 };
   const rand = rng(seed);
-  const out = [], lastUsed = {};
+  // Hur många av de senast använda rätterna som spärras per måltid. Tidigare
+  // spärrades bara gårdagens, och eftersom poängsättningen premierar kcal-träff
+  // så hårt landade veckan på 13–15 unika rätter av 28 måltider — frukosten
+  // växlade mellan två. En veckomeny som upprepar sig är inte meal prep.
+  //
+  // Spärren följer poolens storlek: med fyra eller fler kandidater spärras tre,
+  // vilket garanterar minst fyra olika rätter per måltid över veckan. Med ett
+  // smalt urval (vegansk + glutenfri kost har EN frukost) spärras inget — då är
+  // upprepning oundviklig, och att vägra vore sämre än att upprepa.
+  const SPÄRR_MAX = 3;
+  const out = [], nyliga = {};
   for (let d = 0; d < days; d++) {
     const meals = [];
     MEALS.forEach(m => {
-      const cands = byMeal[m.id].filter(r => r.id !== lastUsed[m.id]);
-      const list = cands.length ? cands : byMeal[m.id];
+      const pool = byMeal[m.id];
+      const spärr = Math.min(Math.max(0, pool.length - 1), SPÄRR_MAX);
+      const undvik = (nyliga[m.id] || []).slice(0, spärr);
+      const cands = pool.filter(r => !undvik.includes(r.id));
+      const list = cands.length ? cands : pool;
       let pick;
       if (kcalTarget) {
         const want = kcalTarget * SHARE[m.id];
@@ -123,7 +136,7 @@ export function generateWeekMenu({ targets, diet, restrictions, dietApproach, da
         }).sort((a, b) => a.score - b.score);
         pick = scored[0].r;
       } else pick = list[Math.floor(rand() * list.length)];
-      lastUsed[m.id] = pick.id;
+      nyliga[m.id] = [pick.id, ...(nyliga[m.id] || [])].slice(0, SPÄRR_MAX + 2);
       meals.push({ meal: m.id, mealLabel: m.label, recipe: pick, macros: recipeMacros(pick) });
     });
     const raw = meals.reduce((a, x) => ({

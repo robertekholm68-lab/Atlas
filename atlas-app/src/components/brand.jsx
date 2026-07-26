@@ -15,7 +15,6 @@ import { C } from "../atlas2/design.js";
 // HTML-fil aldrig hittade — och headern visade textfallbacken i stället för
 // märket. Se assetsInlineLimit i vite-konfigurationerna.
 import ordmarke from "../assets/brand/askr-wordmark.webp";
-import symbol from "../assets/brand/askr-symbol.webp";
 import primarlogo from "../assets/brand/askr-logo.webp";
 const LIME = C.lime;
 
@@ -24,18 +23,10 @@ const LIME = C.lime;
  * benet är avhugget upptill så formen läser som ett berg. Samma silhuett som
  * i skissen.
  */
-export function AtlasMark({ size = 34, color = LIME, style }) {
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size} style={style} aria-hidden focusable="false">
-      {/* vänstra benet */}
-      <path d="M8 96 L44 4 L60 4 L24 96 Z" fill={color} />
-      {/* högra benet, kortare upptill */}
-      <path d="M92 96 L66 30 L50 30 L76 96 Z" fill={color} />
-      {/* tvärslån */}
-      <path d="M34 62 L70 62 L64 76 L28 76 Z" fill={color} />
-    </svg>
-  );
-}
+// (Här låg AtlasMark — ett kantigt "A". Det var ATLAS-erans märke, från innan
+// produkten hette Askr, och det användes som vektorfallback när bildfilen
+// saknades. Sedan varumärkesfilerna kom faller vi tillbaka på ordet ASKR i
+// stället: hellre bara namnet än fel märke. Ingen kod refererar den längre.)
 
 /**
  * VARUMÄRKESFILERNA, enligt ASKR Brand & UI Style Guide v1.1.
@@ -89,10 +80,9 @@ export function AskrLogo({ höjd = 150, style }) {
   return <Märke fil={primarlogo} höjd={höjd} förhållande={1.0} alt="Askr" style={style} />;
 }
 
-/** Symbolen ensam. Dekorativt bruk och app-ikon — aldrig som primär logotyp. */
-export function AskrSymbol({ höjd = 40, style }) {
-  return <Märke fil={symbol} höjd={höjd} förhållande={0.86} style={style} />;
-}
+// (Här låg AskrSymbol. Borttagen: den renderades ingenstans, så Rollup skakade
+// bort den ur bygget ändå. Symbolen når appen via public/askr-symbol.webp som
+// favicon och som app-ikon via manifestet — ingen komponent behövs för det.)
 
 /**
  * Bakåtkompatibel omslagning: mobilkompanjonen och äldre anrop skickar `size`

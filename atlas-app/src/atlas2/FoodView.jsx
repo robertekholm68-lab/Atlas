@@ -9,6 +9,10 @@
 // 2000-gräns hade fått verkliga siffror att se ut som avvikelser.
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { RescueView } from "./RescueView.jsx";
+import { MealPrepView } from "./MealPrepView.jsx";
+import { filterRecipes } from "../engines/recipes.js";
+import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
@@ -340,18 +344,53 @@ function receptNäring(r) {
   };
 }
 
-function Recept({ onLägg }) {
+const lägesknapp = på => ({
+  flex: 1, padding: "11px 10px", borderRadius: 12, minHeight: 44, cursor: "pointer",
+  border: `1px solid ${på ? C.lime : C.border}`, background: på ? volt(0.06) : C.card2,
+  color: på ? C.lime : C.text2, fontFamily: HFONT, fontSize: 12,
+  fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
+});
+
+function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred }) {
   const [sök, setSök] = useState("");
+  const [läge, setLäge] = useState("lista");
+  // Receptlistan respekterar samma kostval som veckomenyn. Utan det skulle en
+  // vegan få en vegansk vecka men en allätande sökträfflista — samma app som
+  // säger två olika saker om vad hen äter.
+  const passande = useMemo(
+    () => filterRecipes({ diet: profile.diet || "omnivore", restrictions: profile.restrictions || [], dietApproach: profile.dietApproach || null }),
+    [profile.diet, (profile.restrictions || []).join(","), profile.dietApproach]
+  );
   const lista = useMemo(() => {
     const q = sök.trim().toLowerCase();
-    const alla = RECIPES || [];
-    return (q ? alla.filter(r => (r.name || "").toLowerCase().includes(q)) : alla).slice(0, 40);
-  }, [sök]);
+    return (q ? passande.filter(r => (r.name || "").toLowerCase().includes(q)) : passande).slice(0, 40);
+  }, [sök, passande]);
+
+  if (läge === "vecka") return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button onClick={() => setLäge("lista")} style={{ ...lägesknapp(false) }}>Alla recept</button>
+        <button style={{ ...lägesknapp(true) }}>Veckomeny</button>
+      </div>
+      <MealPrepView nutritionTargets={nutritionTargets} profile={profile}
+        setProfile={setProfile} onLägg={onLägg} bred={bred} />
+    </div>
+  );
 
   return (
     <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button style={{ ...lägesknapp(true) }}>Alla recept</button>
+        <button onClick={() => setLäge("vecka")} style={{ ...lägesknapp(false) }}>Veckomeny</button>
+      </div>
       <input value={sök} onChange={e => setSök(e.target.value)} placeholder="Sök recept…"
         style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", fontSize: 15, boxSizing: "border-box", marginBottom: 14 }} />
+      {lista.length === 0 && (
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, padding: "18px 2px" }}>
+          Inga recept matchar sökningen inom din kost. Ändra kosten under
+          Veckomeny, eller sök på något annat.
+        </div>
+      )}
       {lista.map(r => {
         const n = receptNäring(r);
         return (
@@ -376,8 +415,9 @@ function Recept({ onLägg }) {
 
 /* ── VYN ── */
 
-export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta }) {
+export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [] }) {
   const [flik, setFlik] = useState("oversikt");
+  const layout = useLayout();
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
   const totaler = dagensNutrition(foodLog);
   const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
@@ -386,8 +426,8 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta 
     <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Mat</div>
 
-      <div style={{ display: "flex", gap: 22, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>
-        {[["oversikt", "Översikt"], ["logga", "Logga mat"], ["recept", "Recept"]].map(([id, l]) => (
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", margin: "16px 0 20px", borderBottom: `1px solid ${C.border}` }}>
+        {[["oversikt", "Översikt"], ["logga", "Logga"], ["recept", "Recept"], ["akut", "Akut"]].map(([id, l]) => (
           <button key={id} onClick={() => setFlik(id)} style={{
             background: "none", border: "none", cursor: "pointer", padding: "15px 6px 12px", minHeight: 44,
             fontFamily: HFONT, fontSize: 12.5, fontWeight: 700, letterSpacing: 1.3, textTransform: "uppercase",
@@ -399,7 +439,17 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta 
 
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets} onLogga={() => setFlik("logga")} onSätta={onSätta} />}
       {flik === "logga" && <Logga onLägg={lägg} />}
-      {flik === "recept" && <Recept onLägg={lägg} />}
+      {flik === "recept" && (
+        <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
+          profile={profile} setProfile={setProfile} bred={layout.desktop} />
+      )}
+      {/* Matakuten ligger som flik och inte som ark: skyddsräcket ber en
+          registrera valet direkt, och då ska loggen vara ett tryck bort. */}
+      {flik === "akut" && (
+        <RescueView foodLog={foodLog} nutritionTargets={nutritionTargets}
+          profile={profile} setProfile={setProfile} weights={weights}
+          onLogga={() => setFlik("logga")} />
+      )}
     </div>
   );
 }
