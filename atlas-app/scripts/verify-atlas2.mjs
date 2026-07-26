@@ -3,13 +3,28 @@
 // Körs mot dist-atlas2 över http (file:// gör localStorage opålitligt).
 import { chromium } from "playwright-core";
 import http from "http";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync, readdirSync } from "fs";
+
+function chromiumBin() {
+  if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
+  const raka = ["/opt/pw-browsers/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser"];
+  for (const p of raka) if (existsSync(p)) return p;
+  const bas = "/opt/pw-browsers";
+  if (existsSync(bas)) {
+    for (const d of readdirSync(bas)) {
+      const p = `${bas}/${d}/chrome-linux/chrome`;
+      if (/^chromium/.test(d) && existsSync(p)) return p;
+    }
+  }
+  throw new Error("Hittar ingen Chromium — sätt PW_CHROMIUM till sökvägen.");
+}
+
 
 const html = readFileSync("dist-atlas2/atlas2.html", "utf8");
 const srv = http.createServer((req, res) => { res.setHeader("Content-Type", "text/html"); res.end(html); });
 await new Promise(r => srv.listen(8931, r));
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", headless: true });
+const browser = await chromium.launch({ executablePath: chromiumBin(), headless: true });
 const page = await browser.newPage();
 const fel = [];
 page.on("pageerror", e => fel.push("pageerror: " + e.message));

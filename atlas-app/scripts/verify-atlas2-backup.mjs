@@ -2,11 +2,26 @@
 // Kräver: npm i --no-save playwright-core + byggd dist-atlas2. Körs från atlas-app/.
 import { chromium } from "playwright-core";
 import http from "http";
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
+
+function chromiumBin() {
+  if (process.env.PW_CHROMIUM) return process.env.PW_CHROMIUM;
+  const raka = ["/opt/pw-browsers/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser"];
+  for (const p of raka) if (existsSync(p)) return p;
+  const bas = "/opt/pw-browsers";
+  if (existsSync(bas)) {
+    for (const d of readdirSync(bas)) {
+      const p = `${bas}/${d}/chrome-linux/chrome`;
+      if (/^chromium/.test(d) && existsSync(p)) return p;
+    }
+  }
+  throw new Error("Hittar ingen Chromium — sätt PW_CHROMIUM till sökvägen.");
+}
+
 const html = readFileSync("dist-atlas2/atlas2.html", "utf8");
 const srv = http.createServer((q, s) => { s.setHeader("Content-Type", "text/html"); s.end(html); });
 await new Promise(r => srv.listen(8934, r));
-const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", headless: true });
+const b = await chromium.launch({ executablePath: chromiumBin(), headless: true });
 const ctx = await b.newContext({ acceptDownloads: true });
 const page = await ctx.newPage();
 const fel = []; page.on("pageerror", e => fel.push(e.message)); page.on("console", m => { const t = m.text(); if (m.type() === "error" && !/ERR_CONNECTION_RESET|unsupported MIME/.test(t)) fel.push("console: " + t.slice(0,200)); });
