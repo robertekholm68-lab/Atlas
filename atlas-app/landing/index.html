@@ -56,9 +56,8 @@
   .lbl{font-family:var(--m); font-size:10px; font-weight:500;
        text-transform:uppercase; letter-spacing:.08em; color:var(--text2)}
 
-  header{padding:30px 0 0; display:flex; align-items:center; gap:10px}
-  .mark{width:34px; height:34px; flex:none; display:block; transform:translateY(2px)}
-  .name{font-size:27px}
+  header{padding:30px 0 0; display:flex; align-items:center}
+  .ordmarke{height:34px; width:auto; display:block}
 
   /* Rygg mot rygg. Båda bilderna är vända åt vänster i original, så kvinnan
      speglas och vänds utåt. Bilderna är beskurna till bålens kant, vilket gör
@@ -153,8 +152,10 @@
 <div class="wrap">
 
   <header>
-    <img class="mark" src="./askr-mark.webp" alt="" />
-    <span class="name disp">Askr</span>
+    <!-- Ordmärket är guidens variant för headers, och det är en DESIGNAD fil —
+         inte en symbol plus utskriven text. Tidigare stod metallsymbolen som
+         primär logotyp, vilket guiden bara tillåter dekorativt. -->
+    <img class="ordmarke" src="./askr-wordmark.webp" alt="Askr" />
   </header>
 
   <div class="hero">

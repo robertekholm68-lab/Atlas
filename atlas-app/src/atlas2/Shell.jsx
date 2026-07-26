@@ -15,7 +15,7 @@
 // är det kroppen som ska få ytan.
 
 import { C, HFONT, MONO, volt } from "./design.js";
-import { AtlasLogo } from "../components/brand.jsx";
+import { AskrWordmark } from "../components/brand.jsx";
 import { NavIcon, FLIKAR } from "./Nav.jsx";
 import { PANEL_BREDD, INNEHÅLL_MAX, FULL_HÖJD } from "./layout.js";
 
@@ -53,7 +53,7 @@ export function Shell({ aktiv, onChange, onMeny, children }) {
         position: "sticky", top: 0, height: FULL_HÖJD, boxSizing: "border-box",
       }}>
         <div style={{ padding: "0 6px 22px" }}>
-          <AtlasLogo size={26} hfont={HFONT} tagline={null} />
+          <AskrWordmark höjd={30} />
         </div>
 
         {FLIKAR.map(([id, etikett]) => (

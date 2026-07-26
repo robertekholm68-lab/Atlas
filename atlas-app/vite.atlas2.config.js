@@ -88,7 +88,18 @@ export default defineConfig({
   build: {
     // Bilder hålls utanför bygget, som i de andra målen: en ny appversion ska
     // inte tvinga fram en ny nedladdning av hela bildbanken.
-    assetsInlineLimit: (filePath) => !/\.(webp|png|jpe?g|avif)$/i.test(filePath),
+    // Identitetsbilderna (ordmärke, symbol, kroppsfigurerna) bäddas IN i bygget.
+    // De syns på varje skärm, och som systerfiler hann de aldrig laddas innan
+    // vyn ritades — headern blinkade förbi som textfallback, och muskelkartan
+    // ritade färgformerna utan anatomin under. En fristående HTML-fil visade
+    // dem aldrig alls.
+    //
+    // Receptbilderna ligger kvar UTANFÖR bygget: de är ~150 stycken och skulle
+    // spränga HTML:en. Det är hela skälet till att den här funktionen finns.
+    // Skillnaden är alltså inte filformat utan ROLL: identitet bäddas in,
+    // innehåll ligger utanför.
+    assetsInlineLimit: (filePath) =>
+      /assets[\\/]brand[\\/]/i.test(filePath) || !/\.(webp|png|jpe?g|avif)$/i.test(filePath),
     assetsDir: "",
     chunkSizeWarningLimit: 100000000,
     cssCodeSplit: false,

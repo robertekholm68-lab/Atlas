@@ -19,6 +19,8 @@
 import { useState } from "react";
 import { C, HFONT, statusColor } from "./design.js";
 import REGIONS from "./body_regions.json";
+import figurFram from "../assets/brand/figur-fram.webp";
+import figurBak from "../assets/brand/figur-bak.webp";
 
 // Figurens region → muskel-id:n i 21-taxonomin.
 const MAP = {
@@ -60,7 +62,10 @@ const GRUNDTON = "#2E333B";
 // själv är 73 % genomskinlig: bara kroppen, ingen platta, ingen gloria.
 // Här ligger den som extern webp (39 kB), avmättad och mörkad så att de
 // färgade musklerna får bära informationen.
-const bildUrl = vy => new URL(`figur-${vy === "front" ? "fram" : "bak"}.webp`, document.baseURI).href;
+// Anatomibilden bäddas IN i bygget (se assetsInlineLimit). Som systerfil hann
+// den aldrig laddas innan kartan ritades, och i en fristående HTML-fil fanns
+// den inte alls — kartan visade då bara färgformerna, utan kroppen under.
+const bildUrl = vy => (vy === "front" ? figurFram : figurBak);
 
 /** Regionens tillstånd = den av dess muskler som är MINST återhämtad. */
 function regionState(regionId, states) {
