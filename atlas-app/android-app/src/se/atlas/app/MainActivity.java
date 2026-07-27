@@ -79,6 +79,16 @@ public class MainActivity extends Activity {
 
         web.setWebChromeClient(new AtlasChromeClient(this));
 
+        // RÖSTBRYGGAN. WebView får inte öppna mikrofonen på den här telefonen —
+        // bevisat med Androids egen mikrofonhistorik, som aldrig visade Askr
+        // trots beviljad behörighet. Bryggan går runt problemet: Androids egen
+        // SpeechRecognizer spelar in och tolkar, webbappen får bara texten.
+        //
+        // Namnet "AskrNative" är vad voice.js letar efter. Hittar den inget
+        // faller webbappen tillbaka på webbläsarens taligenkänning, vilket är
+        // det som gäller i Chrome och Samsung Browser.
+        web.addJavascriptInterface(new AskrVoice(this, web), "AskrNative");
+
         // Kant-till-kant, men innehållet skjuts in från systemfälten så att
         // bottennavigeringen inte hamnar under gestfältet.
         if (Build.VERSION.SDK_INT >= 21) {

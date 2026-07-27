@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 897 i 84 filer |
+| Tester (vitest) | 904 i 85 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -685,35 +685,52 @@ och sport- och cardiologgning.
   bort luft och en hälsning som upprepade rubriken, men **posten var redan
   struken när det gjordes** — bygget skedde mot en inaktuell backlogg. Det är
   varför den här filen är enda källan.
-- **Rösten i Android-skalet — ett medvetet nej.** Beslutat 2026-07-27 efter att
-  spåret följts hela vägen ner. Posten låg tidigare under BLOCKERAT som en bugg
-  att laga; den var ingen bugg.
+- **Rösten i WebView är en återvändsgränd — bryggan går runt den.** Beslutat
+  2026-07-27, i två steg.
 
-  Bevisen kom från telefon i tre lager: behörigheten var **beviljad**, ingen
-  annan app spelade in, och **Androids egen mikrofonhistorik listade inte Askr
-  alls** trots att knappen just tryckts. Inspelningen nådde alltså aldrig
-  operativsystemet. `NotReadableError` var WebViewens sätt att säga att den inte
-  fick öppna hårdvaran — inte att någon annan höll den. Felet ligger under vår
-  kod och går inte att laga i JavaScript.
+  **Först diagnosen.** Bevisen kom från telefon i tre lager: behörigheten
+  **beviljad**, ingen annan app spelade in, och **Androids egen
+  mikrofonhistorik listade inte Askr alls** trots att knappen just tryckts.
+  Inspelningen nådde alltså aldrig operativsystemet. `NotReadableError` var
+  WebViewens sätt att säga att den inte fick öppna hårdvaran — inte att någon
+  annan höll den. Felet ligger under vår kod och går inte att laga i JavaScript.
 
-  **Rösten hör till webbläsaren.** En native brygga till Androids
-  `SpeechRecognizer` vore ett eget projekt — Java-sida, JS-brygga, egen
-  livscykel och egna behörighetsdialoger — inte en buggfix. Det är ett rimligt
-  projekt någon dag, men det ska i så fall beslutas som ett projekt.
+  **Sedan beslutet.** Posten var först ett medvetet nej — rösten hör till
+  webbläsaren, en native brygga är ett eget projekt. Det beslutet är **omprövat
+  samma dag**: mikrofonen är en kärnfunktion i en app man använder med händerna
+  upptagna, och bryggan visade sig vara avgränsad nog att bära. Skalet exponerar
+  Androids egen `SpeechRecognizer` som `window.AskrNative` (`AskrVoice.java`),
+  och `NativRecognition` i `voice.js` härmar webbläsarens `SpeechRecognition`
+  — `lang`, `start`, `stop`, `onresult`, `onerror`, `onend`.
 
-  **Funktionen stängs INTE av i skalet.** Den generella spärren
-  (`isInstalledAndroid()` i `voiceSupport`) är borttagen: den påstod att appen
-  kraschar (det gör den inte — `micReady` fångar felet före taligenkänningen),
-  den hänvisade till Chrome fast det var Chrome som INTE fungerade på
-  testtelefonen, och den generaliserade ur ett enda fall. WebView-versioner och
-  tillverkare skiljer sig. Knappen försöker, och `micReady` förklarar ärligt när
-  den inte kan, med `isAndroidWebView()` som skiljer skal från webbläsare på
-  Androids egen `; wv)`-flagga.
+  **Därför är tolkningen oförändrad.** `parseSetSpeech` och all felhantering
+  nedanför rörs inte; bara ordens ursprung skiljer. En andra väg genom koden
+  hade gett två uppsättningar regler för samma sak, som glider isär.
 
-  **Vägen som fungerar, för den som vill diktera:** installera PWA:n från
-  **Samsung Browser**. Rösten fungerade där på testtelefonen — men inte i
-  Chrome, vilket är tvärtemot vad den gamla texten påstod. Då får man ikon på
-  hemskärmen OCH röstloggning.
+  Detaljer värda att minnas:
+
+  · `micReady` hoppas över på den nativa vägen. Att fråga `getUserMedia` först
+    vore att kontrollera en dörr vi inte tänker gå igenom — och det är just den
+    dörren som är låst.
+  · `hasNativeVoice()` **memoiseras**. `tillgänglig()` är ett synkront anrop
+    över JS↔Java-bryggan som gör `SpeechRecognizer.isRecognitionAvailable()`,
+    alltså ett processhopp. `voiceSupport()` anropas vid rendering — utan minne
+    blir det ett binder-anrop per omritning mitt i ett pass.
+  · Adressen kontrolleras i Java före varje start. En `JavascriptInterface` är
+    öppen för varje sida som laddas; navigeringen är redan låst i
+    `AtlasWebViewClient`, men ett lager till kostar ingenting.
+  · **Faller tillbaka på webbläsaren** när bryggan saknas eller enheten inte har
+    taligenkänning. Chrome, Samsung Browser och desktop påverkas inte alls —
+    `hasNativeVoice()` är falsk överallt utom i skalet.
+
+  **EJ VERIFIERAD PÅ TELEFON.** JS-sidan körs mot en simulerad Java-sida i
+  testerna, men bara riktig hårdvara visar att `SpeechRecognizer` svarar. Och
+  **den här deployen räcker inte** — JS-sidan gör ingenting utan `AskrNative`,
+  som bara finns i en nybyggd APK. Kräver signeringsnyckeln.
+
+  **Vägen som fungerar redan idag, utan APK:** installera PWA:n från **Samsung
+  Browser**. Rösten fungerade där på testtelefonen — men inte i Chrome, tvärtemot
+  vad den gamla texten påstod. Då får man ikon på hemskärmen OCH röstloggning.
 
 **Askr 2.0 — kvar:**
 - Koppla nuvarande appens coach till `engines/facts.js` — klart för kropp,
