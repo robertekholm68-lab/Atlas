@@ -15,6 +15,7 @@ import { SupplementsPanel } from "./SupplementsPanel.jsx";
 import { filterRecipes } from "../engines/recipes.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
 import { searchFoods } from "../engines/index.js";
+import { Streckkod } from "./Streckkod.jsx";
 import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
@@ -268,6 +269,7 @@ function SnabbLogg({ onLägg }) {
 /* ── LOGGA ── */
 
 function Logga({ onLägg, foodLog }) {
+  const [skannar, setSkannar] = useState(false);
   const [sök, setSök] = useState("");
   const [vald, setVald] = useState(null);
   const [gram, setGram] = useState(100);
@@ -317,9 +319,23 @@ function Logga({ onLägg, foodLog }) {
     );
   }
 
+  // Skanningen ersätter loggvyn medan den pågår i stället för att ligga i ett
+  // ark ovanpå — kameran ska inte kunna bli kvar bakom något annat.
+  if (skannar) return <Streckkod onLägg={p => { onLägg(p); setSkannar(false); }} onStäng={() => setSkannar(false)} />;
+
   return (
     <div>
       <SnabbLogg onLägg={onLägg} />
+
+      <button onClick={() => setSkannar(true)} style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+        width: "100%", marginBottom: 12, padding: "12px 14px", borderRadius: 12, minHeight: 44,
+        border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer",
+        fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
+      }}>
+        <span aria-hidden style={{ fontSize: 15 }}>▥</span> Skanna streckkod
+      </button>
+
       <input value={sök} onChange={e => setSök(e.target.value)} placeholder="Sök livsmedel…"
         style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", fontSize: 15, boxSizing: "border-box" }} />
       <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>
