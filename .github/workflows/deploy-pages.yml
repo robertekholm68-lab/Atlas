@@ -10,6 +10,15 @@ name: Bygg och publicera till GitHub Pages
 on:
   push:
     branches: [main]
+  # PR:en testas FÖRE merge, inte efter. Tidigare kördes flödet bara vid push
+  # till main, vilket betydde att varje PR mergades otestad av automatik och
+  # rött upptäcktes först när det redan låg i main.
+  #
+  # Bygg-jobbet kör i sin helhet på en PR — tester, alla tre målen, hopsättning
+  # och verifiering. Bara publiceringen är utelämnad: en PR får aldrig kunna
+  # skriva över den publicerade sajten.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # actions/deploy-pages kräver pages: write + id-token: write.
@@ -20,9 +29,14 @@ permissions:
 
 # En publicering i taget. cancel-in-progress: false så en pågående deploy får
 # slutföras i stället för att avbrytas halvvägs.
+#
+# PR-körningar får en EGEN grupp per PR. Delade de gruppen "pages" skulle en
+# testkörning köa bakom en pågående publicering — och en publicering bakom ett
+# testbygge. Inom en PR avbryts däremot den förra körningen när nya commits
+# pushas: bara den senaste versionen är intressant.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -129,13 +143,20 @@ jobs:
           test "$saknas" -eq 0 || { echo "Publicering stoppad: brutna bildreferenser."; exit 1; }
           echo "Alla bildreferenser i sidorna finns i sajten."
 
+      # Artefakten laddas bara upp för riktiga publiceringar. En PR-körning har
+      # redan gjort sitt jobb när hopsättningen verifierats — det som ligger
+      # kvar i _site kastas med körningen.
       - name: Ladda upp Pages-artefakt
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
   deploy:
     needs: build
+    # SPÄRREN. Utan den hade en PR publicerat sin egen kod till den adress
+    # Android-skalet pekar på.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

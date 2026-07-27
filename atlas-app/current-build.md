@@ -486,6 +486,16 @@ bygger och publicerar vid varje push till `main`. Pages-källan är satt till
 **GitHub Actions** (inte längre "deploy from a branch"). `file://` gör
 localStorage opålitligt och blockerar service worker.
 
+**PR:en testas FÖRE merge sedan 2026-07-27.** Flödet kördes tidigare bara vid
+push till `main`, alltså mergades varje PR otestad av automatik och rött
+upptäcktes först när det redan låg i main. `pull_request`-utlösaren kör hela
+bygg-jobbet — tester, alla tre målen, hopsättning och verifiering — men
+**publiceringen är spärrad** (`if: github.event_name != 'pull_request'` på både
+artefaktuppladdningen och `deploy`-jobbet). Utan den spärren hade en PR kunnat
+publicera sin egen kod till den adress Android-skalet pekar på. PR-körningar får
+dessutom en egen concurrency-grupp per PR, så en testkörning aldrig köar bakom
+en publicering; inom en PR avbryter en ny push den förra körningen.
+
 Flödet kör `npm ci`, `npm test` (upp till tre försök så att den kända
 `p5-realmode`-flakigheten inte blockerar en korrekt publicering; rött i alla tre
 stoppar deployen), bygger alla tre målen, sätter samman sajten i CI, skriver
@@ -533,6 +543,23 @@ färgnyckel, tre kort.
 Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 `node_modules/`, `dist*/`, `.git/`, cache. Tidsstämplade filnamn i svensk tid
 (`TZ=Europe/Stockholm date +%Y-%m-%d-%H%M`).
+
+### Arbetsdelningen mellan repo- och molnsession
+
+**Deployverifieringen ligger hos MOLNET** (beslutat 2026-07-27). Repo-sessionens
+nätverkspolicy nekar `robertekholm68-lab.github.io` — proxyn svarar 403 på
+CONNECT — så härifrån går bara deployens **slutstatus** att läsa. Molnet kan
+hämta den publicerade filen och köra den. Skriv aldrig "verifierat mot sajten"
+utifrån en grön deploy; det är två olika påståenden.
+
+**Utkastmarkering av en PR går bara via GraphQL.** Är den kvoten slut medan REST
+fortfarande svarar: använd **Repository Merge API** (`POST /repos/{o}/{r}/merges`)
+i stället — GitHub stänger PR:en som merged automatiskt. Ett utkast går annars
+inte att merga alls (`405 Pull Request is still a draft`).
+
+**Molnpaketen innehåller ALDRIG `current-build.md`.** Se rubriken överst.
+**CI-steg i `.github/workflows/` läggs till av repo-sessionen** — molnets token
+saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
