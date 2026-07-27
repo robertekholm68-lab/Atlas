@@ -145,6 +145,45 @@ export function parseSetSpeech(text) {
 /* ---------- webbläsardelen ---------- */
 
 /**
+ * Översätter taligenkänningens felkod till något en människa kan agera på.
+ *
+ * FYND FRÅN RIKTIG ANVÄNDNING: knappen slocknade innan användaren hunnit säga
+ * något, och appen skrev "Det gick inte att tolka ljudet." Det var fel på två
+ * sätt. Det LÄT som att man sagt något otydligt — men ingenting hade spelats
+ * in. Och koden som faktiskt hade förklarat varför kastades bort innan den nådde
+ * skärmen.
+ *
+ * Samma feltyp som micReady hade: en gren som inte vet vad som är fel men ändå
+ * uttalar sig bestämt. Nu namnges koden, och de två som betyder "mikrofonen
+ * öppnades aldrig" (`audio-capture`, `aborted`) säger det rakt ut i stället för
+ * att skylla på ljudet.
+ */
+export function felText(kod) {
+  switch (kod) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Mikrofonen är blockerad. Tillåt mikrofon för Askr i webbläsarens inställningar.";
+    case "no-speech":
+      return "Hörde ingenting.";
+    case "network":
+      return "Taligenkänningen behöver nät just nu — den här telefonen kan inte tolka lokalt.";
+    case "audio-capture":
+      // Ingen ljudström alls. Vanligast i en inbäddad webbvy (en länk öppnad
+      // inifrån en annan app) som inte får öppna mikrofonen — samma vägg som
+      // app-skalet gick in i.
+      return "Mikrofonen gick inte att öppna, så ingenting spelades in. Öppnar du Askr inifrån en annan app får webbvyn ofta inte tillgång — öppna sidan direkt i webbläsaren i stället.";
+    case "aborted":
+      return "Inspelningen avbröts innan något hanns säga. Sker ofta när sidan ligger i en inbäddad webbvy — öppna Askr direkt i webbläsaren.";
+    case "language-not-supported":
+      return "Svenska stöds inte av taligenkänningen i den här webbläsaren.";
+    default:
+      // Namnet är det enda som gör felet lagbart. Att svälja det och skriva en
+      // allmän mening har redan kostat två felsökningsvarv.
+      return `Röstinmatningen avbröts (${kod}). Det är inte säkert att ljudet ens spelades in — felnamnet är ledtråden.`;
+  }
+}
+
+/**
  * Kan den här telefonen lyssna? Svaret är inte "finns API:et" — på iPhone finns
  * API:et i hemskärmsappen men gör ingenting alls, så en ren funktionsdetektering
  * ljuger. Därför stängs det av uttryckligen där.
@@ -385,12 +424,7 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
   rec.onerror = (ev) => {
     klar = true; städa();
     const kod = (ev && ev.error) || "okänt";
-    const text = kod === "not-allowed" || kod === "service-not-allowed"
-      ? "Mikrofonen är blockerad. Tillåt mikrofon för Askr i webbläsarens inställningar."
-      : kod === "no-speech" ? "Hörde ingenting."
-      : kod === "network" ? "Taligenkänningen behöver nät just nu — den här telefonen kan inte tolka lokalt."
-      : "Det gick inte att tolka ljudet.";
-    onError && onError(kod, text);
+    onError && onError(kod, felText(kod));
     onEnd && onEnd();
   };
 
@@ -464,11 +498,7 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
   rec.onerror = (ev) => {
     klar = true; städa();
     const kod = (ev && ev.error) || "okänt";
-    onError && onError(kod,
-      kod === "not-allowed" || kod === "service-not-allowed" ? "Mikrofonen är blockerad. Tillåt mikrofon för Askr i webbläsarens inställningar."
-      : kod === "no-speech" ? "Hörde ingenting."
-      : kod === "network" ? "Taligenkänningen behöver nät just nu."
-      : "Det gick inte att tolka ljudet.");
+    onError && onError(kod, felText(kod));
     onEnd && onEnd();
   };
 

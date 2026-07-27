@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 904 i 85 filer |
+| Tester (vitest) | 914 i 86 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -852,6 +852,14 @@ aldrig göms bakom en utvilad.
 - **Ett urval är inte en helhet.** `grep | head` vid en refaktorering visar de
   första träffarna, inte alla — en importör utanför avkortningen blir kvar och
   faller först i bygget. Räkna träffarna innan du börjar ändra.
+- **Kasta aldrig felkoden.** Taligenkänningens `onerror` översatte fyra kända
+  koder och lät alla andra bli "Det gick inte att tolka ljudet." Texten LÄT som
+  att användaren sagt något otydligt, men mikrofonen hade troligen aldrig
+  öppnats — och koden som förklarat varför fanns bara i minnet på en telefon.
+  Tredje gången samma feltyp på ett dygn (behörigheten, "upptagen av något
+  annat", ljudet): en gren som inte vet vad som är fel men uttalar sig bestämt.
+  Koden skrivs nu alltid ut, och `felText()` är gemensam för set och diktering —
+  de dubblerade grenarna hade redan glidit isär.
 - **En kontroll bakom ett villkor körs kanske aldrig.** `verify-atlas2.mjs`
   hade `if (chip) await kolla(...)` för coachens kostsvar. Chatten är hopfälld
   från start, alltså fanns chipet aldrig, alltså kördes steget aldrig — och
