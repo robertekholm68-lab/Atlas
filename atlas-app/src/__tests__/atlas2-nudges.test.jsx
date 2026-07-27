@@ -17,7 +17,12 @@ import { buildNudges, activeNudges, pruneDismissed } from "../engines/nudges.js"
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const MIN = 60000;
-const NU = Date.now();
+// Klockslaget pinnas till kl 20 samma dag. Flera fall loggar mat upp till tio
+// timmar bakåt och räknar den till DAGENS mål; med den riktiga klockan hamnade
+// den måltiden på gårdagen när sviten kördes före kl 10, och testet föll varje
+// natt och morgon — även i CI, där det stoppar en publicering. Datumet är
+// fortfarande dagens, så dygnsgränslogiken prövas som vanligt.
+const NU = (() => { const d = new Date(); d.setHours(20, 0, 0, 0); return d.getTime(); })();
 const MÅL = { kcal: 2400, protein: 180 };
 const pass = (minSedan, id = "s1") => ({ id, completedAt: NU - minSedan * MIN, sets: [] });
 const mat = (minSedan, protein = 30) => ({ id: "f" + minSedan, ts: NU - minSedan * MIN, protein, kcal: 400 });
