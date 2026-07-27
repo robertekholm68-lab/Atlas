@@ -13,7 +13,7 @@
 // stämmer med verkligheten förgiftar volym, belastning och progression.
 
 import { describe, it, expect } from "vitest";
-import { roundInc, formatWeight, progressionSuggestion } from "../engines/index.js";
+import { roundInc, formatWeight, formatKg, progressionSuggestion } from "../engines/index.js";
 import { EXERCISES } from "../data/exercises.js";
 
 const ÖVN = "bench_press";
@@ -76,5 +76,40 @@ describe.skipIf(!finns)("progressionen håller sig på rastret", () => {
   it("från ett helt kilo hamnar man inte i en decimalsoppa", () => {
     const p = progressionSuggestion(ÖVN, [pass(60, 8)], 8);
     expect(formatWeight(p.weight)).not.toMatch(/,\d\d\d/);
+  });
+});
+
+// ── GRÄNSEN MOT KROPPSVIKT ────────────────────────────────────────────
+//
+// formatWeight snäpper till 0,25. Det är rätt för vikt man LÄGGER PÅ — skivor
+// finns bara i vissa storlekar. Det är fel för en MÄTNING: 82,4 kg på vågen får
+// aldrig skrivas som 82,5, för då står det en siffra på skärmen som användaren
+// aldrig vägde. Därför finns formatKg, och därför måste skillnaden bevakas —
+// det är precis en sån gräns som någon river i god tro nästa gång.
+describe("skivstångsvikt och kroppsvikt formateras INTE likadant", () => {
+  it("formatKg avrundar inte — mätningen står kvar", () => {
+    expect(formatKg(82.4)).toBe("82,4");
+    expect(formatKg(82.1)).toBe("82,1");
+    expect(formatKg(79.9)).toBe("79,9");
+    expect(formatKg(80)).toBe("80");
+  });
+
+  it("och formatWeight skulle ha förvanskat samma tal", () => {
+    // Bevisar att gränsen inte är kosmetisk. Rivs den blir 82,4 till 82,5.
+    expect(formatWeight(82.4)).toBe("82,5");
+    expect(formatKg(82.4)).not.toBe(formatWeight(82.4));
+  });
+
+  it("flyttalsbrus kapas, men aldrig värdet", () => {
+    // 82,7 − 82,4 ger 0,29999999999999716 i JS. Talet ska bli "0,3", inte en
+    // rad decimaler — och inte 0,25, vilket rastret hade gjort.
+    expect(formatKg(82.7 - 82.4)).toBe("0,3");
+    expect(formatKg(-0.5)).toBe("-0,5");
+  });
+
+  it("saknat värde blir streck i båda, inte noll", () => {
+    expect(formatKg(null)).toBe("—");
+    expect(formatKg(undefined)).toBe("—");
+    expect(formatWeight(null)).toBe("—");
   });
 });

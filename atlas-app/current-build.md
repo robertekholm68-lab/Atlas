@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 870 i 80 filer |
+| Tester (vitest) | 876 i 80 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -205,6 +205,21 @@ med verkligheten förgiftar volym, belastning och progression.
 
 `roundInc` snäpper nu till `Math.round(w * 4) / 4`, och `formatWeight` skriver
 talet utan falska decimaler (61 → "61", 61,25 → "61,25", saknad vikt → "—").
+
+**Två formaterare, och gränsen mellan dem är inte kosmetisk.** `formatWeight`
+snäpper till 0,25 och används på vikt man LÄGGER PÅ — set, arbetsvikter,
+progressionsförslag, uppskattade 1RM, stegknapparna. `formatKg` avrundar INTE
+och används på MÄTNINGAR — kroppsvikt, fettfri massa, fettmassa,
+viktförändring. Kör man en kroppsvikt genom `formatWeight` blir 82,4 till 82,5,
+alltså en siffra användaren aldrig vägde. Fyra testfall låser fast skillnaden,
+ett av dem genom att visa vad `formatWeight` *hade* gjort med samma tal.
+
+Båda är svepta genom **alla tre målen**: desktop (`features/training`,
+`features/progress`, `features/profile`, `features/ai-coach`), mobilen
+(`MobileApp.jsx`) och 2.0. Även desktopappens `Stepper` i `components/common`
+kvantiserar nu till 0,25 för `unit="kg"` — den körde `toFixed(2)` på varje
+tryck, samma ackumulering som 2.0 hade, bara långsammare. Andra enheter
+(sekunder, gram, minuter, reps) rörs inte.
 Progressionen blir inte finkornigare av det: golvet i `progressionSuggestion`
 är fortfarande det vanliga steget (2,5 eller 1,25 kg beroende på övning), och
 taket 10 %/pass. Steglängden i passvyn byts genom att **trycka på siffran**
@@ -246,9 +261,15 @@ Två fällor som testerna bevakar: `DISTANS_SPORTER` innehåller **biblioteks-id
 men vyn frågar på `resolveActivity(...).libId || .id`, så appens egna
 cardio-poster går via `LEGACY_MAP` (`lopning` → `running`). Pekar mappningen
 fel dyker fältet aldrig upp för löpning, och en kontroll enbart mot
-`SPORT_META` hade förblivit grön. Dessutom är `sportLibrary.js` **genererad**
-("Genererad från master-library v1") — regenereras den utan de handskrivna
-raderna sist i filen faller distanstestet med importfel, alltså högljutt.
+`SPORT_META` hade förblivit grön.
+
+Logiken bor i **`src/data/sportDistans.js`**, som är handskriven. Den låg en
+period sist i `sportLibrary.js` — en fil vars egen första rad säger *Genererad
+från master-library v1*. Nästa generering hade raderat både listan och
+tempoberäkningen tyst. `sportLibrary.js` bär nu en varning i huvudet, och två
+testfall låser fast det: att den inte exporterar distanslogiken, och att
+varningen står kvar **inom filens första 600 tecken** — en varning längst ner
+läser ingen.
 
 Ärligheten följer med: aktiviteter utan detaljmodell (`fromLibrary`) märks som
 **kategoriestimat** i klartext, och **kalorier uppskattas aldrig** — appen har
@@ -738,6 +759,13 @@ aldrig göms bakom en utvilad.
   `x != null ? x : fallback`.
 - **Set utan vikt** ger noll muskellast, vilket får appen att påstå att inget
   pass finns. 2.0 spärrar loggning tills vikt är satt för yttre last.
+- **En grön svit räcker inte — kör alltid bygget.** Alla 870 testfall var gröna
+  medan atlas2-bygget dog på `tempoPerKm is not exported`: en trasig import i en
+  komponent som ingen testfixtur monterar syns bara i buntningen. Därför kör
+  `pull_request`-flödet steget *Bygg alla tre målen*, inte bara testerna.
+- **Ett urval är inte en helhet.** `grep | head` vid en refaktorering visar de
+  första träffarna, inte alla — en importör utanför avkortningen blir kvar och
+  faller först i bygget. Räkna träffarna innan du börjar ändra.
 - **En kontroll bakom ett villkor körs kanske aldrig.** `verify-atlas2.mjs`
   hade `if (chip) await kolla(...)` för coachens kostsvar. Chatten är hopfälld
   från start, alltså fanns chipet aldrig, alltså kördes steget aldrig — och

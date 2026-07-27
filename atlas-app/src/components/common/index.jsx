@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T, lbl, stepBtn } from "../../data/tokens.js";
 import { LEGACY_MAP } from "../../data/sportLibrary.js";
+import { formatWeight } from "../../engines/index.js";
 import { sportIcons, ensureSportIcons, onSportIcons } from "../../data/sport-icons.js";
 import { BookOpen, Dumbbell, Apple, Calendar, CalendarDays, User, Target, Camera, Heart, Gem, Cake, Flag, Sprout, Hourglass, Bell, Flame, Cog, Zap, TrendingUp, TrendingDown, Clock, AlertCircle, AlertTriangle, Scale, Minus, Beef, Compass, Trophy, Droplet, Sparkles, SlidersHorizontal } from "lucide-react";
 
@@ -90,14 +91,22 @@ function MacroRing({ label, value, goal, color, unit = "g" }) {
   );
 }
 
+// Kilo kvantiseras till 0,25 och förankras i hela kilon — samma raster som
+// motorns roundInc och som passvyn i 2.0. Utan det ackumulerar toFixed(2) på
+// samma sätt som toFixed(1) gjorde i 2.0, bara långsammare, och talet på
+// skärmen slutar vara den vikt som ligger på stången. Andra enheter (sekunder,
+// gram, minuter, reps) rör vi inte — där är steget redan ett helt tal.
+const stegRaster = (v, unit) => (unit === "kg" ? Math.round(v * 4) / 4 : +v.toFixed(2));
+
 function Stepper({ label, value, step, min, onChange, unit }) {
+  const flytta = d => onChange(Math.max(min, stegRaster((value || 0) + d * step, unit)));
   return (
     <div style={{ flex: 1 }}>
       <label style={lbl}>{label}</label>
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.bg.raised, borderRadius: 10, padding: 6 }}>
-        <button onClick={() => onChange(Math.max(min, +(value - step).toFixed(2)))} style={stepBtn}>−</button>
-        <div style={{ flex: 1, textAlign: "center", fontSize: 20, fontWeight: 700, color: T.text.primary }}>{value}<span style={{ fontSize: 12, color: T.text.muted, fontWeight: 400 }}>{unit}</span></div>
-        <button onClick={() => onChange(+(value + step).toFixed(2))} style={stepBtn}>+</button>
+        <button onClick={() => flytta(-1)} style={stepBtn}>−</button>
+        <div style={{ flex: 1, textAlign: "center", fontSize: 20, fontWeight: 700, color: T.text.primary }}>{unit === "kg" ? formatWeight(value) : value}<span style={{ fontSize: 12, color: T.text.muted, fontWeight: 400 }}>{unit}</span></div>
+        <button onClick={() => flytta(1)} style={stepBtn}>+</button>
       </div>
     </div>
   );

@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
-import { suggestNutritionTargets } from "../engines/index.js";
+import { suggestNutritionTargets, formatKg } from "../engines/index.js";
 
 // Bara siffror som faktiskt fyllts i följer med — ett tomt fält är UTELÄMNAT,
 // inte noll. Så att sätta bara protein aldrig råkar bli ett kalorimål på 0.
@@ -54,7 +54,7 @@ export function NutritionSheet({ mål, setMål, weights = [], profile, onClose }
     // Metoden är viktheuristik utan längd/ålder — säg det, så siffran inte tas
     // för en mätning.
     const målText = MÅL.find(m => m[0] === målTyp)[1].toLowerCase();
-    setSkattning(`Skattning utifrån ${vikt} kg och målet "${målText}" — grov, utan längd och ålder. Justera fritt innan du sparar.`);
+    setSkattning(`Skattning utifrån ${formatKg(vikt)} kg och målet "${målText}" — grov, utan längd och ålder. Justera fritt innan du sparar.`);
   };
 
   const spara = () => {
@@ -107,7 +107,7 @@ export function NutritionSheet({ mål, setMål, weights = [], profile, onClose }
                 }}>{l}</button>
               ))}
             </div>
-            <button onClick={föreslå} style={{ ...btnGhost, marginTop: 10 }}>Föreslå utifrån {vikt} kg</button>
+            <button onClick={föreslå} style={{ ...btnGhost, marginTop: 10 }}>Föreslå utifrån {formatKg(vikt)} kg</button>
             {skattning && (
               <div style={{ fontSize: 11.5, color: C.recovering, lineHeight: 1.55, marginTop: 9 }}>{skattning}</div>
             )}

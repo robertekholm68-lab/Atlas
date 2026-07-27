@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardLabel, Stepper, SportIcon } from "../../components/common/index.jsx";
 import { pendingFromBridge, clearBridge, onBridgeChange } from "../../engines/bridge.js";
 import { buildBackup, backupFilename, inspectBackup, restoreBackup, persistentStorageStatus, requestPersistentStorage } from "../../engines/backup.js";
-import { best1RM, computeCardioLoad, computeSportLoad, readImage, metricSeries, latestMetric, workoutStreak, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS } from "../../engines/index.js";
+import { best1RM, computeCardioLoad, computeSportLoad, readImage, metricSeries, latestMetric, workoutStreak, formatWeight, formatKg, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS } from "../../engines/index.js";
 import { clearModeData, clearAllAtlasData, exportRealData, getMode } from "../../app/persist.js";
 import { SPORTS, CARDIO, SPORT_INTENSITY, STRENGTH_STD, resolveActivity, DEFAULT_ACTIVE_SPORTS } from "../../data/exercises.js";
 import { MUSCLES } from "../../data/muscles.js";
@@ -281,8 +281,8 @@ function BodyFatCalculator({ profile, setProfile, measurements, setMeasurements 
         <div style={{ marginTop: 12, border: `1px solid ${T.bg.muted}`, borderRadius: 10, padding: "11px 13px", background: T.bg.raised }}>
           <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline" }}>
             <div><span style={{ fontSize: 24, fontWeight: 800, color: T.accent.primary }}>{res.bodyFat}%</span> <span style={{ fontSize: 12, color: T.text.muted }}>kroppsfett · {res.category}</span></div>
-            {res.leanMass != null && <div style={{ fontSize: 13, color: T.text.secondary }}>Fettfri massa: <b style={{ color: T.text.primary }}>{res.leanMass} kg</b></div>}
-            {res.fatMass != null && <div style={{ fontSize: 13, color: T.text.secondary }}>Fettmassa: <b style={{ color: T.text.primary }}>{res.fatMass} kg</b></div>}
+            {res.leanMass != null && <div style={{ fontSize: 13, color: T.text.secondary }}>Fettfri massa: <b style={{ color: T.text.primary }}>{formatKg(res.leanMass)} kg</b></div>}
+            {res.fatMass != null && <div style={{ fontSize: 13, color: T.text.secondary }}>Fettmassa: <b style={{ color: T.text.primary }}>{formatKg(res.fatMass)} kg</b></div>}
           </div>
           {prev && <div style={{ fontSize: 12, color: T.text.secondary, marginTop: 6 }}>Senast sparat: {prev.value}% ({new Date(prev.date).toLocaleDateString("sv-SE")}) → {res.bodyFat > prev.value ? "+" : ""}{(res.bodyFat - prev.value).toFixed(1)} %-enheter</div>}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
@@ -441,7 +441,7 @@ function ProfileView({ profile, setProfile, sessions, setSessions = null, measur
                 const bfNum = useCalc ? derived.bodyFat : p.bodyFat;
                 const wNow = (measurements || []).filter(m => m && typeof m.weight === "number").sort((a, b) => a.date - b.date).slice(-1)[0]?.weight || p.weight;
                 const lean = (useCalc && derived.leanMass != null) ? derived.leanMass : (bfNum != null && wNow ? +(wNow * (1 - bfNum / 100)).toFixed(1) : null);
-                return [["Ålder", p.age != null ? p.age : "—"], ["Längd", p.height != null ? `${p.height} cm` : "—"], ["Vikt", p.weight != null ? `${p.weight} kg` : "—"], ["Kroppsfett", bfVal, useCalc ? "beräknad" : null, derived], ["Fettfri massa", lean != null ? `${lean} kg` : "—"]].map(([l, v, tag, drv]) => (
+                return [["Ålder", p.age != null ? p.age : "—"], ["Längd", p.height != null ? `${p.height} cm` : "—"], ["Vikt", p.weight != null ? `${formatKg(p.weight)} kg` : "—"], ["Kroppsfett", bfVal, useCalc ? "beräknad" : null, derived], ["Fettfri massa", lean != null ? `${lean} kg` : "—"]].map(([l, v, tag, drv]) => (
                   <div key={l}>
                     <div style={{ fontSize: 11, color: T.text.muted, textTransform: "uppercase", letterSpacing: 0.6 }}>{l}{tag && <span style={{ color: T.accent.secondary, textTransform: "none", letterSpacing: 0 }}> · {tag}</span>}</div>
                     <div style={{ fontSize: 17, fontWeight: 700, color: T.text.primary }}>{v}</div>
@@ -482,7 +482,7 @@ function ProfileView({ profile, setProfile, sessions, setSessions = null, measur
             {[...(measurements || [])].sort((a, b) => b.date - a.date).slice(0, 6).map((m, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: T.text.secondary, padding: "5px 0", borderBottom: `1px solid ${T.bg.raised}` }}>
                 <span>{new Date(m.date).toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}</span>
-                <span>{m.weight} kg{m.waist ? ` · ${m.waist} cm` : ""}</span>
+                <span>{formatKg(m.weight)} kg{m.waist ? ` · ${m.waist} cm` : ""}</span>
               </div>
             ))}
           </div>
@@ -526,7 +526,7 @@ function ProfileView({ profile, setProfile, sessions, setSessions = null, measur
             <polyline fill="none" stroke={T.accent.primary} strokeWidth="2" points={wh.map((w, i) => `${i / (wh.length - 1) * 300},${70 - (w - minW) / (maxW - minW) * 70}`).join(" ")} />
             {wh.map((w, i) => <circle key={i} cx={i / (wh.length - 1) * 300} cy={70 - (w - minW) / (maxW - minW) * 70} r="3" fill={T.accent.primary} />)}
           </svg>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: T.text.muted, marginTop: 4 }}><span>{wh[0]} kg</span><span>{wh[wh.length - 1]} kg nu</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: T.text.muted, marginTop: 4 }}><span>{formatKg(wh[0])} kg</span><span>{formatKg(wh[wh.length - 1])} kg nu</span></div>
           </>) : <div style={{ fontSize: 12.5, color: T.text.muted, padding: "6px 0" }}>Logga din vikt minst två gånger för att se en trend.</div>}
         </Card>
 
@@ -547,7 +547,7 @@ function ProfileView({ profile, setProfile, sessions, setSessions = null, measur
             {strongLift.map(l => (
               <div key={l.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
                 <span style={{ color: T.text.secondary }}>{l.name}</span>
-                <span><span style={{ color: T.text.primary, fontWeight: 700 }}>{l.rm ? `${l.rm} kg` : "–"}</span> <span style={{ fontSize: 11, color: l.col, marginLeft: 6 }}>{l.level}</span></span>
+                <span><span style={{ color: T.text.primary, fontWeight: 700 }}>{l.rm ? `${formatWeight(l.rm)} kg` : "–"}</span> <span style={{ fontSize: 11, color: l.col, marginLeft: 6 }}>{l.level}</span></span>
               </div>
             ))}
           </div>

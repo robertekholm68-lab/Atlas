@@ -11,6 +11,7 @@ import { C, HFONT, hdr, label, card, statRow, statCell, orDash, DASH } from "./d
 import { coachFacts } from "./facts.js";
 import { weekSessions, sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
+import { formatKg, formatWeight } from "../engines/index.js";
 
 const VECKA = 6048e5;
 const TRÖSKEL = 3;
@@ -101,7 +102,7 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
             <div key={l.namn} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 2px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
               <span>{l.namn}</span>
               <span style={{ display: "flex", gap: 11, alignItems: "baseline" }}>
-                <span style={{ fontWeight: 700 }}>{l.max} kg</span>
+                <span style={{ fontWeight: 700 }}>{formatWeight(l.max)} kg</span>
                 {l.diff > 0 && <span style={{ fontSize: 12, color: C.ready }}>+{l.diff}</span>}
               </span>
             </div>
@@ -157,10 +158,10 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
         <div style={{ ...card, marginTop: 22 }}>
           <div style={label()}>Kroppsvikt</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginTop: 6 }}>
-            <span style={hdr(26)}>{vikt[vikt.length - 1].kg} kg</span>
+            <span style={hdr(26)}>{formatKg(vikt[vikt.length - 1].kg)} kg</span>
             {facts.vikt.förändring !== null && facts.vikt.förändring !== 0 && (
               <span style={{ fontSize: 13, color: facts.vikt.förändring < 0 ? C.ready : C.muted }}>
-                {facts.vikt.förändring > 0 ? "+" : ""}{facts.vikt.förändring} kg sedan {fmt(vikt[0].ts)}
+                {facts.vikt.förändring > 0 ? "+" : ""}{formatKg(facts.vikt.förändring)} kg sedan {fmt(vikt[0].ts)}
               </span>
             )}
           </div>

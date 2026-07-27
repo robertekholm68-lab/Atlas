@@ -13,7 +13,7 @@ import { nfcSupported, scanTags, writeTag, encodeTag } from "../engines/nfc.js";
 import { installAdvice, capabilities, isStandalone, platformKind } from "../engines/platform.js";
 import { writeBridge } from "../engines/bridge.js";
 import { MACHINE_TYPES } from "../data/machines.js";
-import { computeRecovery, computeReadiness, computeSystemicFatigue, computeSessionLoad, progressionSuggestion, computeCardioLoad, computeSportLoad, lastPerformance, lastSessionSets, lookupBarcode, estimateMeal, startOfLocalDay } from "../engines/index.js";
+import { computeRecovery, computeReadiness, computeSystemicFatigue, computeSessionLoad, progressionSuggestion, computeCardioLoad, computeSportLoad, lastPerformance, lastSessionSets, lookupBarcode, estimateMeal, startOfLocalDay, formatWeight, formatKg } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
 import { ALL_TEMPLATES, copyProgram, nextWorkout, workoutExercises } from "../engines/programs.js";
 import { Icon } from "../components/common/index.jsx";
@@ -165,7 +165,7 @@ export function MobileApp() {
         weight: sug ? sug.weight : (last || defaultWeight(x.exId)),
         reps: sug ? sug.reps : (lp && lp.reps ? lp.reps : (x.repMax || 8)),
         prevSets: prev ? prev.sets : null,
-        suggestion: sug ? { note: sug.note, prev: sug.prev } : (last ? { note: `Förra passet: ${last} kg`, prev: { weight: last } } : null),
+        suggestion: sug ? { note: sug.note, prev: sug.prev } : (last ? { note: `Förra passet: ${formatWeight(last)} kg`, prev: { weight: last } } : null),
         logged: [],
       };
     });
@@ -630,7 +630,7 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-          <StepBox label="Arbetsvikt" value={`${it.weight} kg`} onMinus={() => bump("weight", -2.5)} onPlus={() => bump("weight", 2.5)} />
+          <StepBox label="Arbetsvikt" value={`${formatWeight(it.weight)} kg`} onMinus={() => bump("weight", -2.5)} onPlus={() => bump("weight", 2.5)} />
           <StepBox label="Reps" value={it.reps} onMinus={() => bump("reps", -1)} onPlus={() => bump("reps", 1)} />
         </div>
         {röstPå && (
@@ -649,7 +649,7 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
             {förslag && (
               <div style={{ marginTop: 8, padding: "12px 14px", borderRadius: 12, background: "rgba(155,124,255,0.10)", border: `1px solid ${C.purple}66` }}>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>Uppfattade \u2014 stämmer det?</div>
-                <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 10 }}>{förslag.weight} kg \u00D7 {förslag.reps} reps</div>
+                <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 10 }}>{formatWeight(förslag.weight)} kg \u00D7 {förslag.reps} reps</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={godkänn} style={{ flex: 1, padding: 12, borderRadius: 10, border: "none", background: C.green, color: "#04120a", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Spara setet</button>
                   <button onClick={() => setFörslag(null)} style={{ padding: "12px 16px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontSize: 14, cursor: "pointer" }}>Ångra</button>
@@ -664,7 +664,7 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
         )}
         {it.suggestion && (
           <div style={{ marginTop: 10, padding: "9px 12px", borderRadius: 10, background: "rgba(155,124,255,0.09)", border: `1px solid ${C.purple}44`, fontSize: 12.5, color: C.text, lineHeight: 1.45 }}>
-            <span style={{ color: C.purple }}>✦</span> {it.suggestion.note}{it.suggestion.prev && it.suggestion.prev.weight ? ` (förra: ${it.suggestion.prev.weight} kg${it.suggestion.prev.reps ? ` × ${it.suggestion.prev.reps}` : ""})` : ""}
+            <span style={{ color: C.purple }}>✦</span> {it.suggestion.note}{it.suggestion.prev && it.suggestion.prev.weight ? ` (förra: ${formatWeight(it.suggestion.prev.weight)} kg${it.suggestion.prev.reps ? ` × ${it.suggestion.prev.reps}` : ""})` : ""}
           </div>
         )}
         {it.prevSets && it.prevSets.length > 0 && (
@@ -683,7 +683,7 @@ function Workout({ live, setLive, finishWorkout, setSheet, cues = DEFAULT_CUES, 
               <span style={{ fontWeight: 700, width: 18 }}>{i + 1}</span>
               {exact
                 ? <input type="number" value={l ? l.weight : psv(i, "weight")} onChange={e => patchSet(i, { weight: +e.target.value })} style={miniIn} />
-                : <span style={{ fontSize: 16, fontWeight: 600 }}>{(l ? l.weight : psv(i, "weight"))} kg</span>}
+                : <span style={{ fontSize: 16, fontWeight: 600 }}>{formatWeight(l ? l.weight : psv(i, "weight"))} kg</span>}
               {exact
                 ? <input type="number" value={l ? l.reps : psv(i, "reps")} onChange={e => patchSet(i, { reps: +e.target.value })} style={miniIn} />
                 : <span style={{ fontSize: 16, fontWeight: 600 }}>{l ? l.reps : psv(i, "reps")}</span>}
@@ -1111,8 +1111,8 @@ function ProgressSheet({ ctx }) {
             <div key={l.namn} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 2px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
               <span>{l.namn}</span>
               <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-                <span style={{ fontWeight: 700 }}>{l.max} kg</span>
-                {l.diff > 0 && <span style={{ fontSize: 12, color: C.green }}>+{l.diff} kg</span>}
+                <span style={{ fontWeight: 700 }}>{formatWeight(l.max)} kg</span>
+                {l.diff > 0 && <span style={{ fontSize: 12, color: C.green }}>+{formatWeight(l.diff)} kg</span>}
               </span>
             </div>
           ))}
@@ -1123,9 +1123,9 @@ function ProgressSheet({ ctx }) {
         <div style={{ marginTop: 18, padding: 15, borderRadius: 15, border: `1px solid ${C.border}`, background: C.card2 }}>
           <div style={{ ...hdr(12), color: C.muted, letterSpacing: 1.6, marginBottom: 6 }}>Kroppsvikt</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ ...hdr(26) }}>{vikt[vikt.length - 1].kg} kg</span>
+            <span style={{ ...hdr(26) }}>{formatKg(vikt[vikt.length - 1].kg)} kg</span>
             {viktDiff !== null && viktDiff !== 0 && (
-              <span style={{ fontSize: 13, color: viktDiff < 0 ? C.green : C.muted }}>{viktDiff > 0 ? "+" : ""}{viktDiff.toFixed(1)} kg sedan {fmt(vikt[0].ts)}</span>
+              <span style={{ fontSize: 13, color: viktDiff < 0 ? C.green : C.muted }}>{viktDiff > 0 ? "+" : ""}{formatKg(viktDiff)} kg sedan {fmt(vikt[0].ts)}</span>
             )}
           </div>
           {vikt.length === 1 && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4 }}>En mätning. Väg dig igen om en vecka så syns en trend.</div>}
@@ -1150,7 +1150,7 @@ function SimpleSheet({ title, label, placeholder, kind, ctx, multiline }) {
       const kg = parseFloat(raw.replace(",", "."));
       if (!isFinite(kg) || kg < 25 || kg > 300) { setSaved({ ok: false, msg: "Ange en vikt mellan 25 och 300 kg." }); return; }
       ctx.setWeights(l => [...(l || []), { id: `w_${Date.now()}`, ts: Date.now(), kg: Math.round(kg * 10) / 10 }]);
-      setSaved({ ok: true, msg: `✓ ${kg} kg sparat` });
+      setSaved({ ok: true, msg: `✓ ${formatKg(kg)} kg sparat` });
     } else {
       ctx.setNotes(l => [...(l || []), { id: `n_${Date.now()}`, ts: Date.now(), text: raw }]);
       setSaved({ ok: true, msg: "✓ Anteckning sparad" });
@@ -1176,7 +1176,7 @@ function SimpleSheet({ title, label, placeholder, kind, ctx, multiline }) {
           {recent.map(x => (
             <div key={x.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, padding: "5px 0", color: C.text }}>
               <span style={{ color: C.muted }}>{fmt(x.ts)}</span>
-              <span style={{ textAlign: "right" }}>{kind === "weight" ? `${x.kg} kg` : x.text}</span>
+              <span style={{ textAlign: "right" }}>{kind === "weight" ? `${formatKg(x.kg)} kg` : x.text}</span>
             </div>
           ))}
         </div>

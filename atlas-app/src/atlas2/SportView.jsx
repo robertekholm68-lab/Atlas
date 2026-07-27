@@ -12,7 +12,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
-import { harDistans, tempoPerKm, SPORT_CATEGORIES, SPORT_META, LEGACY_MAP } from "../data/sportLibrary.js";
+import { SPORT_CATEGORIES, SPORT_META, LEGACY_MAP } from "../data/sportLibrary.js";
+import { harDistans, tempoPerKm } from "../data/sportDistans.js";
 import { resolveActivity, SPORT_INTENSITY } from "../data/exercises.js";
 import { computeSportLoad, computeCardioLoad } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
