@@ -1,10 +1,19 @@
 # Askr – aktuellt bygge
 
-Datalagret. Här slås siffror, struktur, status och backlog upp. Koden i
-`atlas-app/` är ground truth — den här filen sammanfattar, den bestämmer inte.
-Uppdatera filen när bygget ändras.
+> **DEN HÄR FILEN ÄR ENDA KÄLLAN för byggstatus, siffror, struktur och
+> backlogg.** Håll ingen parallell statuslista någon annanstans — inte i en
+> projektfil, inte i en molnsession, inte i ett samtal. En andra bokföring
+> hinner alltid bli osann, och då byggs saker mot en bild som inte längre
+> gäller. Det har hänt: coachvyns 99 px byggdes bort (#44) efter att posten
+> redan var struken — beslutet var att coachen FÅR scrolla.
+>
+> Projektfiler utanför repot är överlämningar, inte status. Bär de siffror
+> eller backlogg är de fel per definition.
 
-*Senast verifierad mot koden: 2026-07-26 (efter #42). Alla siffror nedan är avlästa
+Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
+den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
+
+*Senast verifierad mot koden: 2026-07-27 (efter #47). Alla tio DOM-skript körda. Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -69,7 +78,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-07-26)
+## Aktuella siffror (avlästa 2026-07-27)
 
 | Sak | Antal |
 |---|---|
@@ -398,14 +407,32 @@ Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 `node_modules/`, `dist*/`, `.git/`, cache. Tidsstämplade filnamn i svensk tid
 (`TZ=Europe/Stockholm date +%Y-%m-%d-%H%M`).
 
-Verifiering: headless Chromium / vitest framför visuell läsning. Askr 2.0:s
-DOM-verifieringsskript ligger i `scripts/` (`verify-atlas2.mjs`,
-`verify-atlas2-pass.mjs`, `verify-atlas2-backup.mjs`,
-`verify-atlas2-passredigering.mjs`, `-layout.mjs` (tre bredder), `-matakut.mjs`,
-`-mealprep.mjs`, `-readiness.mjs`, `-tillskott.mjs`, `-sport.mjs`) och körs
-medvetet inte av
-test/bygge — de kräver `npm i --no-save playwright-core` och en byggd
-`dist-atlas2/`. Samtliga hittar webbläsaren via `chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
+Verifiering: headless Chromium / vitest framför visuell läsning.
+
+**Askr 2.0:s DOM-skript — TIO stycken, 132 OK-steg** (alla körda 2026-07-27,
+exit 0, inga page errors):
+
+| Skript i `scripts/` | Steg | Täcker |
+|---|---|---|
+| `verify-atlas2-sport.mjs` | 25 | sportloggning, lagring med id, readiness-effekt |
+| `verify-atlas2-layout.mjs` | 24 | tre bredder: SE, iPhone 14, desktop |
+| `verify-atlas2-passredigering.mjs` | 16 | rätta/radera pass, varför-frågan |
+| `verify-atlas2.mjs` | 14 | näringsmål, snabblogg, persistens |
+| `verify-atlas2-tillskott.mjs` | 11 | kryssrutor, streak, följsamhet |
+| `verify-atlas2-matakut.mjs` | 11 | Rädda måltiden |
+| `verify-atlas2-mealprep.mjs` | 10 | veckomeny, inköpslista |
+| `verify-atlas2-readiness.mjs` | 9 | readiness-arket, tunt underlag |
+| `verify-atlas2-pass.mjs` | 6 | röstknappen i pågående pass |
+| `verify-atlas2-backup.mjs` | 6 | v3-backup: export, granska, ersätt |
+
+**Kör ALLA tio vid regression, inte ett urval.** `verify-atlas2.mjs` hade
+slutat fungera helt (0 OK) utan att någon märkte det: matvyns knapp bytte namn
+från "Logga mat" till "Logga måltid" när matakuten byggdes, och skriptet ingick
+inte i de rundor som kördes. Ett skript som inte körs skyddar ingenting.
+
+De körs medvetet inte av test/bygge — de kräver `npm i --no-save
+playwright-core` och en byggd `dist-atlas2/`. Samtliga hittar webbläsaren via
+`chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
 sökvägarna, annars letas revisionskatalogen upp. **Hårdkoda aldrig
 `/opt/pw-browsers/chromium`** — den finns inte i alla containrar, och skripten
 dör direkt vid start när den saknas.
@@ -441,6 +468,16 @@ och sport- och cardiologgning.
   `id`, `userId`, `deviceId`, `updatedAt`. Nya poster får slumpat id vid
   skapandet; `migrera()` ger befintlig data utan id ett innehållsbaserat id
   (idempotent). Ingen server/inloggning/nätverkskod — bara formen.
+
+**Askr 2.0 — AVGJORT, återuppta inte:**
+- **Coachen får scrolla.** Endast Hem, Pass och Mat står i layoutskriptets
+  `MÅSTE_RYMMAS`. Framsteg är en historiklista och ska scrolla; kvittot växer
+  med antalet övningar och lovas inte scrollfritt; coachen bär rekommendation,
+  skäl, målresa, chattingång och ärlighetsrad — mer än en 667 px-skärm rymmer,
+  och det är rätt. Vyn trimmades ändå från +99 till +17 px (#44) genom att ta
+  bort luft och en hälsning som upprepade rubriken, men **posten var redan
+  struken när det gjordes** — bygget skedde mot en inaktuell backlogg. Det är
+  varför den här filen är enda källan.
 
 **Askr 2.0 — kvar:**
 - Koppla nuvarande appens coach till `engines/facts.js` — klart för kropp,
