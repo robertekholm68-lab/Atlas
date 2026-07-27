@@ -1,7 +1,9 @@
 package se.atlas.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -31,10 +33,29 @@ public class MainActivity extends Activity {
 
     private WebView web;
 
+    /** Godtyckligt id — vi har bara en behörighetsfråga. */
+    private static final int MIK_KOD = 1001;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
+
+        // MIKROFONEN MÅSTE BEGÄRAS AV APPEN, inte bara av webbsidan.
+        //
+        // RECORD_AUDIO är en "dangerous permission" sedan Android 6. WebViewens
+        // onPermissionRequest kan bevilja sidans begäran, men den kan inte ge
+        // appen en rättighet som appen själv saknar — så röstloggningen dog
+        // tyst, eller kraschade, trots att AtlasChromeClient gjorde rätt.
+        //
+        // Frågan ställs vid start i stället för vid första knapptrycket: mitt i
+        // ett pass, med svettiga händer, är en systemdialog det sämsta tänkbara
+        // avbrottet. Nekar användaren fungerar allt annat som vanligt — rösten
+        // är ett tillägg, inte en förutsättning.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, MIK_KOD);
+        }
 
         web = new WebView(this);
         web.setLayoutParams(new ViewGroup.LayoutParams(

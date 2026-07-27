@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 881 i 81 filer |
+| Tester (vitest) | 884 i 82 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -500,6 +500,14 @@ Följsamhet räknas mot förväntat antal pass men visas inte under första veck
 
 ## Android-app (`android-app/`)
 
+**Java har ingen byggkontroll i repot** — skalet kompileras bara på en maskin
+med Android SDK och signeringsnyckel, så ett fel syns först i en APK på en
+telefon. `src/__tests__/android-skal.test.js` bevakar därför de två regler som
+kostat tid: inga anonyma inre klasser (d8-fällan nedan) och att `RECORD_AUDIO`
+faktiskt begärs i körtid, inte bara deklareras i manifestet. Testet läser
+dessutom `--target-sdk-version` ur `BYGG.md` och larmar om den faller under 23,
+för då gäller inte resonemanget längre.
+
 Tunt WebView-skal som kör den publicerade appen. Ingen kod från `src/`
 dupliceras. Ger ikon i applådan och **OS-bakåtknappen** (`onKeyDown` går bakåt i
 historiken i stället för att stänga appen mitt i ett pass).
@@ -724,6 +732,21 @@ JDK 21).
   (`engines/platform.js`, `isInstalledAndroid()`) tills kraschen är verifierad.
   Den fungerar i Chrome, så felet ligger i WebView-skalet. Kräver `adb logcat`
   på en riktig telefon — exakt samma lås som ikonerna.
+
+  **Trolig rot funnen, ÄNNU INTE BEVISAD.** `MainActivity` begärde aldrig
+  `RECORD_AUDIO` i körtid. `AtlasChromeClient.onPermissionRequest` fanns och
+  gjorde rätt — men den kan bara bevilja **sidans** begäran, inte ge appen en
+  rättighet appen själv saknar. Manifestdeklarationen räcker till Android 5;
+  sedan Android 6 är `RECORD_AUDIO` en *dangerous permission*, och `BYGG.md`
+  länkar med `--target-sdk-version 34`. Frågan ställs nu vid start, inte vid
+  första knapptrycket — en systemdialog mitt i ett pass är det sämsta tänkbara
+  avbrottet, och nekas den fungerar allt annat som vanligt.
+
+  Posten stannar här tills någon kört den skarpt. **En trolig rot är inte en
+  bevisad rot**, och rösten förblir avstängd i skalet till dess. Det som gjorts
+  härifrån: skalet kompilerar rent (`javac --release 17` mot handskrivna
+  API-stubbar, eftersom Android SDK saknas), inga anonyma inre klasser har
+  tillkommit, och `android-skal.test.js` bevakar båda reglerna framöver.
 
 **Namnbytet — kvar:**
 - **Paket-ID `se.atlas.app`.** Inte blockerat utan MEDVETET obytt: ett byte
