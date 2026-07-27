@@ -60,6 +60,14 @@ const VARIANTORD = ["glutenfri", "glutenfritt", "laktosfri", "laktosfritt", "lig
 
 const norm = s => (s || "").toLowerCase().trim().replace(/\s+/g, " ");
 
+/**
+ * Allt utom bokstäver och siffror bort. Används för SAMMANSKRIVNING: svenskan
+ * tillåter både "pytt i panna" och "pyttipanna", och registret har valt den
+ * ena medan folk skriver den andra. Samma sak drabbar varje rätt vars namn
+ * innehåller mellanslag.
+ */
+const sam = s => norm(s).replace(/[^a-zà-ÿ0-9]/gi, "");
+
 /** Delar upp i ord och struntar i skiljetecken. */
 const ord = s => norm(s).split(/[^a-zà-ÿ0-9%,.]+/i).filter(Boolean);
 
@@ -67,10 +75,17 @@ const ord = s => norm(s).split(/[^a-zà-ÿ0-9%,.]+/i).filter(Boolean);
  * Poäng för hur väl ett namn svarar mot sökorden.
  * Returnerar null när namnet inte matchar alls.
  */
-function poäng(namn, sökord) {
+function poäng(namn, sökord, qSam) {
   const n = norm(namn);
   const namnOrd = ord(namn);
   let p = 0;
+  let träff = false;
+
+  // SAMMANSKRIVET: "pyttipanna" mot "Pytt i panna tillagad frysvara".
+  // Bara startsWith, aldrig includes — annars återuppstår exakt det fel som
+  // gav "läsk" -> Fläskfilé, eftersom "fläskfilé" innehåller "läsk".
+  // Fyra tecken som minst, så att korta ord inte börjar träffa allt.
+  if (qSam.length >= 4 && sam(namn).startsWith(qSam)) { p = 500; träff = true; }
 
   for (const q of sökord) {
     if (n === q) { p += 1000; continue; }                       // exakt hela namnet
@@ -81,7 +96,8 @@ function poäng(namn, sökord) {
     // matchningen som gav "läsk" → Fläskfilé, och den ska aldrig kunna
     // konkurrera med en riktig ordträff.
     if (n.includes(q)) { p += 10; continue; }
-    return null;                                                 // alla sökord måste finnas
+    // Alla sökord måste finnas — om inte sammanskrivningen redan träffat.
+    if (!träff) return null;
   }
 
   // Kortare namn vinner. I registret är den korta posten grundvaran och den
@@ -109,10 +125,11 @@ export function searchFoods(query, index = [], max = 25) {
   // skulle "fil" i "kycklingfilé" börja leva sitt eget liv.
   const synonym = FOOD_SYNONYMS[q] || null;
   const sökord = ord(synonym || q);
+  const qSam = sam(synonym || q);
 
   const träffar = [];
   for (const f of index) {
-    const p = poäng(f.name, sökord);
+    const p = poäng(f.name, sökord, qSam);
     if (p != null) träffar.push({ f, p });
   }
   träffar.sort((a, b) => b.p - a.p || a.f.name.length - b.f.name.length);

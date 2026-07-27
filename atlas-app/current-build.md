@@ -9,6 +9,12 @@
 >
 > Projektfiler utanför repot är överlämningar, inte status. Bär de siffror
 > eller backlogg är de fel per definition.
+>
+> **Molnpaket ska INTE röra den här filen.** En gren skapas mot ett läge och
+> mergas mot ett senare; ändringar här blir då tysta återställningar som git
+> inte flaggar, eftersom raderna inte krockar. Det har hänt två gånger — båda
+> gångerna hade BLOCKERAT-avsnittet och testantalet försvunnit utan varning.
+> Filen skrivs i stället vid varje merge, av den som mergar, mot färsk main.
 
 Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
 den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
@@ -90,7 +96,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 814 i 74 filer |
+| Tester (vitest) | 819 i 74 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -197,6 +203,13 @@ gav Kycklingfilé. Den som loggade fil fick kyckling. Nu väger ordbörjan tyngr
 grundvaran. `FOOD_SYNONYMS` översätter vardagsord (fralla, macka, läsk) till
 registrets ord, och **vyn skriver ut att den gjort det** ("Visar träffar för
 …"), annars ser det ut som magi och användaren lär sig aldrig vad banken heter.
+
+Sökningen klarar också **sammanskrivning**: svenskan tillåter både "pytt i
+panna" och "pyttipanna", och registret har valt den ena medan folk skriver den
+andra. Jämförelsen görs med `startsWith`, **aldrig `includes`** — annars
+återuppstår exakt felet som gav "läsk" → Fläskfilé, eftersom "fläskfilé"
+innehåller "läsk". Minst fyra tecken krävs, så korta ord inte börjar träffa
+allt.
 
 **Två sökfunktioner heter `searchFoods` — det är avsiktligt.** Den i
 `engines/index.js` (signatur `q, group, history, limit`) används av gamla appen
