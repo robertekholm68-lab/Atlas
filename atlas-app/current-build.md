@@ -13,7 +13,7 @@
 Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
 den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
 
-*Senast verifierad mot koden: 2026-07-27 (efter #47). Alla tio DOM-skript körda. Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-07-27 (efter matsöket). Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -90,7 +90,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 801 i 73 filer |
+| Tester (vitest) | 814 i 74 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -188,6 +188,21 @@ appens form, med flit — den sparar inte tiden, och att räkna baklänges ur
 ingen energimodell för aktivitet, och en gissad siffra vore värre än ingen.
 `DoneView` och `ProgressView` tål frånvaron av set och visar kondition och
 minuter i stället för "0 set".
+
+**Livsmedelssökningen har en egen motor.** `engines/foodSearch.js` — ordgräns,
+rangordning och vardagsord. `FoodView` sökte tidigare med rå
+`name.includes(q)`, vilket matchar inuti ord: "läsk" gav Fläskfilé och "fil"
+gav Kycklingfilé. Den som loggade fil fick kyckling. Nu väger ordbörjan tyngre
+än mitt-i-ordet, och kort namn tyngre än långt — den korta posten är
+grundvaran. `FOOD_SYNONYMS` översätter vardagsord (fralla, macka, läsk) till
+registrets ord, och **vyn skriver ut att den gjort det** ("Visar träffar för
+…"), annars ser det ut som magi och användaren lär sig aldrig vad banken heter.
+
+**Två sökfunktioner heter `searchFoods` — det är avsiktligt.** Den i
+`engines/index.js` (signatur `q, group, history, limit`) används av gamla appen
+och rangordnar redan bra via `scoreFood`; buggen fanns aldrig där. Den i
+`foodSearch.js` (`query, index, max`) används bara av 2.0. Enligt regeln bygg
+en version först. Ska de slås ihop är det ett eget steg.
 
 **Matakuten och meal prep.** `RescueView` kopplar in den befintliga motorn
 (`RESCUE_SITUATIONS`, `interpretCrisis`, `recentIntakeSummary`, `buildRescue`);
