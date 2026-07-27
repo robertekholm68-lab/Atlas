@@ -21,7 +21,7 @@ import { buildPostSession, attachReason, reasonSignal } from "../engines/post-se
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
-import { tempoPerKm } from "../data/sportLibrary.js";
+import { tempoPerKm } from "../data/sportDistans.js";
 
 /** Bygger passets övningslista med förslag ur historiken. */
 export function buildLive(program, workout, sessions) {
@@ -266,7 +266,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
 
           {förra && (
             <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 10 }}>
-              Förra setet: {förra.vikt ?? "—"} kg × {förra.reps}
+              Förra setet: {formatWeight(förra.vikt)} kg × {förra.reps}
             </div>
           )}
 
@@ -288,7 +288,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             <div style={{ ...card, marginTop: 11, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: HFONT, fontWeight: 800, fontSize: 17 }}>
-                  {röst.vikt > 0 ? `${röst.vikt} kg` : "kroppsvikt"} × {röst.reps}
+                  {röst.vikt > 0 ? `${formatWeight(röst.vikt)} kg` : "kroppsvikt"} × {röst.reps}
                 </div>
                 <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{röst.källa}</div>
               </div>
@@ -448,7 +448,7 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
       {Object.entries(perÖvning).map(([id, o]) => (
         <div key={id} style={{ display: "flex", justifyContent: "space-between", padding: "12px 2px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
           <span>{(EXERCISES.find(e => e.id === id) || {}).name || id}</span>
-          <span style={{ color: C.muted }}>{o.set} set · {o.max} kg</span>
+          <span style={{ color: C.muted }}>{o.set} set · {formatWeight(o.max)} kg</span>
         </div>
       ))}
 

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ADAPTIVE_MIN, COACH_MODES } from "../../data/coach.js";
 import { Card, CardLabel } from "../../components/common/index.jsx";
-import { analyzeBodyComp, bestStrengthTrend, buildBriefing, buildPredictions, buildUserModel, computeInsights, detectAdaptive, plateauResponse, dataConfidence, metricSeries, supplementAdvice, laggingMuscleAdvice, variationAdvice } from "../../engines/index.js";
+import { analyzeBodyComp, bestStrengthTrend, buildBriefing, buildPredictions, buildUserModel, computeInsights, detectAdaptive, plateauResponse, dataConfidence, metricSeries, supplementAdvice, laggingMuscleAdvice, variationAdvice, formatWeight, formatKg } from "../../engines/index.js";
 import { SUPP_BY_ID } from "../../data/supplements.js";
 import { Icon } from "../../components/common/index.jsx";
 import { missionCoachSummary, STATUS_LABEL, STATUS_COLOR } from "../../engines/mission.js";
@@ -190,7 +190,7 @@ function coachReply(text, ctx, lastTopic = null) {
   if (/väger|hur mycket väg|min vikt|min kroppsvikt|viktutveckling|viktkurva|viktnedgång|viktökning|gått (ner|upp) i vikt|gå (ner|upp) i vikt|lagt på mig|tappat.{0,10}(kilo|kg)/.test(t)) {
     const v = facts.vikt;
     if (v.senaste == null) return { text: "Jag har ingen loggad kroppsvikt än — logga några vägningar så följer jag utvecklingen. En enstaka mätning säger inget om en trend.", chips: chip(["Hur går mitt mål?", "Berätta om kosten"]) };
-    let r = `Senaste loggade vikt: ${v.senaste} kg.`;
+    let r = `Senaste loggade vikt: ${formatKg(v.senaste)} kg.`;
     if (v.förändring != null && v.förändring !== 0) r += ` Sedan din första notering har du gått ${v.förändring < 0 ? "ner" : "upp"} ${Math.abs(v.förändring)} kg.`;
     else if (v.förändring === 0) r += " Den ligger stabilt sedan första noteringen.";
     // Per-block-tillit: två punkter är ingen trend (§13-tröskel 3). Ett svagt
@@ -657,7 +657,7 @@ function AICoachView({ muscleStates, foodLog = [], recommendation, sessions, nut
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {predictions.map((p, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 13px", background: T.bg.raised, borderRadius: 10 }}>
-                  <div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{p.lab} → {p.target} kg</div><div style={{ fontSize: 12, color: T.text.muted }}>Nu ~{p.cur} kg (est. 1RM)</div></div>
+                  <div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{p.lab} → {formatWeight(p.target)} kg</div><div style={{ fontSize: 12, color: T.text.muted }}>Nu ~{formatWeight(p.cur)} kg (est. 1RM)</div></div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: T.accent.secondary }}>{p.range}</div>
                 </div>
               ))}

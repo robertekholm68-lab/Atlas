@@ -1339,16 +1339,35 @@ function epley1RM(weight, reps) { return reps <= 1 ? weight : Math.round(weight 
 function roundInc(w) { return Math.round(w * 4) / 4; }
 
 /**
- * Skriver en vikt utan falska decimaler: 61 blir "61", 61,5 blir "61,5",
- * 61,25 blir "61,25". Tidigare kördes toFixed(1) på varje knapptryck, vilket
- * gjorde 63,75 till 63,8 — och felet ackumulerades för varje tryck därefter:
- * 61,25 → 63,8 → 66,3 → 68,8. Talen på skärmen var alltså inte de vikter som
- * lades på stången.
+ * Skriver en SKIVSTÅNGSVIKT utan falska decimaler: 61 blir "61", 61,5 blir
+ * "61,5", 61,25 blir "61,25". Tidigare kördes toFixed(1) på varje knapptryck,
+ * vilket gjorde 63,75 till 63,8 — och felet ackumulerades för varje tryck
+ * därefter: 61,25 → 63,8 → 66,3 → 68,8. Talen på skärmen var alltså inte de
+ * vikter som lades på stången.
+ *
+ * SNÄPPER TILL 0,25-RASTRET, och får därför bara användas på vikt man LÄGGER
+ * PÅ — hantlar, skivor, maskiner, uppskattade 1RM. En kroppsvikt ska genom
+ * formatKg: 82,4 kg är en mätning, och att skriva den som 82,5 vore att hitta
+ * på en siffra användaren aldrig vägde.
  */
 function formatWeight(w) {
   if (w == null) return "—";
   const r = Math.round(w * 4) / 4;
   return String(Number.isInteger(r) ? r : +r.toFixed(2)).replace(".", ",");
+}
+
+/**
+ * Skriver ett MÄTT kilotal med svenskt decimalkomma, UTAN att avrunda till
+ * något raster: 82,4 förblir 82,4. För kroppsvikt, fettfri massa, fettmassa
+ * och viktförändring — tal som kommer ur en våg och inte ur en skivstång.
+ *
+ * Skillnaden mot formatWeight är hela poängen: den ena avrundar för att
+ * rastret är sant, den andra låter bli för att mätningen är det.
+ */
+function formatKg(w) {
+  if (w == null || Number.isNaN(Number(w))) return "—";
+  // Bara flyttalsbruset kapas (0,30000000000000004 → 0,3), aldrig värdet.
+  return String(+Number(w).toFixed(2)).replace(".", ",");
 }
 
 function lastPerformance(sessions, exId) {
@@ -1678,4 +1697,4 @@ function recoveryColor(score) {
   return `rgb(${r},${g},${b})`;
 }
 
-export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
+export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };

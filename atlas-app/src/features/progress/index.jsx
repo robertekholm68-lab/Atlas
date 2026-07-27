@@ -1,7 +1,7 @@
 // FEATURE: Progress
 import { useState } from "react";
 import { Card, CardLabel } from "../../components/common/index.jsx";
-import { best1RM, sessionVolume, strengthLevel, currentWeight, workoutStreak, metricSeries, epley1RM, roundInc, milestones } from "../../engines/index.js";
+import { best1RM, sessionVolume, strengthLevel, currentWeight, workoutStreak, metricSeries, epley1RM, roundInc, formatWeight, formatKg, milestones } from "../../engines/index.js";
 import { BodyFatCalculator } from "../profile/index.jsx";
 import { BODYWEIGHT } from "../../data/exercises.js";
 import { MUSCLES } from "../../data/muscles.js";
@@ -39,14 +39,14 @@ function OneRepMaxCalculator() {
       {rm ? (
         <div style={{ marginTop: 12, border: `1px solid ${T.bg.muted}`, borderRadius: 10, padding: "11px 13px", background: T.bg.raised }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontSize: 26, fontWeight: 800, color: T.accent.primary }}>{rm} kg</span>
-            <span style={{ fontSize: 12, color: T.text.muted }}>uppskattat 1RM · {r} × {w} kg</span>
+            <span style={{ fontSize: 26, fontWeight: 800, color: T.accent.primary }}>{formatWeight(rm)} kg</span>
+            <span style={{ fontSize: 12, color: T.text.muted }}>uppskattat 1RM · {r} × {formatWeight(w)} kg</span>
           </div>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, color: T.text.muted, textTransform: "uppercase", margin: "12px 0 7px" }}>Arbetsvikter (uppskattat)</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {targets.map(t => (
               <div key={t} style={{ background: T.bg.surface, border: `1px solid ${T.bg.muted}`, borderRadius: 8, padding: "6px 10px", textAlign: "center", minWidth: 56 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: T.text.primary }}>{roundInc(rm / (1 + t / 30))}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: T.text.primary }}>{formatWeight(roundInc(rm / (1 + t / 30)))}</div>
                 <div style={{ fontSize: 10.5, color: T.text.muted }}>{t} rep</div>
               </div>
             ))}

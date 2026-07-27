@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { BodyMapCard } from "../body-map/index.jsx";
 import { Card, CardLabel, Stepper } from "../../components/common/index.jsx";
-import { coachFor, progressionSuggestion, subExercise, lastPerformance } from "../../engines/index.js";
+import { coachFor, progressionSuggestion, subExercise, lastPerformance, formatWeight } from "../../engines/index.js";
 import { buildPostSession, attachReason } from "../../engines/post-session.js";
 import { updateSet as sessionUpdateSet, deleteSet as sessionDeleteSet } from "../../engines/session.js";
 import { CUES, EQUIP_ALL, EXERCISES, EX_GROUPS, WORKOUTS } from "../../data/exercises.js";
@@ -114,7 +114,7 @@ function SessionModal({ onComplete, onClose }) {
             </div>
 
             <button onClick={addSet} style={{ ...btn.primary, width: "100%" }}>
-              + Add Set {isTime ? `(${duration}s)` : isBw ? `(BW × ${reps})` : `(${weight}kg × ${reps})`}
+              + Add Set {isTime ? `(${duration}s)` : isBw ? `(BW × ${reps})` : `(${formatWeight(weight)} kg × ${reps})`}
             </button>
 
             <RestTimer />
@@ -126,7 +126,7 @@ function SessionModal({ onComplete, onClose }) {
                   {sets.map((s, i) => s.exerciseId !== selectedEx.id ? null : (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 11px", background: T.bg.raised, borderRadius: 7, fontSize: 13 }}>
                       <span style={{ color: T.text.muted }}>Set {sets.slice(0, i + 1).filter(x => x.exerciseId === s.exerciseId).length}</span>
-                      <span style={{ color: T.text.secondary }}>{isTime ? `${s.duration}s` : isBw ? `BW × ${s.reps}` : `${s.weight}kg × ${s.reps}`}{s.rpe ? ` @ RPE ${s.rpe}` : ""}</span>
+                      <span style={{ color: T.text.secondary }}>{isTime ? `${s.duration}s` : isBw ? `BW × ${s.reps}` : `${formatWeight(s.weight)} kg × ${s.reps}`}{s.rpe ? ` @ RPE ${s.rpe}` : ""}</span>
                       <button onClick={() => setSets(ss => ss.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: T.text.muted, cursor: "pointer" }}>×</button>
                     </div>
                   ))}
@@ -489,7 +489,7 @@ function TrainingMode({ muscleStates, onComplete, onExit, equip, sessions, seed 
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.accent.success, textTransform: "uppercase" }}>Progression</div>
                         <div style={{ fontSize: 13.5, color: T.text.primary, marginTop: 3 }}>
-                          Förra: {prog.prev.weight} kg × {prog.prev.reps}{prog.prev.rpe ? ` (RPE ${prog.prev.rpe})` : ""} · <span style={{ color: T.accent.success, fontWeight: 700 }}>prova {prog.weight} kg × {prog.reps}</span>
+                          Förra: {formatWeight(prog.prev.weight)} kg × {prog.prev.reps}{prog.prev.rpe ? ` (RPE ${prog.prev.rpe})` : ""} · <span style={{ color: T.accent.success, fontWeight: 700 }}>prova {formatWeight(prog.weight)} kg × {prog.reps}</span>
                         </div>
                         <div style={{ fontSize: 11, color: T.text.muted, marginTop: 2 }}>{prog.note}</div>
                       </div>
@@ -531,7 +531,7 @@ function TrainingMode({ muscleStates, onComplete, onExit, equip, sessions, seed 
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={addSet} style={{ ...btn.primary, flex: 1, minWidth: 180 }}>
-                  + Lägg till set {isTime ? `(${duration}s)` : isBw ? `(BW × ${reps})` : `(${weight}kg × ${reps})`}
+                  + Lägg till set {isTime ? `(${duration}s)` : isBw ? `(BW × ${reps})` : `(${formatWeight(weight)} kg × ${reps})`}
                 </button>
                 {prevSets && (
                   <button onClick={copyLast} title={`Fyller på ${prevSets.count} set från förra passet`} style={{ ...btn.tag, display: "inline-flex", alignItems: "center", gap: 6, background: T.bg.raised, color: T.accent.primary, border: `1px solid ${T.accent.primary}`, padding: "0 16px" }}>
@@ -561,7 +561,7 @@ function TrainingMode({ muscleStates, onComplete, onExit, equip, sessions, seed 
                     {sets.map((s, i) => s.exerciseId !== ex.id ? null : (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 11px", background: T.bg.surface, border: `1px solid ${T.bg.muted}`, borderRadius: 7, fontSize: 13 }}>
                         <span style={{ color: T.text.muted }}>Set {sets.slice(0, i + 1).filter(x => x.exerciseId === s.exerciseId).length}</span>
-                        <span style={{ color: T.text.secondary }}>{isTime ? `${s.duration}s` : isBw ? `BW × ${s.reps}` : `${s.weight}kg × ${s.reps}`}{s.rpe ? ` @ RPE ${s.rpe}` : ""}</span>
+                        <span style={{ color: T.text.secondary }}>{isTime ? `${s.duration}s` : isBw ? `BW × ${s.reps}` : `${formatWeight(s.weight)} kg × ${s.reps}`}{s.rpe ? ` @ RPE ${s.rpe}` : ""}</span>
                         <button onClick={() => setSets(ss => ss.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: T.text.muted, cursor: "pointer" }}>×</button>
                       </div>
                     ))}

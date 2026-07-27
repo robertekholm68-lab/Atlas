@@ -1,4 +1,9 @@
 // Askr sport-ikonbibliotek (94 relief-vektorer) + metadata. Genererad från master-library v1.
+//
+// GENERERAD FIL — SKRIV INGENTING FÖR HAND HÄR. Allt under den här raden kan
+// skrivas över utan förvarning nästa gång biblioteket genereras om, och en
+// handskriven rad skulle då försvinna tyst. Distanslogiken låg här ett tag och
+// flyttades till sportDistans.js av precis det skälet.
 // SPORT_LIB: id → SVG-markup (viewBox 0 0 512 512, ingen fast width/height — renderas inline).
 
 export const SPORT_CATEGORIES = [
@@ -119,44 +124,3 @@ export const LEGACY_MAP = {"innebandy": "floorball", "muaythai": "muay-thai", "l
 
 // Kategori-baserade belastningsmodeller (breda, ärliga estimat). Detaljmodellerna i SPORTS/CARDIO går före.
 export const CAT_LOAD = {"fitness-strength": {"cardio": 0.4, "activation": [["quadriceps", 0.6], ["gluteals", 0.6], ["latissimus_dorsi", 0.5], ["pectoralis_major", 0.5], ["deltoid_anterior", 0.5], ["biceps_brachii", 0.4], ["triceps_brachii", 0.4], ["rectus_abdominis", 0.5], ["erector_spinae", 0.4]]}, "cardio-endurance": {"cardio": 0.85, "activation": [["quadriceps", 0.7], ["calves", 0.7], ["hamstrings", 0.6], ["gluteals", 0.6], ["hip_flexors", 0.5], ["rectus_abdominis", 0.3]]}, "team-ball": {"cardio": 0.8, "activation": [["quadriceps", 0.8], ["calves", 0.7], ["hamstrings", 0.6], ["gluteals", 0.6], ["hip_flexors", 0.6], ["obliques", 0.5], ["rectus_abdominis", 0.4], ["deltoid_anterior", 0.3]]}, "combat-martial": {"cardio": 0.85, "activation": [["obliques", 0.8], ["hip_flexors", 0.7], ["rectus_abdominis", 0.7], ["calves", 0.6], ["quadriceps", 0.6], ["deltoid_anterior", 0.6], ["deltoid_lateral", 0.5], ["forearms", 0.5], ["triceps_brachii", 0.4]]}, "racket-precision": {"cardio": 0.55, "activation": [["quadriceps", 0.6], ["calves", 0.6], ["obliques", 0.6], ["deltoid_anterior", 0.5], ["forearms", 0.5], ["erector_spinae", 0.3]]}, "water-sports": {"cardio": 0.7, "activation": [["latissimus_dorsi", 0.7], ["deltoid_anterior", 0.6], ["deltoid_lateral", 0.5], ["triceps_brachii", 0.5], ["forearms", 0.5], ["rectus_abdominis", 0.5], ["erector_spinae", 0.4]]}, "winter-sports": {"cardio": 0.75, "activation": [["quadriceps", 0.8], ["calves", 0.6], ["gluteals", 0.6], ["hamstrings", 0.5], ["erector_spinae", 0.4], ["obliques", 0.4]]}, "athletics-gymnastics": {"cardio": 0.7, "activation": [["quadriceps", 0.7], ["calves", 0.7], ["hamstrings", 0.6], ["gluteals", 0.6], ["hip_flexors", 0.5], ["rectus_abdominis", 0.5], ["deltoid_anterior", 0.4]]}, "outdoor-action": {"cardio": 0.6, "activation": [["quadriceps", 0.7], ["calves", 0.7], ["gluteals", 0.6], ["hamstrings", 0.5], ["erector_spinae", 0.4]]}, "cardio-machines": {"cardio": 0.8, "activation": [["quadriceps", 0.7], ["calves", 0.7], ["hamstrings", 0.6], ["gluteals", 0.5], ["hip_flexors", 0.4]]}};
-
-/**
- * Aktiviteter där DISTANS är ett naturligt mått, och där en logg utan den
- * saknar det man faktiskt minns av passet: "jag sprang en mil".
- *
- * Kategorin duger inte som filter — segling och curling ligger i samma grupper
- * som simning och längdskidåkning, men ingen loggar segling i kilometer.
- * Distansbaserat är en egenskap hos aktiviteten och hör därför hemma här,
- * bredvid datan, inte som ett villkor i en vy.
- *
- * Distansen påverkar INTE belastningen. cardioLoad räknas ur tid och intensitet,
- * och att låta kilometer styra hade krävt en modell för hur snabbt just den här
- * personen springer — en gissning förklädd till mätning. Distansen loggas för
- * att den är sann och för att tempot går att räkna ur den.
- */
-export const DISTANS_SPORTER = new Set([
-  "running", "trail-running", "power-walking", "nordic-walking",
-  "cycling", "mountain-biking", "triathlon",
-  "swimming", "rowing", "kayaking", "stand-up-paddleboarding",
-  "cross-country-skiing", "speed-skating", "biathlon",
-  "cardio-treadmill", "cardio-curved-treadmill", "cardio-elliptical",
-  "cardio-upright-bike", "cardio-recumbent-bike", "cardio-spin-bike",
-  "cardio-air-bike", "cardio-rowing-machine", "cardio-ski-erg",
-]);
-
-/** Har aktiviteten en meningsfull distans? */
-export function harDistans(id) {
-  return DISTANS_SPORTER.has(id);
-}
-
-/**
- * Tempo i minuter per kilometer, som "5:30". Returnerar null när något saknas —
- * ett tempo räknat på en gissad distans vore värre än inget tempo.
- */
-export function tempoPerKm(km, minuter) {
-  if (!(km > 0) || !(minuter > 0)) return null;
-  const m = minuter / km;
-  const hela = Math.floor(m);
-  const sek = Math.round((m - hela) * 60);
-  return sek === 60 ? `${hela + 1}:00` : `${hela}:${String(sek).padStart(2, "0")}`;
-}
