@@ -96,7 +96,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 824 i 75 filer |
+| Tester (vitest) | 831 i 76 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -235,6 +235,20 @@ så "frallor" hittar fralla, och stavfelstolerans. Alla tre byggmålen delar den
 startade arbetet: läsk får inte ge Fläskfilé, fil inte Kycklingfilé, korv inte
 Korvbröd. Den filen låg tidigare bredvid den raderade motorn och skyddet hade
 försvunnit med den. Sökningens övriga egenskaper täcks av `meal-parts.test.js`.
+
+**Streckkodsläsare i 2.0.** `Streckkod.jsx` — motorn `lookupBarcode` fanns
+redan och slår upp produkten hos Open Food Facts. Två saker är värda att veta:
+
+- **Källan visas som rubrik, inte som finstil.** Open Food Facts är
+  folkbidragen och overifierad, och en produkt kan bära vad som helst. Träffen
+  märks "Open Food Facts · overifierad" och loggposten märks som EXTERN, inte
+  som registerdata ur Livsmedelsverket. Okänd produkt erkänns i stället för att
+  gissa, och nätverksfel behandlas som okänd produkt — inte som krasch.
+- **Manuell inmatning finns ALLTID.** `BarcodeDetector` finns i Chrome på
+  Android men inte i Safari på iOS, så kameravägen får aldrig vara den enda.
+  Skanningen ersätter loggvyn medan den pågår i stället för att ligga i ett ark
+  ovanpå — kameran ska inte kunna bli kvar bakom något annat — och strömmen
+  stängs vid unmount.
 
 **Referensfixturen `reference.json` är medvetet ändrad** (2026-07-27): "Abborre
 rå" och "Abborre filé panerad stekt" har bytt plats, eftersom sökningen numera
