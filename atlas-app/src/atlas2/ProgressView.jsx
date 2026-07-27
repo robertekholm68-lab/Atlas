@@ -123,7 +123,7 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
                     {/* Ett sportpass har inga set. "0 set" hade sett ut som ett
                         misslyckat pass i stället för ett annat sorts pass. */}
                     {s.sport
-                      ? `${fmt(s.completedAt)}${s.minutes ? ` · ${s.minutes} min` : ""}${s.cardioLoad ? ` · ${Math.round(s.cardioLoad)} kondition` : ""}`
+                      ? `${fmt(s.completedAt)}${s.distanceKm ? ` · ${String(s.distanceKm).replace(".", ",")} km` : ""}${s.minutes ? ` · ${s.minutes} min` : ""}${s.cardioLoad ? ` · ${Math.round(s.cardioLoad)} kondition` : ""}`
                       : `${fmt(s.completedAt)} · ${antalSet} set${volym > 0 ? ` · ${volym} kg` : ""}`}
                   </div>
                 </div>
