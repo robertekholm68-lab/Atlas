@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 884 i 82 filer |
+| Tester (vitest) | 889 i 83 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -733,7 +733,8 @@ JDK 21).
   Den fungerar i Chrome, så felet ligger i WebView-skalet. Kräver `adb logcat`
   på en riktig telefon — exakt samma lås som ikonerna.
 
-  **Trolig rot funnen, ÄNNU INTE BEVISAD.** `MainActivity` begärde aldrig
+  **BEHÖRIGHETEN ÄR NU LÖST OCH BEVISAD PÅ TELEFON** — men rösten fungerar
+  ändå inte, och roten är därmed en annan. `MainActivity` begärde aldrig
   `RECORD_AUDIO` i körtid. `AtlasChromeClient.onPermissionRequest` fanns och
   gjorde rätt — men den kan bara bevilja **sidans** begäran, inte ge appen en
   rättighet appen själv saknar. Manifestdeklarationen räcker till Android 5;
@@ -742,11 +743,33 @@ JDK 21).
   första knapptrycket — en systemdialog mitt i ett pass är det sämsta tänkbara
   avbrottet, och nekas den fungerar allt annat som vanligt.
 
-  Posten stannar här tills någon kört den skarpt. **En trolig rot är inte en
-  bevisad rot**, och rösten förblir avstängd i skalet till dess. Det som gjorts
-  härifrån: skalet kompilerar rent (`javac --release 17` mot handskrivna
-  API-stubbar, eftersom Android SDK saknas), inga anonyma inre klasser har
-  tillkommit, och `android-skal.test.js` bevakar båda reglerna framöver.
+  Körningen på telefon gav facit: Androids inställningar visar *"Tillåts:
+  Mikrofon, inga behörigheter har nekats"*. Körtidsfrågan fungerar alltså.
+  **Hypotesen var ändå fel som förklaring till kraschen** — rösten fungerar
+  fortfarande inte.
+
+  Vad felet BLEV i stället: appen visade "kan sakna mikrofonbehörighet — öppna
+  den i webbläsaren", vilket kom ur `micReady`:s okända-fel-gren.
+  `getUserMedia` kastade något som varken var `NotAllowedError` eller
+  `NotFoundError`; grenen visste inte vad som var fel men gissade ändå på
+  behörigheten, och gissade fel. Ett råd som skickar användaren till en
+  inställning där allt redan är rätt är värre än ett som erkänner sin okunskap.
+  Grenen skriver nu ut felnamnet, och `NotReadableError` (mikrofonen upptagen)
+  har fått eget råd.
+
+  **Nästa steg är en körning till på telefon.** Den visar nu vilket fel det
+  faktiskt är, och först då går det att laga. Posten stannar här, och rösten
+  förblir avstängd i skalet.
+
+  Vad som gjorts härifrån: skalet kompilerar rent (`javac --release 17` mot
+  handskrivna API-stubbar, eftersom Android SDK saknas), inga anonyma inre
+  klasser har tillkommit, och `android-skal.test.js` bevakar reglerna framöver.
+
+  **Byggutdata hör inte hemma i repot.** `android-app/build/` är ignorerad sedan
+  ett molnpaket bar in en hel byggkatalog. Värst var en **debugsignerad APK**:
+  Android vägrar installera över en app signerad med den riktiga nyckeln, så den
+  som provar filen tvingas avinstallera och förlorar all loggad träning i
+  skalet.
 
 **Namnbytet — kvar:**
 - **Paket-ID `se.atlas.app`.** Inte blockerat utan MEDVETET obytt: ett byte

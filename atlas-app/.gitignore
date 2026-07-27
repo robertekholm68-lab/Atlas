@@ -15,3 +15,10 @@ dist-atlas2/
 # logs
 npm-debug.log*
 *.keystore
+
+# Android-skalets byggutdata. Molnpaketet bar in en HEL byggkatalog: APK, dex,
+# class-filer, res.zip och genererad R.java. Värst var Askr-debug.apk — en
+# DEBUGSIGNERAD apk i repot är en fälla, eftersom Android vägrar installera
+# över en app signerad med den riktiga nyckeln. Den som provar den måste
+# avinstallera först och förlorar all loggad träning i skalet.
+android-app/build/

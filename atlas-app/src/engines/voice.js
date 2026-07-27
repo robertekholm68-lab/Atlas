@@ -190,15 +190,29 @@ export async function micReady() {
     try { ström.getTracks().forEach(t => t.stop()); } catch (e) {}
     return { ok: true, reason: "ok", note: "" };
   } catch (err) {
-    const namn = (err && err.name) || "";
+    const namn = (err && err.name) || "okänt fel";
+    // DET OKÄNDA FALLET SKA SÄGA ATT DET ÄR OKÄNT.
+    //
+    // Tidigare gissade den här grenen på behörigheten: "kan sakna
+    // mikrofonbehörighet — öppna i webbläsaren". Det var fel råd i det fall som
+    // faktiskt inträffade på telefon: behörigheten VAR beviljad i Androids
+    // inställningar, och felet var något annat. Ett felmeddelande som pekar åt
+    // fel håll är värre än ett som erkänner sin okunskap — användaren letar på
+    // rätt ställe och hittar inget fel, och slutar lita på appen.
+    //
+    // Felnamnet skrivs ut. Det är inte vackert, men det är det enda som gör
+    // problemet diagnosticerbart för den som ska laga det.
     return {
       ok: false,
       reason: namn === "NotAllowedError" ? "nekad" : namn === "NotFoundError" ? "ingen-mikrofon" : "fel",
+      namn,
       note: namn === "NotAllowedError"
         ? "Mikrofonen är inte tillåten. Tillåt mikrofon för Askr i appens eller webbläsarens inställningar."
         : namn === "NotFoundError"
         ? "Ingen mikrofon hittades."
-        : "Mikrofonen går inte att använda här. Är Askr installerad som app kan den sakna mikrofonbehörighet — öppna den i webbläsaren i stället.",
+        : namn === "NotReadableError"
+        ? "Mikrofonen är upptagen av något annat. Stäng appar som spelar in och försök igen."
+        : `Mikrofonen gick inte att öppna (${namn}). Behörigheten kan mycket väl vara i ordning — det här är något annat, och felnamnet är ledtråden.`,
     };
   }
 }
