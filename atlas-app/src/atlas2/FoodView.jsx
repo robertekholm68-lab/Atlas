@@ -13,6 +13,7 @@ import { RescueView } from "./RescueView.jsx";
 import { MealPrepView } from "./MealPrepView.jsx";
 import { SupplementsPanel } from "./SupplementsPanel.jsx";
 import { filterRecipes } from "../engines/recipes.js";
+import { searchFoods } from "../engines/foodSearch.js";
 import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
@@ -253,11 +254,9 @@ function Logga({ onLägg }) {
   const [vald, setVald] = useState(null);
   const [gram, setGram] = useState(100);
 
-  const träffar = useMemo(() => {
-    const q = sök.trim().toLowerCase();
-    if (q.length < 2) return [];
-    return FOOD_INDEX.filter(f => f.name.toLowerCase().includes(q)).slice(0, 25);
-  }, [sök]);
+  // Poängsatt sökning i stället för name.includes(). Den gamla matchade inuti
+  // ord och gav "läsk" → Fläskfilé och "fil" → Kycklingfilé.
+  const { träffar, tolkatSom } = useMemo(() => searchFoods(sök, FOOD_INDEX), [sök]);
 
   if (vald) {
     const k = n => Math.round(n * gram / 100);
@@ -303,8 +302,25 @@ function Logga({ onLägg }) {
         {FOOD_INDEX.length} livsmedel, i huvudsak från Livsmedelsverkets databas.
       </div>
 
+      {/* Har ett vardagsord översatts ska det SÄGAS. Annars ser det ut som magi,
+          och användaren lär sig aldrig vad registret faktiskt kallar saken. */}
+      {tolkatSom && träffar.length > 0 && (
+        <div style={{ fontSize: 12, color: C.lime, marginTop: 10 }}>
+          Visar träffar för ”{tolkatSom}”.
+        </div>
+      )}
+
       {sök.trim().length >= 2 && träffar.length === 0 && (
-        <div style={{ padding: "30px 12px", textAlign: "center", fontSize: 13, color: C.muted }}>Inga träffar på ”{sök.trim()}”.</div>
+        <div style={{ padding: "22px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6 }}>
+            Inget i Livsmedelsverkets register heter ”{sök.trim()}”.
+          </div>
+          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6, marginTop: 8 }}>
+            Registret namnger som ett register, inte som folk pratar. Beskriv
+            måltiden med fältet överst i stället — då uppskattas den, och
+            uppskattningen redovisas som en uppskattning.
+          </div>
+        </div>
       )}
 
       {träffar.map(f => (
