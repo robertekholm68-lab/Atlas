@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 876 i 80 filer |
+| Tester (vitest) | 881 i 81 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -213,6 +213,14 @@ och används på MÄTNINGAR — kroppsvikt, fettfri massa, fettmassa,
 viktförändring. Kör man en kroppsvikt genom `formatWeight` blir 82,4 till 82,5,
 alltså en siffra användaren aldrig vägde. Fyra testfall låser fast skillnaden,
 ett av dem genom att visa vad `formatWeight` *hade* gjort med samma tal.
+
+**Volymen räknas exakt och formateras vid kanten.** `sessionVolume` avrundar
+inte — trender och jämförelser mellan pass behöver upplösningen, och ett
+avrundat mellanled förstör information som inte går att få tillbaka. Sedan
+vikterna ligger på 0,25-rastret kan en volym mycket väl bli 428,75 (61,25 × 7),
+och utan `formatVolume` hade det talet nått skärmen med punkt. Avrundningen till
+hela kilon och den svenska tusentalsavgränsaren bor i formateraren, och samtliga
+volymutskrifter i alla tre målen går genom den.
 
 Båda är svepta genom **alla tre målen**: desktop (`features/training`,
 `features/progress`, `features/profile`, `features/ai-coach`), mobilen
@@ -759,6 +767,18 @@ aldrig göms bakom en utvilad.
   `x != null ? x : fallback`.
 - **Set utan vikt** ger noll muskellast, vilket får appen att påstå att inget
   pass finns. 2.0 spärrar loggning tills vikt är satt för yttre last.
+- **Ett anrop utan import kraschar först när någon klickar sig dit.**
+  `features/training` anropade `lastSessionSets(...)` utan att importera den.
+  En fri identifierare är fullt giltig JavaScript till körtid, så **bygget
+  buntade utan att knota och sviten monterar inte varje vy** — men desktoppens
+  träningsläge kraschade hela sidan så snart man valde en övning, uppfångat av
+  felgränsen som "Något gick fel". Vägen till viktstegaren var helt blockerad,
+  troligen sedan `copyLast` byggdes. `import-integritet.test.js` läser motorns
+  exportlista och kräver att varje anropat namn också är importerat.
+  *Skyddet hade själv ett hål först:* det blankade mallsträngar för att slippa
+  falska larm från JSDoc — men `${...}` innehåller körbar kod, och där bor
+  merparten av vyernas kg-utskrifter. Fem riktiga fall var osynliga. Blanka
+  kommentarer, inte mallsträngar.
 - **En grön svit räcker inte — kör alltid bygget.** Alla 870 testfall var gröna
   medan atlas2-bygget dog på `tempoPerKm is not exported`: en trasig import i en
   komponent som ingen testfixtur monterar syns bara i buntningen. Därför kör

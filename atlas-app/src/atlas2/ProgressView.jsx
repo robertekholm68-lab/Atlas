@@ -11,7 +11,7 @@ import { C, HFONT, hdr, label, card, statRow, statCell, orDash, DASH } from "./d
 import { coachFacts } from "./facts.js";
 import { weekSessions, sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
-import { formatKg, formatWeight } from "../engines/index.js";
+import { formatKg, formatWeight, formatVolume } from "../engines/index.js";
 
 const VECKA = 6048e5;
 const TRÖSKEL = 3;
@@ -114,7 +114,7 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
         <>
           <div style={{ ...label(), marginTop: 24, marginBottom: 4 }}>Loggade pass</div>
           {visade.map(s => {
-            const volym = Math.round(sessionVolume(s));
+            const volym = sessionVolume(s);
             const antalSet = (s.sets || []).length;
             const rad = (
               <>
@@ -125,7 +125,7 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
                         misslyckat pass i stället för ett annat sorts pass. */}
                     {s.sport
                       ? `${fmt(s.completedAt)}${s.distanceKm ? ` · ${String(s.distanceKm).replace(".", ",")} km` : ""}${s.minutes ? ` · ${s.minutes} min` : ""}${s.cardioLoad ? ` · ${Math.round(s.cardioLoad)} kondition` : ""}`
-                      : `${fmt(s.completedAt)} · ${antalSet} set${volym > 0 ? ` · ${volym} kg` : ""}`}
+                      : `${fmt(s.completedAt)} · ${antalSet} set${volym > 0 ? ` · ${formatVolume(volym)} kg` : ""}`}
                   </div>
                 </div>
                 {onOpenSession && <span style={{ color: C.muted, fontSize: 19, flexShrink: 0 }}>›</span>}

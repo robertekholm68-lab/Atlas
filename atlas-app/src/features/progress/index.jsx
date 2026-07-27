@@ -1,7 +1,7 @@
 // FEATURE: Progress
 import { useState } from "react";
 import { Card, CardLabel } from "../../components/common/index.jsx";
-import { best1RM, sessionVolume, strengthLevel, currentWeight, workoutStreak, metricSeries, epley1RM, roundInc, formatWeight, formatKg, milestones } from "../../engines/index.js";
+import { best1RM, sessionVolume, strengthLevel, currentWeight, workoutStreak, metricSeries, epley1RM, roundInc, formatWeight, formatKg, formatVolume, milestones } from "../../engines/index.js";
 import { BodyFatCalculator } from "../profile/index.jsx";
 import { BODYWEIGHT } from "../../data/exercises.js";
 import { MUSCLES } from "../../data/muscles.js";
@@ -218,7 +218,7 @@ function ProgressView({ sessions, overallReadiness, profile, measurements, setMe
             <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 11px", background: T.bg.raised, borderRadius: 8 }}>
               <div><div style={{ fontSize: 13.5, color: T.text.primary }}>{s.title}</div>
                 <div style={{ fontSize: 11, color: T.text.muted }}>{new Date(s.completedAt).toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "short" })}</div></div>
-              <span style={{ fontSize: 12, color: T.accent.primary }}>{Math.round(sessionVolume(s))} belastning</span>
+              <span style={{ fontSize: 12, color: T.accent.primary }}>{formatVolume(sessionVolume(s))} belastning</span>
             </div>
           ))}
         </div>

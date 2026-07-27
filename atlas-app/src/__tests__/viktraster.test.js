@@ -13,7 +13,7 @@
 // stämmer med verkligheten förgiftar volym, belastning och progression.
 
 import { describe, it, expect } from "vitest";
-import { roundInc, formatWeight, formatKg, progressionSuggestion } from "../engines/index.js";
+import { roundInc, formatWeight, formatKg, formatVolume, progressionSuggestion } from "../engines/index.js";
 import { EXERCISES } from "../data/exercises.js";
 
 const ÖVN = "bench_press";
@@ -111,5 +111,31 @@ describe("skivstångsvikt och kroppsvikt formateras INTE likadant", () => {
     expect(formatKg(null)).toBe("—");
     expect(formatKg(undefined)).toBe("—");
     expect(formatWeight(null)).toBe("—");
+  });
+});
+
+// ── VOLYMEN ──────────────────────────────────────────────────────────
+//
+// Motorn avrundar INTE. sessionVolume räknar exakt, för trender och
+// jämförelser mellan pass behöver upplösningen — ett avrundat mellanled
+// förstör information som inte går att få tillbaka. Avrundningen hör hemma
+// vid kanten, i formatVolume.
+describe("volym: exakt i motorn, formaterad vid kanten", () => {
+  it("0,25-rastret gör volymer med decimaler — de får inte nå skärmen råa", () => {
+    // 61,25 × 7 = 428,75. Utan formatVolume hamnar det på skärmen med PUNKT.
+    expect(61.25 * 7).toBe(428.75);
+    expect(formatVolume(428.75)).toBe("429");
+    expect(formatVolume(428.75)).not.toContain(".");
+  });
+
+  it("tusental får svensk avgränsare", () => {
+    // 12 450 kg, inte "12450" och inte "12,450".
+    expect(formatVolume(12450)).toMatch(/^12\s?450$/);
+  });
+
+  it("saknad volym blir streck, inte noll", () => {
+    expect(formatVolume(null)).toBe("—");
+    expect(formatVolume(undefined)).toBe("—");
+    expect(formatVolume(0)).toBe("0");
   });
 });

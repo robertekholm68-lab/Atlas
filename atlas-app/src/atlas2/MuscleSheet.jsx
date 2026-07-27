@@ -9,6 +9,7 @@ import { C, HFONT, hdr, label, card, statRow, statCell, statusColor, orDash, DAS
 import { REGION_MAP, REGIONNAMN } from "./BodyMap2.jsx";
 import { bodyState, sessionVolume } from "./store.js";
 import { MUSCLES } from "../data/muscles.js";
+import { formatVolume } from "../engines/index.js";
 import { EXERCISES } from "../data/exercises.js";
 
 const STATUSTEXT = {
@@ -160,7 +161,7 @@ export function MuscleSheet({ regionId, sessions = [], onClose }) {
             <div style={{ fontSize: 12, color: C.muted, marginTop: 18, lineHeight: 1.55 }}>
               Senaste passet som belastade muskeln: {senaste.title || "Pass"},{" "}
               {new Date(senaste.completedAt).toLocaleDateString("sv-SE", { day: "numeric", month: "long" })}
-              {sessionVolume(senaste) > 0 ? ` · ${Math.round(sessionVolume(senaste))} kg total volym` : ""}.
+              {sessionVolume(senaste) > 0 ? ` · ${formatVolume(sessionVolume(senaste))} kg total volym` : ""}.
             </div>
           )}
         </>

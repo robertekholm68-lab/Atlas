@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card } from "./design.js";
 import { save } from "./store.js";
 import { workoutExercises } from "../engines/programs.js";
-import { progressionSuggestion, lastPerformance, formatWeight } from "../engines/index.js";
+import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
 import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
@@ -395,7 +395,7 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
                ? ["Distans", String(session.distanceKm).replace(".", ","),
                   tempoPerKm(session.distanceKm, minuter) ? `km · ${tempoPerKm(session.distanceKm, minuter)}/km` : "km"]
                : ["Muskler", Object.keys(session.muscleLoads || {}).length, "belastade"]]
-          : [["Tid", minuter, "min"], ["Set", sets.length, "totalt"], ["Volym", Math.round(volym), "kg"]]
+          : [["Tid", minuter, "min"], ["Set", sets.length, "totalt"], ["Volym", formatVolume(volym), "kg"]]
         ).map(([l, v, e], i) => (
           <div key={l} style={{ flex: 1, textAlign: "center", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
             <div style={label()}>{l}</div>
