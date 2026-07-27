@@ -17,6 +17,25 @@ export function isStandalone() {
   } catch (e) { return false; }
 }
 
+/**
+ * Kör vi i Androids WebView — alltså inuti ett app-skal — i stället för i en
+ * riktig webbläsare?
+ *
+ * Markören är "; wv)" i user agent, som Android lägger till just för det här
+ * ändamålet. Det är inte en gissning ur versionsnummer utan en flagga
+ * plattformen själv sätter.
+ *
+ * VARFÖR VI BRYR OSS: WebView och webbläsare ser lika ut för nästan all kod,
+ * men inte för mikrofonen. På minst en Samsung-telefon nekas ljudinspelning i
+ * WebView trots beviljad behörighet — getUserMedia kastar NotReadableError och
+ * Androids egen mikrofonhistorik visar att appen aldrig ens nådde hårdvaran.
+ * Felet ligger under vår kod och går inte att laga i JavaScript.
+ */
+export function isAndroidWebView() {
+  const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+  return /Android/i.test(ua) && /;\s*wv\)/i.test(ua);
+}
+
 export function platformKind() {
   try {
     const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";

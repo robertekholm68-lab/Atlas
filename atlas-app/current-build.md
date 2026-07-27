@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 889 i 83 filer |
+| Tester (vitest) | 897 i 84 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -685,6 +685,35 @@ och sport- och cardiologgning.
   bort luft och en hälsning som upprepade rubriken, men **posten var redan
   struken när det gjordes** — bygget skedde mot en inaktuell backlogg. Det är
   varför den här filen är enda källan.
+- **Rösten i Android-skalet — ett medvetet nej.** Beslutat 2026-07-27 efter att
+  spåret följts hela vägen ner. Posten låg tidigare under BLOCKERAT som en bugg
+  att laga; den var ingen bugg.
+
+  Bevisen kom från telefon i tre lager: behörigheten var **beviljad**, ingen
+  annan app spelade in, och **Androids egen mikrofonhistorik listade inte Askr
+  alls** trots att knappen just tryckts. Inspelningen nådde alltså aldrig
+  operativsystemet. `NotReadableError` var WebViewens sätt att säga att den inte
+  fick öppna hårdvaran — inte att någon annan höll den. Felet ligger under vår
+  kod och går inte att laga i JavaScript.
+
+  **Rösten hör till webbläsaren.** En native brygga till Androids
+  `SpeechRecognizer` vore ett eget projekt — Java-sida, JS-brygga, egen
+  livscykel och egna behörighetsdialoger — inte en buggfix. Det är ett rimligt
+  projekt någon dag, men det ska i så fall beslutas som ett projekt.
+
+  **Funktionen stängs INTE av i skalet.** Den generella spärren
+  (`isInstalledAndroid()` i `voiceSupport`) är borttagen: den påstod att appen
+  kraschar (det gör den inte — `micReady` fångar felet före taligenkänningen),
+  den hänvisade till Chrome fast det var Chrome som INTE fungerade på
+  testtelefonen, och den generaliserade ur ett enda fall. WebView-versioner och
+  tillverkare skiljer sig. Knappen försöker, och `micReady` förklarar ärligt när
+  den inte kan, med `isAndroidWebView()` som skiljer skal från webbläsare på
+  Androids egen `; wv)`-flagga.
+
+  **Vägen som fungerar, för den som vill diktera:** installera PWA:n från
+  **Samsung Browser**. Rösten fungerade där på testtelefonen — men inte i
+  Chrome, vilket är tvärtemot vad den gamla texten påstod. Då får man ikon på
+  hemskärmen OCH röstloggning.
 
 **Askr 2.0 — kvar:**
 - Koppla nuvarande appens coach till `engines/facts.js` — klart för kropp,
@@ -728,48 +757,22 @@ JDK 21).
   `ic_launcher.png` i `android-app/res/mipmap-*` (`b133ef0`), och
   `android:label` är redan `Askr`. De slår igenom först i en ny APK. En
   installerad app visar alltså fortfarande den gamla ikonen tills dess.
-- **Mikrofonkraschen.** Rösten är avstängd i installerad Android-app
-  (`engines/platform.js`, `isInstalledAndroid()`) tills kraschen är verifierad.
-  Den fungerar i Chrome, så felet ligger i WebView-skalet. Kräver `adb logcat`
-  på en riktig telefon — exakt samma lås som ikonerna.
-
-  **BEHÖRIGHETEN ÄR NU LÖST OCH BEVISAD PÅ TELEFON** — men rösten fungerar
-  ändå inte, och roten är därmed en annan. `MainActivity` begärde aldrig
-  `RECORD_AUDIO` i körtid. `AtlasChromeClient.onPermissionRequest` fanns och
-  gjorde rätt — men den kan bara bevilja **sidans** begäran, inte ge appen en
-  rättighet appen själv saknar. Manifestdeklarationen räcker till Android 5;
-  sedan Android 6 är `RECORD_AUDIO` en *dangerous permission*, och `BYGG.md`
-  länkar med `--target-sdk-version 34`. Frågan ställs nu vid start, inte vid
-  första knapptrycket — en systemdialog mitt i ett pass är det sämsta tänkbara
-  avbrottet, och nekas den fungerar allt annat som vanligt.
-
-  Körningen på telefon gav facit: Androids inställningar visar *"Tillåts:
-  Mikrofon, inga behörigheter har nekats"*. Körtidsfrågan fungerar alltså.
-  **Hypotesen var ändå fel som förklaring till kraschen** — rösten fungerar
-  fortfarande inte.
-
-  Vad felet BLEV i stället: appen visade "kan sakna mikrofonbehörighet — öppna
-  den i webbläsaren", vilket kom ur `micReady`:s okända-fel-gren.
-  `getUserMedia` kastade något som varken var `NotAllowedError` eller
-  `NotFoundError`; grenen visste inte vad som var fel men gissade ändå på
-  behörigheten, och gissade fel. Ett råd som skickar användaren till en
-  inställning där allt redan är rätt är värre än ett som erkänner sin okunskap.
-  Grenen skriver nu ut felnamnet, och `NotReadableError` (mikrofonen upptagen)
-  har fått eget råd.
-
-  **Nästa steg är en körning till på telefon.** Den visar nu vilket fel det
-  faktiskt är, och först då går det att laga. Posten stannar här, och rösten
-  förblir avstängd i skalet.
-
-  Vad som gjorts härifrån: skalet kompilerar rent (`javac --release 17` mot
-  handskrivna API-stubbar, eftersom Android SDK saknas), inga anonyma inre
-  klasser har tillkommit, och `android-skal.test.js` bevakar reglerna framöver.
+- **Mikrofonspåret är AVSLUTAT, inte blockerat.** Flyttat till *AVGJORT* ovan
+  2026-07-27: rösten i app-skalet är ett medvetet nej, inte en bugg som väntar
+  på en telefon. Behörighetsdelen löstes och bevisades (`RECORD_AUDIO` begärs i
+  körtid sedan `MainActivity` fick `requestPermissions`), men WebView når ändå
+  aldrig hårdvaran. Det ligger under vår kod.
 
   **Byggutdata hör inte hemma i repot.** `android-app/build/` är ignorerad sedan
   ett molnpaket bar in en hel byggkatalog. Värst var en **debugsignerad APK**:
   Android vägrar installera över en app signerad med den riktiga nyckeln, så den
   som provar filen tvingas avinstallera och förlorar all loggad träning i
   skalet.
+
+  Vad som gjorts härifrån och gäller framåt: skalet kompilerar rent
+  (`javac --release 17` mot handskrivna API-stubbar, eftersom Android SDK
+  saknas), inga anonyma inre klasser har tillkommit, och `android-skal.test.js`
+  bevakar reglerna.
 
 **Namnbytet — kvar:**
 - **Paket-ID `se.atlas.app`.** Inte blockerat utan MEDVETET obytt: ett byte
