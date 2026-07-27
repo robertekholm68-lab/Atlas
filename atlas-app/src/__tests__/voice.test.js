@@ -230,19 +230,47 @@ describe("självläkning – appen upptäcker att den dog i mikrofonen", () => {
   });
 });
 
-describe("rösten är avstängd där den kraschat", () => {
-  it("installerad Android-app säger nej med förklaring", async () => {
+describe("rösten stängs INTE av på förhand i app-skalet", () => {
+  // BETEENDET ÄNDRADES MED AVSIKT 2026-07-27. Här stod tidigare ett testfall
+  // som krävde att voiceSupport() svarade "android-installerad" och nekade allt
+  // i en installerad Android-app.
+  //
+  // Spärren byggdes när mikrofonen dödade appen och orsaken var okänd. Bevisen
+  // från telefon visar att den gjorde tre saker fel: appen kraschar inte
+  // (getUserMedia avvisas prydligt och micReady fångar det före
+  // taligenkänningen), rådet pekade på Chrome fast det var Chrome som INTE
+  // fungerade, och den generaliserade ur ett enda fall.
+  //
+  // Beslutet: knappen försöker, och micReady förklarar ärligt när den inte kan.
+  // En telefon är inte alla telefoner.
+  it("en installerad Android-app nekas inte längre generellt", async () => {
     const p = await import("../engines/platform.js");
     const orig = { ua: navigator.userAgent, mm: window.matchMedia };
     Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Linux; Android 14)" });
     window.matchMedia = () => ({ matches: true });
-    expect(p.isInstalledAndroid()).toBe(true);
+    expect(p.isInstalledAndroid()).toBe(true);           // läget är fortfarande igenkänt
     const s = voiceSupport();
-    expect(s.ok).toBe(false);
-    expect(s.reason).toBe("android-installerad");
-    expect(s.note).toMatch(/Chrome/);
+    expect(s.reason).not.toBe("android-installerad");     // men det avgör inte längre svaret
     Object.defineProperty(navigator, "userAgent", { configurable: true, value: orig.ua });
     window.matchMedia = orig.mm;
+  });
+
+  it("iPhone på hemskärmen nekas fortfarande — där är API:et tyst", () => {
+    // Den avstängningen står kvar och ska göra det: på iOS FINNS API:et i
+    // hemskärmsappen men gör ingenting. Att låta knappen försöka där vore att
+    // lova något som aldrig händer.
+    const orig = { ua: navigator.userAgent, mm: window.matchMedia, rec: window.SpeechRecognition };
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)" });
+    window.matchMedia = () => ({ matches: true });
+    // jsdom saknar taligenkänning, och "finns inte alls" prövas FÖRE
+    // plattformsfallen. Utan den här stubben mäter testet fel gren.
+    window.SpeechRecognition = function () {};
+    const s = voiceSupport();
+    expect(s.ok).toBe(false);
+    expect(s.reason).toBe("ios-hemskarm");
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: orig.ua });
+    window.matchMedia = orig.mm;
+    if (orig.rec === undefined) delete window.SpeechRecognition; else window.SpeechRecognition = orig.rec;
   });
 });
 
