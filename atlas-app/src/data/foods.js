@@ -91,11 +91,11 @@ const FOODS = [
 ];
 
 const FOOD_SYN = {
-  "lask": ["laskedryck", "cola", "sockerdricka"], "fil": ["filmjolk"], "mackor": ["brod", "smorgas"], "macka": ["brod", "smorgas"],
+  "lask": ["laskedryck", "cola", "sockerdricka"], "fil": ["filmjolk"], "mackor": ["brod vitt fibrer"], "macka": ["brod vitt fibrer"],
   "godis": ["godis", "choklad", "karamell"], "chips": ["chips", "potatischips"], "bulle": ["bulle", "kanelbulle"],
   "pasta": ["pasta", "spaghetti", "makaroner"], "notfars": ["kottfars", "notfars"], "kottbullar": ["kottbulle"],
   "fisk": ["lax", "torsk", "sej", "sill", "fisk"], "yoghurt": ["yoghurt", "yogurt"], "glass": ["glass", "gladje"],
-  "bira": ["ol", "lageröl"], "fralla": ["brod", "smorgas"], "pommes": ["pommes", "franska"], "korv": ["korv", "falukorv", "varmkorv"],
+  "bira": ["ol", "lageröl"], "fralla": ["brod vitt fibrer"], "pommes": ["pommes", "franska"], "korv": ["korv", "falukorv", "varmkorv"],
 };
 
 // Kurerad mikronäring för snabb-livsmedlen — handplockade, verifierade SLV-bas-poster
