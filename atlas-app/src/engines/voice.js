@@ -149,6 +149,81 @@ export function parseSetSpeech(text) {
  * API:et i hemskärmsappen men gör ingenting alls, så en ren funktionsdetektering
  * ljuger. Därför stängs det av uttryckligen där.
  */
+/**
+ * NATIV RÖSTBRYGGA (Android-skalet).
+ *
+ * WebView får inte öppna mikrofonen på minst en telefon: getUserMedia kastar
+ * NotReadableError och Androids egen mikrofonhistorik visar att appen aldrig
+ * nådde hårdvaran. Skalet exponerar därför operativsystemets egen
+ * taligenkänning som `window.AskrNative`, och den här adaptern får den att se
+ * ut precis som webbläsarens SpeechRecognition.
+ *
+ * Poängen med att härma gränssnittet i stället för att skriva en andra väg
+ * genom koden: tolkningen (parseSetSpeech) och all felhantering nedanför är
+ * densamma. Bara ordens ursprung skiljer.
+ */
+// Svaret memoiseras. `tillgänglig()` är ett SYNKRONT anrop över JS↔Java-bryggan
+// som i sin tur gör SpeechRecognizer.isRecognitionAvailable() — ett binder-anrop
+// mot en annan process. hasNativeVoice() nås från voiceSupport(), som vyerna
+// anropar vid varje omritning, så utan minne blir det ett processhopp per
+// rendering mitt i ett pass. Att enheten skulle få eller tappa taligenkänning
+// medan appen är igång är inte ett fall värt att betala för.
+//
+// null = inte frågat än. Nollställs av _glömNativRöst() i testerna.
+let nativSvar = null;
+
+export function hasNativeVoice() {
+  if (nativSvar !== null) return nativSvar;
+  try {
+    nativSvar = typeof window !== "undefined" && !!window.AskrNative
+      && typeof window.AskrNative.starta === "function"
+      && !!window.AskrNative.tillgänglig();
+  } catch (e) { nativSvar = false; }
+  return nativSvar;
+}
+
+/** Endast för tester: glöm det memoiserade svaret. */
+export function _glömNativRöst() { nativSvar = null; }
+
+/** Konstruktor med samma yta som SpeechRecognition: lang, start, stop, onresult, onerror, onend. */
+function NativRecognition() {
+  this.lang = "sv-SE";
+  this.onresult = null; this.onerror = null; this.onend = null;
+  this._aktiv = false;
+}
+NativRecognition.prototype.start = function () {
+  const jag = this;
+  this._aktiv = true;
+  // Java svarar genom att anropa de här. Formen på ev.results[0] efterliknar
+  // webbläsarens, så koden nedanför inte behöver veta varifrån orden kom.
+  window.__askrRöstResultat = function (alternativ) {
+    if (!jag._aktiv) return;
+    const lista = (alternativ || []).map(t => ({ transcript: t, confidence: 1 }));
+    jag.onresult && jag.onresult({ results: [lista] });
+  };
+  window.__askrRöstFel = function (kod) {
+    if (!jag._aktiv) return;
+    jag.onerror && jag.onerror({ error: kod });
+  };
+  window.__askrRöstSlut = function () {
+    if (!jag._aktiv) return;
+    jag._aktiv = false;
+    jag.onend && jag.onend();
+  };
+  try { window.AskrNative.starta(this.lang); }
+  catch (e) { this.onerror && this.onerror({ error: "start-misslyckades" }); }
+};
+NativRecognition.prototype.stop = function () {
+  this._aktiv = false;
+  try { window.AskrNative.stoppa(); } catch (e) {}
+};
+
+/** Taligenkännaren som ska användas: skalets nativa om den finns, annars webbläsarens. */
+function hämtaRecognition() {
+  if (hasNativeVoice()) return NativRecognition;
+  return (typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition)) || null;
+}
+
 export function voiceSupport() {
   if (typeof window === "undefined") return { ok: false, reason: "ingen-window", note: "" };
   // HÄR LÅG EN GENERELL AVSTÄNGNING FÖR INSTALLERADE ANDROID-APPAR.
@@ -165,7 +240,7 @@ export function voiceSupport() {
   //     tillverkare skiljer sig — en telefon är inte alla telefoner.
   //
   // Knappen försöker nu, och micReady förklarar ärligt när den inte kan.
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const Rec = hämtaRecognition();
   if (!Rec) return {
     ok: false, reason: "saknas",
     note: "Den här webbläsaren har inte taligenkänning. Chrome på Android fungerar.",
@@ -256,6 +331,13 @@ export function createSetListener({ onResult, onError, onEnd, timeoutMs = 8000 }
   // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
   // Spåret läggs FÖRE anropet så vi vet om appen dog här.
   markVoiceAttempt();
+  // Den nativa vägen går inte genom WebViewens mikrofon alls — operativsystemet
+  // spelar in. Att fråga getUserMedia först vore att kontrollera en dörr vi
+  // inte tänker gå igenom, och den dörren är dessutom just den som är låst.
+  if (hasNativeVoice()) {
+    clearVoiceAttempt();
+    return _startcreateSetListener({ onResult, onError, onEnd, timeoutMs });
+  }
   let avbruten0 = false, stoppaInre = null;
   micReady().then(m => {
     if (avbruten0) return;
@@ -269,7 +351,7 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
   const stöd = voiceSupport();
   if (!stöd.ok) { onError && onError(stöd.reason, stöd.note); return () => {}; }
 
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const Rec = hämtaRecognition();
   let rec, klar = false, vakt = null;
 
   const städa = () => { if (vakt) { clearTimeout(vakt); vakt = null; } };
@@ -337,6 +419,11 @@ export function createDictation({ onResult, onError, onEnd, timeoutMs = 12000 } 
   // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
   // Spåret läggs FÖRE anropet så vi vet om appen dog här.
   markVoiceAttempt();
+  // Samma sak här: den nativa vägen rör aldrig WebViewens mikrofon.
+  if (hasNativeVoice()) {
+    clearVoiceAttempt();
+    return _startcreateDictation({ onResult, onError, onEnd, timeoutMs });
+  }
   let avbruten0 = false, stoppaInre = null;
   micReady().then(m => {
     if (avbruten0) return;
@@ -350,7 +437,7 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
   const stöd = voiceSupport();
   if (!stöd.ok) { onError && onError(stöd.reason, stöd.note); return () => {}; }
 
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const Rec = hämtaRecognition();
   let rec, klar = false, vakt = null;
   const städa = () => { if (vakt) { clearTimeout(vakt); vakt = null; } };
   const avsluta = () => { if (klar) return; klar = true; städa(); try { rec && rec.stop(); } catch (e) {} onEnd && onEnd(); };
