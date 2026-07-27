@@ -60,8 +60,13 @@ HTML:en växer. `dist-atlas2/atlas2.html` gick 1 177 → 1 385 kB (gzip 268 → 
 när de fem identitetsfilerna bäddades in.
 
 **Importeras filen inte av något som faktiskt renderas skakas den bort** —
-Rollup tar inte med död kod. `askr-symbol.webp` importeras av `brand.jsx` men
-ligger i en variant som inget bygge ritar, så den skickas inte med i någon
-HTML. Symbolen når appen via `public/`-kopian (faviconen) i stället.
+Rollup tar inte med död kod. Det hände `askr-symbol.webp`: den importerades av
+`brand.jsx` i en variant som inget bygge ritade, så den nådde aldrig någon
+HTML. Importen är borttagen och src-kopian raderad.
+
+**Symbolen ligger därför bara i `atlas-app/public/`**, och används som favicon
+av `atlas2.html`, landningssidan och testarsidan. Den ska INTE återskapas under
+`src/assets/brand/` förrän något faktiskt renderar den — två kopior av samma
+fil kan glida isär, och den som inte importeras skickas ändå inte med.
 
 `brand/` i repo-roten rör aldrig bygget.
