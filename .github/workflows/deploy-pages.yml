@@ -46,6 +46,10 @@ jobs:
       - name: Installera beroenden
         run: npm ci
 
+      - name: Kontrollera att testskyddet inte krympt
+        working-directory: atlas-app
+        run: node scripts/kontrollera-testskydd.mjs
+
       - name: Kör tester (rött stoppar publiceringen)
         # p5-realmode är känt instabil i full svit men grön isolerat (se
         # CLAUDE.md). En omkörning krävs så att den flakigheten inte blockerar

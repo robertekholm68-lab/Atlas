@@ -10,11 +10,14 @@
 > Projektfiler utanför repot är överlämningar, inte status. Bär de siffror
 > eller backlogg är de fel per definition.
 >
-> **Molnpaket ska INTE röra den här filen.** En gren skapas mot ett läge och
-> mergas mot ett senare; ändringar här blir då tysta återställningar som git
-> inte flaggar, eftersom raderna inte krockar. Det har hänt två gånger — båda
-> gångerna hade BLOCKERAT-avsnittet och testantalet försvunnit utan varning.
-> Filen skrivs i stället vid varje merge, av den som mergar, mot färsk main.
+> **HÅRD REGEL: molnpaket innehåller ALDRIG den här filen.** Beslutad
+> 2026-07-27 efter fem tysta återställningar i rad. Skälet är strukturellt och
+> går inte att disciplinera bort: molnet kan bara känna repots tillstånd vid
+> PUSH, aldrig vid MERGE, och i det glappet skrivs allt som hänt emellan över.
+> Git flaggar ingenting, eftersom raderna inte krockar.
+>
+> Filen skrivs av den som mergar, mot färsk main, i samma PR som ändringen.
+> Bär ett molnpaket den här filen ska ändringen kastas, inte lösas.
 
 Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
 den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
@@ -96,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 831 i 76 filer |
+| Tester (vitest) | 844 i 77 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -235,6 +238,21 @@ så "frallor" hittar fralla, och stavfelstolerans. Alla tre byggmålen delar den
 startade arbetet: läsk får inte ge Fläskfilé, fil inte Kycklingfilé, korv inte
 Korvbröd. Den filen låg tidigare bredvid den raderade motorn och skyddet hade
 försvunnit med den. Sökningens övriga egenskaper täcks av `meal-parts.test.js`.
+
+**Två mekaniska skydd — de förlitar sig inte på uppmärksamhet.**
+
+- **`scripts/kontrollera-testskydd.mjs`** körs i CI före testerna och jämför
+  antalet testfall mot golvet i `scripts/testgolv.json`. En grön svit bevisar
+  att det som testas fungerar, men säger ingenting om vad som SLUTAT testas —
+  och regressionsskyddet för ordgränsen raderades två gånger utan att något
+  blev rött. Kontrollen förbjuder inte borttagning: golvet ska sänkas i samma
+  commit med skäl. Skillnaden är mellan ett beslut och en olycka.
+- **`__tests__/data-integritet.test.js`** letar tomma platser i datamodulernas
+  arrayer. `FOOD_KB` bar ett hål efter ett `},,` — `length` sa 65 mot 64
+  verkliga poster. `forEach` och `filter` hoppar över hål, vilket råkade vara
+  precis de metoder koden använde, så sviten var grön. `for...of` hade gett
+  `undefined`. Hålet återinfördes dessutom en gång efter att det rättats,
+  genom att filen togs i sin helhet från en gren som saknade fixen.
 
 **Streckkodsläsare i 2.0.** `Streckkod.jsx` — motorn `lookupBarcode` fanns
 redan och slår upp produkten hos Open Food Facts. Två saker är värda att veta:
