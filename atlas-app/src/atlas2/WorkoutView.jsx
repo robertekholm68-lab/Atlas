@@ -21,6 +21,7 @@ import { buildPostSession, attachReason, reasonSignal } from "../engines/post-se
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
+import { tempoPerKm } from "../data/sportLibrary.js";
 
 /** Bygger passets övningslista med förslag ur historiken. */
 export function buildLive(program, workout, sessions) {
@@ -383,8 +384,17 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
       <div style={{ ...card, marginTop: 16, display: "flex", padding: "12px 4px" }}>
         {/* Ett sportpass har inga sets. Att visa "0 set · 0 kg" vore att svara
             på en fråga som inte ställdes — kortet byter innehåll i stället. */}
+        {/* Angavs en distans är DEN det man minns av passet — den byter plats
+            med muskelräkningen i stället för att lägga till en fjärde cell:
+            fyra celler blir för trånga på en iPhone SE. Tempot står som enhet
+            när det går att räkna, och påstås inte annars. */}
         {(session.sport
-          ? [["Tid", minuter, "min"], ["Kondition", Math.round(session.cardioLoad || 0), "last"], ["Muskler", Object.keys(session.muscleLoads || {}).length, "belastade"]]
+          ? [["Tid", minuter, "min"],
+             ["Kondition", Math.round(session.cardioLoad || 0), "last"],
+             session.distanceKm
+               ? ["Distans", String(session.distanceKm).replace(".", ","),
+                  tempoPerKm(session.distanceKm, minuter) ? `km · ${tempoPerKm(session.distanceKm, minuter)}/km` : "km"]
+               : ["Muskler", Object.keys(session.muscleLoads || {}).length, "belastade"]]
           : [["Tid", minuter, "min"], ["Set", sets.length, "totalt"], ["Volym", Math.round(volym), "kg"]]
         ).map(([l, v, e], i) => (
           <div key={l} style={{ flex: 1, textAlign: "center", borderLeft: i ? `1px solid ${C.border}` : "none" }}>

@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 853 i 78 filer |
+| Tester (vitest) | 865 i 79 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -210,6 +210,29 @@ Passet går genom `buildSession` som alla andra: `sport: true`,
 posten `id` och v3-backupen tappar den. `minutes` är ett tillägg mot gamla
 appens form, med flit — den sparar inte tiden, och att räkna baklänges ur
 `cardioLoad` hade krävt intensitet och cardio-faktor som inte heller sparas.
+
+**Distans loggas på de pass där den betyder något.** Fältet dyker upp för 23
+aktiviteter — löpning, cykling, simning, rodd, skidor, och maskinerna (man
+springer lika långt på ett löpband). Vilka det är står i **datan**
+(`DISTANS_SPORTER` i `sportLibrary.js`), inte som ett villkor i vyn: kategorin
+duger inte som filter, eftersom segling ligger i samma grupp som simning och
+curling i samma som längdskidåkning. Fältet är valfritt och sparas bara när det
+fyllts i — `distanceKm` finns inte alls på ett pass utan distans, ingen tyst
+nolla. Tempot (min/km) räknas när både distans och tid finns, och påstås inte
+annars.
+
+**Distansen påverkar INTE belastningen**, och ett testfall låser fast det.
+`cardioLoad` räknas ur tid och intensitet; att låta kilometer styra hade krävt
+en modell för hur snabbt just den här personen springer — en gissning förklädd
+till mätning. Distansen loggas för att den är sann.
+
+Två fällor som testerna bevakar: `DISTANS_SPORTER` innehåller **biblioteks-id:n**
+men vyn frågar på `resolveActivity(...).libId || .id`, så appens egna
+cardio-poster går via `LEGACY_MAP` (`lopning` → `running`). Pekar mappningen
+fel dyker fältet aldrig upp för löpning, och en kontroll enbart mot
+`SPORT_META` hade förblivit grön. Dessutom är `sportLibrary.js` **genererad**
+("Genererad från master-library v1") — regenereras den utan de handskrivna
+raderna sist i filen faller distanstestet med importfel, alltså högljutt.
 
 Ärligheten följer med: aktiviteter utan detaljmodell (`fromLibrary`) märks som
 **kategoriestimat** i klartext, och **kalorier uppskattas aldrig** — appen har
@@ -513,12 +536,12 @@ Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TIO stycken, 140 OK-steg** (alla körda 2026-07-27,
+**Askr 2.0:s DOM-skript — TIO stycken, 150 OK-steg** (alla körda 2026-07-27,
 exit 0, inga page errors):
 
 | Skript i `scripts/` | Steg | Täcker |
 |---|---|---|
-| `verify-atlas2-sport.mjs` | 25 | sportloggning, lagring med id, readiness-effekt |
+| `verify-atlas2-sport.mjs` | 35 | sportloggning, distans, lagring med id, readiness |
 | `verify-atlas2-layout.mjs` | 24 | tre bredder: SE, iPhone 14, desktop |
 | `verify-atlas2-passredigering.mjs` | 16 | rätta/radera pass, varför-frågan |
 | `verify-atlas2.mjs` | 14 | näringsmål, snabblogg, persistens |
@@ -672,6 +695,13 @@ aldrig göms bakom en utvilad.
   `x != null ? x : fallback`.
 - **Set utan vikt** ger noll muskellast, vilket får appen att påstå att inget
   pass finns. 2.0 spärrar loggning tills vikt är satt för yttre last.
+- **Ett verifieringssteg kan peka på fel vy och ändå bli grönt.** `App2` renderar
+  `if (klart) return <DoneView/>` FÖRE fliklogiken, så ett klick i bottennavet
+  gör ingenting medan kvittot ligger uppe. `verify-atlas2-sport.mjs` klickade
+  "Framsteg" direkt efter ett loggat pass och mätte sedan kvittot i tron att
+  det var framstegsvyn — två gröna rader i flera veckor. Kvittot säger också
+  "Löpning" och "45 min", så assertionen kunde inte se skillnad. Stäng vyn
+  explicit, och lägg ett steg som bevisar att navigeringen faktiskt skett.
 - **`toFixed` i en loop ackumulerar fel.** Stegknappen i passvyn avrundade till
   en decimal vid varje tryck, så 61,25 blev 63,8 blev 66,3. Avrunda till
   rastret vid beräkningen (`Math.round(w * 4) / 4`) och formatera först vid

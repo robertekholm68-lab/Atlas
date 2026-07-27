@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
-import { SPORT_CATEGORIES, SPORT_META, LEGACY_MAP } from "../data/sportLibrary.js";
+import { harDistans, tempoPerKm, SPORT_CATEGORIES, SPORT_META, LEGACY_MAP } from "../data/sportLibrary.js";
 import { resolveActivity, SPORT_INTENSITY } from "../data/exercises.js";
 import { computeSportLoad, computeCardioLoad } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
@@ -66,7 +66,7 @@ export function aktiviteterPerKategori() {
  * `schemaV` och `createdAt`, och respekterar `muscleLoads` när de skickas in.
  * Utan id tappar v3-backupen posten och synken kan inte se den.
  */
-export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.now()) {
+export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.now(), km = null) {
   if (!aktivitet || !(minuter > 0)) return null;
   const im = SPORT_INTENSITY[intensitet];
   if (!im) return null;
@@ -81,6 +81,11 @@ export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.no
     // det hade blivit en gissning. Fältet är additivt; gamla appen läser det
     // inte och bryr sig inte om att det finns.
     minutes: minuter,
+    // Distansen påverkar INTE belastningen — cardioLoad räknas ur tid och
+    // intensitet. Att låta kilometer styra hade krävt en modell för hur snabbt
+    // just den här personen springer, alltså en gissning förklädd till mätning.
+    // Den sparas för att den är sann, och för att tempot går att räkna ur den.
+    ...(km > 0 ? { distanceKm: km } : {}),
     cardioLoad: computeCardioLoad(aktivitet, minuter, im, hiit),
     muscleLoads: computeSportLoad(aktivitet, minuter, im, hiit),
     source: "sport",
@@ -96,11 +101,16 @@ export function SportView({ onLogg, onClose }) {
   const [minuter, setMinuter] = useState(45);
   const [intensitet, setIntensitet] = useState(INTENSITETER[1] || INTENSITETER[0]);
   const [hiit, setHiit] = useState(false);
+  const [km, setKm] = useState("");
 
   const aktivitet = useMemo(() => (valdId ? resolveActivity(valdId) : null), [valdId]);
   const förhands = useMemo(
-    () => (aktivitet ? byggSportpass(aktivitet, minuter, intensitet, hiit) : null),
-    [aktivitet, minuter, intensitet, hiit]
+    () => (aktivitet ? byggSportpass(aktivitet, minuter, intensitet, hiit, Date.now(), parseFloat(String(km).replace(",", ".")) || null) : null),
+    [aktivitet, minuter, intensitet, hiit, km]
+  );
+  const tempo = useMemo(
+    () => tempoPerKm(parseFloat(String(km).replace(",", ".")), minuter),
+    [km, minuter]
   );
   const toppmuskler = useMemo(() => {
     if (!förhands) return [];
@@ -191,6 +201,33 @@ export function SportView({ onLogg, onClose }) {
             <button onClick={() => setMinuter(m => m + 5)} aria-label="Öka tiden"
               style={{ ...btnGhost, minWidth: 44, minHeight: 44, padding: 0 }}>+</button>
           </div>
+
+          {/* ── DISTANS ──
+              Bara för aktiviteter där kilometer är ett naturligt mått. Vilka
+              det är står i datan (DISTANS_SPORTER), inte som ett villkor här —
+              kategorin duger inte, eftersom segling och curling ligger i samma
+              grupper som simning och längdskidåkning. */}
+          {aktivitet && harDistans(aktivitet.libId || aktivitet.id) && (
+            <>
+              <div style={{ ...label(), marginTop: 16 }}>Distans</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <input value={km} inputMode="decimal" aria-label="Distans i kilometer"
+                  onChange={e => setKm(e.target.value.replace(/[^\d.,]/g, ""))}
+                  placeholder="valfritt"
+                  style={{
+                    flex: 1, minWidth: 0, padding: "12px 14px", borderRadius: 12, minHeight: 44,
+                    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                    fontFamily: MONO, fontSize: 16, textAlign: "center",
+                  }} />
+                <span style={{ fontSize: 13, color: C.muted, width: 30 }}>km</span>
+              </div>
+              {tempo && (
+                <div style={{ fontFamily: MONO, fontSize: 12, color: C.lime, marginTop: 8, textAlign: "center" }}>
+                  {tempo} min/km
+                </div>
+              )}
+            </>
+          )}
 
           {/* ── INTENSITET ── */}
           <div style={{ ...label(), marginTop: 16 }}>Intensitet</div>

@@ -103,12 +103,40 @@ await kolla("muskler listas i förhandsvisningen", page.evaluate(() =>
 await kolla("inga kalorier gissas", page.evaluate(() =>
   !/kcal|kalori/i.test(document.body.innerText || "")));
 
+// ── DISTANS ──
+// Löpning når vyn via appens EGET id ("lopning" → libId "running"), så det här
+// steget prövar samma väg som en användare tar — inte biblioteks-id:t direkt.
+const distansfält = () => page.evaluate(() =>
+  !![...document.querySelectorAll("input")].some(i => (i.getAttribute("aria-label") || "").includes("Distans")));
+await kolla("löpning får ett distansfält", distansfält());
+await kolla("ingen nolla i fältet — distans är valfritt", page.evaluate(() => {
+  const i = [...document.querySelectorAll("input")].find(x => (x.getAttribute("aria-label") || "").includes("Distans"));
+  return !!i && i.value === "";
+}));
+await kolla("inget tempo påstås innan distansen finns", page.evaluate(() =>
+  !/min\/km/i.test(document.body.innerText || "")));
+
+// Skriv 10 km. Passet står på 45 minuter, alltså 4:30 min/km.
+await page.evaluate(() => {
+  const i = [...document.querySelectorAll("input")].find(x => (x.getAttribute("aria-label") || "").includes("Distans"));
+  const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+  s.call(i, "10"); i.dispatchEvent(new Event("input", { bubbles: true }));
+});
+await page.waitForTimeout(250);
+await kolla("tempot räknas ur distans och tid (4:30 min/km)", finnsText("4:30 min/km"));
+// Distansen får INTE röra belastningen — den läses av innan och efter.
+const lastFöre = await page.evaluate(() =>
+  ((document.body.innerText || "").match(/(\d+)\s*konditionslast/i) || [])[1] || null);
+
 // ── SPARA ──
 await klickText("Logga löpning");
 await page.waitForTimeout(600);
 await kolla("kvitto visas efter sportpasset", finnsText("Passet är loggat"));
 await kolla("kvittot kraschar inte utan set — visar kondition i stället",
   page.evaluate(() => /kondition/i.test(document.body.innerText || "")));
+// Man loggade tio kilometer; kvittot ska nämna dem, inte bara antalet muskler.
+await kolla("kvittot visar distansen", finnsText("Distans"));
+await kolla("kvittot bär tempot som enhet", finnsText("4:30/km"));
 
 // ── LAGRING: passet måste nå fram, med id ──
 const sparat = await page.evaluate(() => {
@@ -116,7 +144,8 @@ const sparat = await page.evaluate(() => {
     const l = JSON.parse(localStorage.getItem("atlas.v3.sessions") || "[]");
     const s = l.find(x => x && x.sport);
     return s ? { id: s.id, source: s.source, sets: (s.sets || []).length,
-      muskler: Object.keys(s.muscleLoads || {}).length, cardio: s.cardioLoad, min: s.minutes } : null;
+      muskler: Object.keys(s.muscleLoads || {}).length, cardio: s.cardioLoad, min: s.minutes,
+      km: s.distanceKm } : null;
   } catch { return null; }
 });
 await kolla("passet ligger i atlas.v3.sessions", Promise.resolve(!!sparat));
@@ -126,15 +155,31 @@ await kolla("passet har inga set", Promise.resolve(!!(sparat && sparat.sets === 
 await kolla("passet bär muskellast som kartan kan färga", Promise.resolve(!!(sparat && sparat.muskler > 0)));
 await kolla("passet bär konditionslast", Promise.resolve(!!(sparat && sparat.cardio > 0)));
 await kolla("passet bär minuterna", Promise.resolve(!!(sparat && sparat.min > 0)));
+await kolla("passet bär distansen", Promise.resolve(!!(sparat && sparat.km === 10)));
+// Grinden mot att kilometer smyger in i belastningen. Konditionslasten som
+// stod i förhandsvisningen INNAN distansen skrevs in ska vara den som sparades.
+await kolla(`distansen rörde inte belastningen (${lastFöre} kvar)`,
+  Promise.resolve(lastFöre != null && Math.round(sparat.cardio) === Number(lastFöre)));
 
 // ── FRAMSTEG: minuter i stället för "0 set" ──
+// KVITTOT MÅSTE STÄNGAS FÖRST. App2 renderar `if (klart) return <DoneView/>`
+// före fliklogiken, så ett klick i bottennavet gör ingenting medan kvittot
+// ligger uppe. Utan det här steget mätte de två kontrollerna nedan KVITTOT och
+// inte framstegsvyn — och gick igenom, eftersom kvittot också säger "Löpning"
+// och "45 min". En grön rad som pekar på fel vy är värre än ingen rad alls.
+await klickText("Tillbaka till hem");
+await page.waitForTimeout(400);
 await klickText("Framsteg");
 await page.waitForTimeout(500);
+await kolla("framstegsvyn är verkligen framme (inte kvittot kvar)", page.evaluate(() =>
+  !/passet är loggat/i.test(document.body.innerText || "")));
 await kolla("framsteg listar sportpasset", finnsText("Löpning"));
 await kolla("framsteg visar minuter, inte '0 set'", page.evaluate(() => {
   const t = document.body.innerText || "";
   return /\d+\s*min/i.test(t) && !/0\s*set/i.test(t);
 }));
+await kolla("framsteg visar distansen bredvid tiden", page.evaluate(() =>
+  /10 km/i.test(document.body.innerText || "")));
 
 // ── EFFEKTEN: readiness ska faktiskt ha påverkats ──
 await klickText("Hem");
