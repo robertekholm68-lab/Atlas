@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost } from "./design.js";
 import { updateSet, deleteSet, sessionHasLoad } from "../engines/session.js";
+import { formatVolume } from "../engines/index.js";
 import { sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
 
@@ -52,7 +53,7 @@ export function SessionSheet({ session, onSpara, onRadera, onClose }) {
   const taBortSet = id => setS(cur => deleteSet(cur, id));
 
   const ändrat = JSON.stringify(s.sets) !== JSON.stringify(session.sets);
-  const volym = Math.round(sessionVolume(s));
+  const volym = sessionVolume(s);
   const last = Math.round(Object.values(s.muscleLoads || {}).reduce((a, b) => a + b, 0));
   const tomt = !sessionHasLoad(s);
 
@@ -76,7 +77,7 @@ export function SessionSheet({ session, onSpara, onRadera, onClose }) {
       {/* Konsekvensen syns medan man skriver: volym och last räknas om vid varje
           knapptryck, så ändringen är aldrig ett mysterium förrän man sparat. */}
       <div style={{ ...card, marginTop: 14, display: "flex", padding: "13px 4px" }}>
-        {[["Set", sets.length, "totalt"], ["Volym", volym, "kg"], ["Träningslast", last, "poäng"]].map(([l, v, e], i) => (
+        {[["Set", sets.length, "totalt"], ["Volym", formatVolume(volym), "kg"], ["Träningslast", last, "poäng"]].map(([l, v, e], i) => (
           <div key={l} style={{ flex: 1, textAlign: "center", borderLeft: i ? `1px solid ${C.hairline}` : "none" }}>
             <div style={label()}>{l}</div>
             <div style={{ ...hdr(20), marginTop: 3 }}>{v}</div>

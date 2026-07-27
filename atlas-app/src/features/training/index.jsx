@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { BodyMapCard } from "../body-map/index.jsx";
 import { Card, CardLabel, Stepper } from "../../components/common/index.jsx";
-import { coachFor, progressionSuggestion, subExercise, lastPerformance, formatWeight } from "../../engines/index.js";
+import { coachFor, progressionSuggestion, subExercise, lastPerformance, lastSessionSets, formatWeight, formatVolume } from "../../engines/index.js";
 import { buildPostSession, attachReason } from "../../engines/post-session.js";
 import { updateSet as sessionUpdateSet, deleteSet as sessionDeleteSet } from "../../engines/session.js";
 import { CUES, EQUIP_ALL, EXERCISES, EX_GROUPS, WORKOUTS } from "../../data/exercises.js";
@@ -170,7 +170,7 @@ function PostSessionModal({ session, muscleStates, recommendation, onClose, sess
   const sets = session.sets || [];
   const totalSets = sets.length;
   const exCount = new Set(sets.map(s => s.exerciseId)).size;
-  const volume = Math.round(sets.reduce((a, s) => a + ((s.weight || 0) * (s.reps || 0)), 0));
+  const volume = sets.reduce((a, s) => a + ((s.weight || 0) * (s.reps || 0)), 0);
   const loads = session.muscleLoads || {};
   const totalLoad = Math.round(Object.values(loads).reduce((a, b) => a + b, 0));
   const trained = Object.entries(loads).filter(([, v]) => v > 5).sort(([, a], [, b]) => b - a).slice(0, 6);
@@ -191,7 +191,7 @@ function PostSessionModal({ session, muscleStates, recommendation, onClose, sess
         <div style={{ padding: "18px 22px 22px" }}>
           {/* nyckeltal */}
           <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-            {volume > 0 && <StatTile icon={<Dumbbell size={16} />} value={volume.toLocaleString("sv-SE")} unit="kg" label="Volym" />}
+            {volume > 0 && <StatTile icon={<Dumbbell size={16} />} value={formatVolume(volume)} unit="kg" label="Volym" />}
             <StatTile icon={<Repeat size={16} />} value={totalSets} label={`set · ${exCount} öv`} />
             <StatTile icon={<Flame size={16} />} value={totalLoad} label="Träningslast" color={T.accent.warning} />
           </div>

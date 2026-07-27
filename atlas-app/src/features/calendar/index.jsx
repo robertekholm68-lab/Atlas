@@ -1,7 +1,7 @@
 // FEATURE: Calendar
 import { useState } from "react";
 import { Card, CardLabel } from "../../components/common/index.jsx";
-import { sessionVolume } from "../../engines/index.js";
+import { sessionVolume, formatKg, formatVolume } from "../../engines/index.js";
 import { EditSessionModal } from "../training/index.jsx";
 import { T, btn } from "../../data/tokens.js";
 
@@ -83,7 +83,7 @@ function CalendarView({ sessions, setSessions = null, bodyweight, activeProgram 
             <div key={s.id} onClick={canEdit ? () => setEditing(s) : undefined} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 11px", background: T.bg.raised, borderRadius: 8, cursor: canEdit ? "pointer" : "default" }}>
               <div><div style={{ fontSize: 13.5, color: T.text.primary }}>{s.title}</div>
                 <div style={{ fontSize: 11, color: T.text.muted }}>{new Date(s.completedAt).toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "short" })}{s.sets && s.sets.length ? ` · ${s.sets.length} set` : ""}{gpsLine(s)}{canEdit ? " · redigera" : ""}</div></div>
-              <span style={{ fontSize: 12, color: T.accent.primary }}>{s.distanceKm ? `${s.distanceKm.toFixed(2)} km` : Math.round(sessionVolume(s))}</span>
+              <span style={{ fontSize: 12, color: T.accent.primary }}>{s.distanceKm ? `${formatKg(s.distanceKm)} km` : formatVolume(sessionVolume(s))}</span>
             </div>
           ))}
         </div>

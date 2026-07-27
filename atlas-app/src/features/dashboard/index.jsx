@@ -1,7 +1,7 @@
 // FEATURE: Dashboard
 import { Card, CardLabel, Gauge, SemiGauge, Sparkline, Icon, SportIcon } from "../../components/common/index.jsx";
 import { MOCK } from "../../data/demo.js";
-import { daysLeft, goalProgress, groupWeeklySets, volumeStatus } from "../../engines/index.js";
+import { daysLeft, goalProgress, groupWeeklySets, volumeStatus, formatVolume } from "../../engines/index.js";
 import { SPORTS, CARDIO, resolveActivity } from "../../data/exercises.js";
 import { GOAL_CATS, NUTRITION_GOALS } from "../../data/foods.js";
 import { STATUS_LABEL, STATUS_COLOR, MISSION_TYPES } from "../../engines/mission.js";
@@ -652,7 +652,7 @@ function DashLatest({ sessions }) {
         <div style={{ width: 96, height: 64, borderRadius: 9, background: `linear-gradient(135deg,${T.bg.muted},${T.bg.raised})`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}><Icon name="dumbbell" size={26} /></div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{s ? s.title : "Inget pass än"}</div>
-          <div style={{ fontSize: 12, color: T.text.muted, marginTop: 3 }}>{dur != null ? `${dur} min · ` : ""}{vol.toLocaleString("sv-SE")} kg volym</div>
+          <div style={{ fontSize: 12, color: T.text.muted, marginTop: 3 }}>{dur != null ? `${dur} min · ` : ""}{formatVolume(vol)} kg volym</div>
           <button style={{ background: "none", border: "none", padding: 0, color: T.accent.primary, marginTop: 8, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>Prestanda ›</button>
         </div>
       </div>
