@@ -62,6 +62,21 @@ describe("komponenterna räcker till en vanlig svensk måltid", () => {
     }
   });
 
+  it("banken har INGA hål — en gles array döljer sig för forEach", () => {
+    // Ett dubbelkomma i litteralen skapar en tom plats. FOOD_KB.length räknar
+    // den, men forEach hoppar över den — så en post kunde försvinna utan att
+    // något test märkte det. Mitt eget test kontrollerade bara length och
+    // passerade därför på ren tur. Det här kontrollerar innehållet.
+    let besökta = 0;
+    FOOD_KB.forEach(() => besökta++);
+    expect(besökta).toBe(FOOD_KB.length);
+    FOOD_KB.forEach((x, i) => {
+      expect(x, `plats ${i}`).toBeTruthy();
+      expect(Array.isArray(x.k) && x.k.length > 0, `plats ${i} saknar nyckelord`).toBe(true);
+      expect(typeof x.kcal, `plats ${i} saknar kcal`).toBe("number");
+    });
+  });
+
   it("banken har vuxit men är fortfarande en handfull, inte ett register", () => {
     // Poängen är vanliga vardagsmåltider, inte fullständighet. En lista som
     // försöker täcka allt blir omöjlig att underhålla.
