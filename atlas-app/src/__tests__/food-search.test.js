@@ -72,6 +72,36 @@ describe("rangordningen", () => {
   });
 });
 
+describe("sammanskrivning — svenskan tillåter båda formerna", () => {
+  it("\"pyttipanna\" hittar \"Pytt i panna\"", () => {
+    // Andra fyndet från riktig användning. Registret har valt särskrivningen,
+    // folk skriver ihop. Det drabbar varje rätt vars namn har mellanslag.
+    const r = searchFoods("pyttipanna", FOOD_INDEX);
+    expect(r.träffar.length).toBeGreaterThan(0);
+    expect(r.träffar[0].name).toMatch(/^Pytt i panna/i);
+  });
+
+  it("båda formerna ger samma första träff", () => {
+    expect(först("pyttipanna")).toBe(först("pytt i panna"));
+  });
+
+  it("fungerar för andra särskrivna rätter", () => {
+    expect(först("janssonsfrestelse")).toMatch(/janssons frestelse/i);
+  });
+
+  it("sammanskrivningen matchar bara från BÖRJAN — annars återuppstår läsk-buggen", () => {
+    // "fläskfilé" innehåller "läsk". Tilläts includes skulle Fläskfilé komma
+    // tillbaka som träff på läsk, vilket var hela felet från början.
+    expect(först("läsk")).toMatch(/^Läsk/i);
+    expect(först("fil")).toMatch(/filmjölk/i);
+  });
+
+  it("kräver minst fyra tecken, så korta ord inte träffar allt", () => {
+    const r = searchFoods("pyt", FOOD_INDEX);
+    r.träffar.forEach(f => expect(f.name.toLowerCase()).toContain("pyt"));
+  });
+});
+
 describe("vardagsspråket", () => {
   it("\"fralla\" hittar ljust matbröd", () => {
     const r = searchFoods("fralla", FOOD_INDEX);
