@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 844 i 77 filer |
+| Tester (vitest) | 853 i 78 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -176,6 +176,25 @@ gång i `App2` och matas till hem, coach och framsteg, så vyerna inte kan glida
 isär. Den gatas av `logReliability` (≥3 loggade dagar av 5); under tröskeln
 blir modifieraren `{ mod: 0 }` och kosten påverkar ingenting. Arket säger rakt
 ut när kosten inte räknas in och varför.
+
+**Viktrastret är 0,25 kg, förankrat i hela kilon.** Hittat med telefonen i
+handen på ett gym: displayen visade 61,3 och 61,8 — vikter som inte finns.
+Två fel som förstärkte varandra. `roundInc` kvantiserade till 1,25 kg, så ett
+förslag aldrig kunde landa på ett helt kilo som inte var delbart med 1,25
+(61 blev 61,25, 63 blev 62,5). Ovanpå det körde stegknappen `.toFixed(1)` på
+varje tryck, vilket gjorde 63,75 till 63,8 — och felet ackumulerades:
+61,25 → 63,8 → 66,3 → 68,8. **Talet på skärmen var alltså inte den vikt som
+låg på stången**, och loggen är appens enda sanning: en logg som inte stämmer
+med verkligheten förgiftar volym, belastning och progression.
+
+`roundInc` snäpper nu till `Math.round(w * 4) / 4`, och `formatWeight` skriver
+talet utan falska decimaler (61 → "61", 61,25 → "61,25", saknad vikt → "—").
+Progressionen blir inte finkornigare av det: golvet i `progressionSuggestion`
+är fortfarande det vanliga steget (2,5 eller 1,25 kg beroende på övning), och
+taket 10 %/pass. Steglängden i passvyn byts genom att **trycka på siffran**
+(2,5 → 1,25 → 0,25 → 2,5) — en egen knapp under enheten sköt passvyn 33 px
+över skärmkanten på en iPhone SE. `roundInc` är delad, så bytet gäller alla
+tre byggmålen; demodatans vikter räknas om med samma raster.
 
 **Sport och cardio loggas.** `SportView` täpper till den största luckan mot
 gamla appen: sprang man en mil visste 2.0 ingenting, och readiness låg kvar för
@@ -494,7 +513,7 @@ Artefakter till `/mnt/user-data/outputs/`, källa zippas exklusive
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TIO stycken, 132 OK-steg** (alla körda 2026-07-27,
+**Askr 2.0:s DOM-skript — TIO stycken, 140 OK-steg** (alla körda 2026-07-27,
 exit 0, inga page errors):
 
 | Skript i `scripts/` | Steg | Täcker |
@@ -507,7 +526,7 @@ exit 0, inga page errors):
 | `verify-atlas2-matakut.mjs` | 11 | Rädda måltiden |
 | `verify-atlas2-mealprep.mjs` | 10 | veckomeny, inköpslista |
 | `verify-atlas2-readiness.mjs` | 9 | readiness-arket, tunt underlag |
-| `verify-atlas2-pass.mjs` | 6 | röstknappen i pågående pass |
+| `verify-atlas2-pass.mjs` | 14 | röstknappen + viktrastret i pågående pass |
 | `verify-atlas2-backup.mjs` | 6 | v3-backup: export, granska, ersätt |
 
 **Kör ALLA tio vid regression, inte ett urval.** `verify-atlas2.mjs` hade
@@ -653,6 +672,11 @@ aldrig göms bakom en utvilad.
   `x != null ? x : fallback`.
 - **Set utan vikt** ger noll muskellast, vilket får appen att påstå att inget
   pass finns. 2.0 spärrar loggning tills vikt är satt för yttre last.
+- **`toFixed` i en loop ackumulerar fel.** Stegknappen i passvyn avrundade till
+  en decimal vid varje tryck, så 61,25 blev 63,8 blev 66,3. Avrunda till
+  rastret vid beräkningen (`Math.round(w * 4) / 4`) och formatera först vid
+  utskrift — aldrig tvärtom. Fel som bara syns i siffran på skärmen är svårast
+  att upptäcka: sviten var grön, och det var en människa på ett gym som såg det.
 - **Testförorening:** omonterade React-rötter läcker mellan testfall.
   `p5-realmode` är instabil och faller ibland i full svit men är grön isolerat.
 - **Hooks efter villkorad return** ger React error #310. Alla hooks först.

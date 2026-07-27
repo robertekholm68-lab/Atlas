@@ -64,6 +64,55 @@ await kolla("röstknapp i passet renderas", finnsText("Säg set"));
 await klickText("Säg set"); await page.waitForTimeout(1200);
 await kolla("röstklick kraschar inte vyn", finnsText("Pågående pass"));
 
+// VIKTRASTRET. Buggen som gav det här skyddet hittades med telefonen i handen
+// på ett gym: displayen visade 61,3 och 61,8 — vikter som inte finns. Enhets-
+// testerna täcker roundInc och formatWeight; det här täcker att det som
+// faktiskt RENDERAS är en läggbar vikt, och att steglängden går att byta.
+const läsVikt = () => page.evaluate(() => {
+  const b = [...document.querySelectorAll("button")]
+    .find(x => /^Vikt /.test(x.getAttribute("aria-label") || ""));
+  return b ? { text: (b.innerText || "").trim(), etikett: b.getAttribute("aria-label") } : null;
+});
+// Första raden i knappen är talet, andra är "kg ±steg" (versaliserat via CSS).
+const talet = v => ((v && v.text) || "").split("\n")[0].trim();
+const påRastret = t => /^\d+(,(25|5|75))?$/.test(t);
+
+const öka = () => page.evaluate(() => {
+  const p = [...document.querySelectorAll("button")].find(x => x.getAttribute("aria-label") === "Öka");
+  p && p.click();
+});
+
+const v0 = await läsVikt();
+await kolla("vikten är en knapp med läsbar etikett", !!v0 && /steglängd/i.test(v0.etikett));
+// Utan historik finns inget förslag — och då ska det stå streck, inte en
+// påhittad nolla. (Ärlighetsregeln: hellre tomt än fejkat.)
+await kolla("utan förslag står det streck, inte 0", talet(v0) === "—");
+await kolla("steglängden syns vid enheten (±2,5 från start)", /±2,5/.test((v0 && v0.text) || ""));
+await öka(); await page.waitForTimeout(120);
+await kolla(`första klivet ger en läggbar vikt (${talet(await läsVikt())})`, påRastret(talet(await läsVikt())));
+
+// Tryck på siffran → nästa steglängd. Tre tryck ska vara ett varv.
+const bytSteg = () => page.evaluate(() => {
+  const b = [...document.querySelectorAll("button")]
+    .find(x => /^Vikt /.test(x.getAttribute("aria-label") || ""));
+  b && b.click();
+});
+await bytSteg(); await page.waitForTimeout(120);
+await kolla("tryck på siffran ger 1,25", /±1,25/.test(((await läsVikt()) || {}).text || ""));
+await bytSteg(); await page.waitForTimeout(120);
+await kolla("nästa tryck ger 0,25 — finjustering finns", /±0,25/.test(((await läsVikt()) || {}).text || ""));
+
+// Ett kliv om 0,25 ska ge exakt 0,25 mer, inte en avrundad decimalsoppa.
+const före = talet(await läsVikt());
+await öka(); await page.waitForTimeout(120);
+const efter = talet(await läsVikt());
+const tal = t => parseFloat(t.replace(",", "."));
+await kolla(`0,25-klivet landar rätt (${före} → ${efter})`,
+  påRastret(efter) && Math.abs(tal(efter) - tal(före) - 0.25) < 1e-9);
+
+await bytSteg(); await page.waitForTimeout(120);
+await kolla("varvet är slutet — tillbaka på 2,5", /±2,5/.test(((await läsVikt()) || {}).text || ""));
+
 // Stega vikt + logga ett set som vanligt (rösten är aldrig enda vägen)
 await page.evaluate(() => {
   const plus = [...document.querySelectorAll("button")].filter(x => x.getAttribute("aria-label") === "Öka");
