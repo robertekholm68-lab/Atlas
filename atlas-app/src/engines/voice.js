@@ -9,7 +9,7 @@
 // den sortens påhittade siffra Askr är byggd för att inte visa. Därför går allt
 // via ett förslag som användaren bekräftar.
 
-import { platformKind, isStandalone, isInstalledAndroid } from "./platform.js";
+import { platformKind, isStandalone, isInstalledAndroid, isAndroidWebView } from "./platform.js";
 
 /* ---------- svenska räkneord ---------- */
 
@@ -211,7 +211,20 @@ export async function micReady() {
         : namn === "NotFoundError"
         ? "Ingen mikrofon hittades."
         : namn === "NotReadableError"
-        ? "Mikrofonen är upptagen av något annat. Stäng appar som spelar in och försök igen."
+        // I ETT APP-SKAL BETYDER DET NÅGOT ANNAT ÄN "UPPTAGEN".
+        //
+        // Bevis från telefon: behörigheten beviljad, ingen annan app igång, och
+        // Androids EGEN mikrofonhistorik visade inte Askr alls — inspelningen
+        // nådde alltså aldrig operativsystemet. NotReadableError var WebViewens
+        // sätt att säga att den inte fick öppna hårdvaran, inte att någon annan
+        // höll den.
+        //
+        // Att då skicka användaren på jakt efter en app som spelar in är att
+        // skicka hen efter något som inte finns. Beskedet säger vad vi vet och
+        // pekar på vägen som fungerar.
+        ? isAndroidWebView()
+          ? `Röstloggning fungerar inte i app-skalet på den här telefonen (${namn}). Android ger inte skalet tillgång till mikrofonen trots att behörigheten är beviljad, och det går inte att lösa inifrån appen. Öppna Askr i webbläsaren om du vill diktera.`
+          : "Mikrofonen är upptagen av något annat. Stäng appar som spelar in och försök igen."
         : `Mikrofonen gick inte att öppna (${namn}). Behörigheten kan mycket väl vara i ordning — det här är något annat, och felnamnet är ledtråden.`,
     };
   }
