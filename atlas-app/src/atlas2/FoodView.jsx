@@ -14,6 +14,7 @@ import { MealPrepView } from "./MealPrepView.jsx";
 import { SupplementsPanel } from "./SupplementsPanel.jsx";
 import { filterRecipes } from "../engines/recipes.js";
 import { searchFoods } from "../engines/foodSearch.js";
+import { mealSuggestions } from "../engines/mealSuggest.js";
 import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
@@ -148,6 +149,7 @@ function SnabbLogg({ onLägg }) {
   const [portion, setPortion] = useState("normal");
   const [lyssnar, setLyssnar] = useState(false);
   const [röstNote, setRöstNote] = useState(null);
+  const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
   const stöd = useMemo(() => voiceSupport(), []);
 
@@ -201,6 +203,22 @@ function SnabbLogg({ onLägg }) {
         }}>{lyssnar ? "◼" : "🎤"}</button>
       </div>
       {röstNote && <div style={{ fontSize: 11.5, color: C.recovering, lineHeight: 1.5, marginTop: 8 }}>{röstNote}</div>}
+
+      {/* Vanliga helheter. Skriver man "köttbullar" åt man sällan bara
+          köttbullar — potatis, sås och lingon följde med, och utan dem blir
+          måltiden systematiskt underskattad. Förslagen FYLLER bara fältet;
+          ingenting loggas och ingenting antas. Man ser meningen och kan ändra
+          den innan något sparas. */}
+      {!est && !fråga && förslag.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
+          {förslag.map(f => (
+            <button key={f} onClick={() => { setText(f); setEst(null); setFråga(null); }} style={{
+              padding: "8px 12px", borderRadius: 999, minHeight: 44, cursor: "pointer", fontSize: 12.5,
+              border: `1px solid ${C.border}`, background: C.card2, color: C.text2, textAlign: "left",
+            }}>{f}</button>
+          ))}
+        </div>
+      )}
 
       {!est && !fråga && (
         <button onClick={uppskatta} disabled={!text.trim()}
