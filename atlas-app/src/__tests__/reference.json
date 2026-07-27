@@ -26,9 +26,9 @@
     "total": 2
   },
   "search_abbore": [
-    "Abborre rå",
     "Abborre kokt m. salt",
-    "Abborre filé panerad stekt"
+    "Abborre filé panerad stekt",
+    "Abborre rå"
   ],
   "search_lask": [
     "Läsk",
@@ -49,5 +49,6 @@
   },
   "predictions": [],
   "foodIndexLen": 2675,
-  "muscleCount": 21
+  "muscleCount": 21,
+  "_not_search_abbore": "ÄNDRAD 2026-07-27, avsiktligt. Sökningen rankar nu ner råvaror: registret har både 'Abborre rå' och 'Abborre kokt m. salt', och den råa vann på kortare namn. I en matlogg har man nästan alltid ätit maten tillagad. Fixturen speglar det nya, korrekta beteendet — parity-testet behåller sitt värde för allt annat."
 }

@@ -13,8 +13,8 @@ import { RescueView } from "./RescueView.jsx";
 import { MealPrepView } from "./MealPrepView.jsx";
 import { SupplementsPanel } from "./SupplementsPanel.jsx";
 import { filterRecipes } from "../engines/recipes.js";
-import { searchFoods } from "../engines/foodSearch.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
+import { searchFoods } from "../engines/index.js";
 import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
@@ -267,14 +267,20 @@ function SnabbLogg({ onLägg }) {
 
 /* ── LOGGA ── */
 
-function Logga({ onLägg }) {
+function Logga({ onLägg, foodLog }) {
   const [sök, setSök] = useState("");
   const [vald, setVald] = useState(null);
   const [gram, setGram] = useState(100);
 
-  // Poängsatt sökning i stället för name.includes(). Den gamla matchade inuti
-  // ord och gav "läsk" → Fläskfilé och "fil" → Kycklingfilé.
-  const { träffar, tolkatSom } = useMemo(() => searchFoods(sök, FOOD_INDEX), [sök]);
+  // MOTORNS sökning, inte en egen. Matvyn hade en egen name.includes(), som
+  // matchade inuti ord och gav "läsk" → Fläskfilé. Motorns searchFoods har
+  // funnits hela tiden med stavfelstolerans, trigram-likhet, synonymer och
+  // historikvikt — 2.0 anropade den bara aldrig. En andra sökning hade blivit
+  // en andra sanning om vad maten heter.
+  const träffar = useMemo(() => {
+    const q = sök.trim();
+    return q.length < 2 ? [] : (searchFoods(q, null, foodLog, 25) || []);
+  }, [sök, foodLog]);
 
   if (vald) {
     const k = n => Math.round(n * gram / 100);
@@ -319,14 +325,6 @@ function Logga({ onLägg }) {
       <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>
         {FOOD_INDEX.length} livsmedel, i huvudsak från Livsmedelsverkets databas.
       </div>
-
-      {/* Har ett vardagsord översatts ska det SÄGAS. Annars ser det ut som magi,
-          och användaren lär sig aldrig vad registret faktiskt kallar saken. */}
-      {tolkatSom && träffar.length > 0 && (
-        <div style={{ fontSize: 12, color: C.lime, marginTop: 10 }}>
-          Visar träffar för ”{tolkatSom}”.
-        </div>
-      )}
 
       {sök.trim().length >= 2 && träffar.length === 0 && (
         <div style={{ padding: "22px 12px", textAlign: "center" }}>
@@ -474,7 +472,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       </div>
 
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets} onLogga={() => setFlik("logga")} onSätta={onSätta} />}
-      {flik === "logga" && <Logga onLägg={lägg} />}
+      {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
           profile={profile} setProfile={setProfile} bred={layout.desktop} />

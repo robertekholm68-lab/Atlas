@@ -96,7 +96,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 831 i 75 filer |
+| Tester (vitest) | 824 i 75 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -225,11 +225,22 @@ andra. Jämförelsen görs med `startsWith`, **aldrig `includes`** — annars
 innehåller "läsk". Minst fyra tecken krävs, så korta ord inte börjar träffa
 allt.
 
-**Två sökfunktioner heter `searchFoods` — det är avsiktligt.** Den i
-`engines/index.js` (signatur `q, group, history, limit`) används av gamla appen
-och rangordnar redan bra via `scoreFood`; buggen fanns aldrig där. Den i
-`foodSearch.js` (`query, index, max`) används bara av 2.0. Enligt regeln bygg
-en version först. Ska de slås ihop är det ett eget steg.
+**Det steget är taget: EN sökning, i motorn.** `engines/foodSearch.js` var en
+andra implementation vid sidan av motorns `searchFoods`. Den är borttagen och
+beteendet bor nu i `scoreFood`, som dessutom var bättre byggd — ordets plats i
+namnet väger (Ost före "Paj m. ost"), synonymer via `FOOD_SYN`, svensk stamning
+så "frallor" hittar fralla, och stavfelstolerans. Alla tre byggmålen delar den.
+
+`__tests__/food-search.test.js` täcker bara ORDGRÄNSEN — de tre fall som
+startade arbetet: läsk får inte ge Fläskfilé, fil inte Kycklingfilé, korv inte
+Korvbröd. Den filen låg tidigare bredvid den raderade motorn och skyddet hade
+försvunnit med den. Sökningens övriga egenskaper täcks av `meal-parts.test.js`.
+
+**Referensfixturen `reference.json` är medvetet ändrad** (2026-07-27): "Abborre
+rå" och "Abborre filé panerad stekt" har bytt plats, eftersom sökningen numera
+rankar ner råvaror — i en matlogg har man nästan alltid ätit maten tillagad.
+Fixturen speglar det nya, korrekta beteendet. Ändra den ALDRIG för att få ett
+test grönt utan att skälet skrivs in på samma sätt.
 
 **Matakuten och meal prep.** `RescueView` kopplar in den befintliga motorn
 (`RESCUE_SITUATIONS`, `interpretCrisis`, `recentIntakeSummary`, `buildRescue`);
