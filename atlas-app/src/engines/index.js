@@ -1329,7 +1329,27 @@ function subExercise(ex, equip) {
 
 function epley1RM(weight, reps) { return reps <= 1 ? weight : Math.round(weight * (1 + reps / 30)); }
 
-function roundInc(w) { return Math.round(w / 1.25) * 1.25; }
+/**
+ * Kvantiserar en vikt till 0,25 kg, förankrat i HELA KILON.
+ *
+ * Låg tidigare på 1,25 kg, vilket gjorde att förslagen aldrig kunde landa på
+ * ett helt kilo som inte var delbart med 1,25: 61 blev 61,25, 63 blev 62,5.
+ * Rastret matchar nu vikterna på ett gym — hela kilon plus kvartar.
+ */
+function roundInc(w) { return Math.round(w * 4) / 4; }
+
+/**
+ * Skriver en vikt utan falska decimaler: 61 blir "61", 61,5 blir "61,5",
+ * 61,25 blir "61,25". Tidigare kördes toFixed(1) på varje knapptryck, vilket
+ * gjorde 63,75 till 63,8 — och felet ackumulerades för varje tryck därefter:
+ * 61,25 → 63,8 → 66,3 → 68,8. Talen på skärmen var alltså inte de vikter som
+ * lades på stången.
+ */
+function formatWeight(w) {
+  if (w == null) return "—";
+  const r = Math.round(w * 4) / 4;
+  return String(Number.isInteger(r) ? r : +r.toFixed(2)).replace(".", ",");
+}
 
 function lastPerformance(sessions, exId) {
   const withEx = sessions.filter(s => s.sets && s.sets.some(x => x.exerciseId === exId)).sort((a, b) => b.completedAt - a.completedAt);
@@ -1658,4 +1678,4 @@ function recoveryColor(score) {
   return `rgb(${r},${g},${b})`;
 }
 
-export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
+export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
