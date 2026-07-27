@@ -178,7 +178,7 @@ const FOOD_KB = [
   { k: ["korv", "sausage", "varmkorv", "falukorv"], kcal: 300, p: 12, c: 20, f: 19 }, { k: ["fika", "bakelse", "kaka", "cake", "cookie", "kladdkaka"], kcal: 400, p: 6, c: 52, f: 18 },
   { k: ["glass", "ice cream"], kcal: 280, p: 5, c: 34, f: 14 }, { k: ["proteinbar", "protein bar"], kcal: 220, p: 20, c: 22, f: 7 },
   { k: ["whey", "protein shake", "shake", "proteinshake"], kcal: 120, p: 24, c: 4, f: 2 }, { k: ["öl", "beer", "bira"], kcal: 150, p: 1, c: 13, f: 0 },
-  { k: ["vin", "wine"], kcal: 125, p: 0, c: 4, f: 0 }, { k: ["chips"], kcal: 300, p: 4, c: 30, f: 19 }, { k: ["godis", "candy", "choklad", "chocolate"], kcal: 250, p: 2, c: 34, f: 12 },,
+  { k: ["vin", "wine"], kcal: 125, p: 0, c: 4, f: 0 }, { k: ["chips"], kcal: 300, p: 4, c: 30, f: 19 }, { k: ["godis", "candy", "choklad", "chocolate"], kcal: 250, p: 2, c: 34, f: 12 },
 // TILLÄGG 2026-07-27, efter riktig användning: "fralla med ost och skinka" gav
 // bara ost. Banken hade 32 komponenter och saknade halva den svenska frukosten.
 //
