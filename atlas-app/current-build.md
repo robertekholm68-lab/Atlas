@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 865 i 79 filer |
+| Tester (vitest) | 870 i 80 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -164,6 +164,22 @@ isär. Kartan har ingen fast höjd: vyerna är flex-kolumner där kartan är
 `flex: 1` med `minHeight: 0`, så webbläsaren räknar. Mätt 299 px på iPhone SE,
 638 på desktop — kroppen är gränssnittet, alltså får kroppen ytan som blir
 över. `100dvh`, inte `100vh`: `vh` räknar in iOS adressfält.
+
+**Ett hopfällbart avsnitt fälls ut OCH in, och säger vilket.** Coachvyns chatt
+gick en period bara att öppna: knappen *byttes ut* mot chatten, så vägen
+tillbaka fanns inte. Skälfliken tio rader ovanför gjorde rätt hela tiden — det
+var alltså inte ett förbisett fall utan två mönster för samma sak i samma vy.
+Regeln är nu en: rubriken ligger kvar, `aria-expanded` följer tillståndet, och
+pilen vänder. Ett statiskt testfall läser `src/atlas2/*.jsx` och kräver
+`aria-expanded` på **varje** knapp vars `onClick` växlar ett visa-tillstånd, så
+regeln inte kan glida isär i nästa vy. Det fångade tre stumma knappar direkt
+("Ändra kost", "Inköpslista", "Ton:").
+
+Testet bär ett eget skydd: `<button[^>]*>` DUGER INTE för att avgränsa en
+JSX-tagg, eftersom pilfunktionen innehåller `=>`. Den varianten matchade
+ingenting och var grön av tomhet. Avgränsningen räknar klammer- och
+parentesdjup, och ett separat testfall prövar avgränsaren — plus ett golv för
+hur många växlande knappar som minst ska hittas.
 
 **Readiness går att fråga varför.** Talet på hem är en knapp som öppnar
 `ReadinessSheet` — basen plus varje modifierare med sitt tecken, hämtat ur
@@ -563,7 +579,7 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TIO stycken, 150 OK-steg** (alla körda 2026-07-27,
+**Askr 2.0:s DOM-skript — TIO stycken, 155 OK-steg** (alla körda 2026-07-27,
 exit 0, inga page errors):
 
 | Skript i `scripts/` | Steg | Täcker |
@@ -571,7 +587,7 @@ exit 0, inga page errors):
 | `verify-atlas2-sport.mjs` | 35 | sportloggning, distans, lagring med id, readiness |
 | `verify-atlas2-layout.mjs` | 24 | tre bredder: SE, iPhone 14, desktop |
 | `verify-atlas2-passredigering.mjs` | 16 | rätta/radera pass, varför-frågan |
-| `verify-atlas2.mjs` | 14 | näringsmål, snabblogg, persistens |
+| `verify-atlas2.mjs` | 19 | näringsmål, snabblogg, coachchatten, persistens |
 | `verify-atlas2-tillskott.mjs` | 11 | kryssrutor, streak, följsamhet |
 | `verify-atlas2-matakut.mjs` | 11 | Rädda måltiden |
 | `verify-atlas2-mealprep.mjs` | 10 | veckomeny, inköpslista |
@@ -722,6 +738,12 @@ aldrig göms bakom en utvilad.
   `x != null ? x : fallback`.
 - **Set utan vikt** ger noll muskellast, vilket får appen att påstå att inget
   pass finns. 2.0 spärrar loggning tills vikt är satt för yttre last.
+- **En kontroll bakom ett villkor körs kanske aldrig.** `verify-atlas2.mjs`
+  hade `if (chip) await kolla(...)` för coachens kostsvar. Chatten är hopfälld
+  från start, alltså fanns chipet aldrig, alltså kördes steget aldrig — och
+  utskriften såg likadan ut som en kodbas utan fel. Samma sak i småformat:
+  `if (!r) return` i ett testfall. Kontrollera hellre att förutsättningen
+  gäller än att hoppa över tyst.
 - **Ett verifieringssteg kan peka på fel vy och ändå bli grönt.** `App2` renderar
   `if (klart) return <DoneView/>` FÖRE fliklogiken, så ett klick i bottennavet
   gör ingenting medan kvittot ligger uppe. `verify-atlas2-sport.mjs` klickade

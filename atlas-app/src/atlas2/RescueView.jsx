@@ -93,11 +93,13 @@ export function RescueView({ foodLog = [], nutritionTargets, profile = {}, setPr
       <div style={{ ...card }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={label(C.recovering)}>Rädda måltiden</div>
-          <button onClick={() => setVisaTon(v => !v)} style={{
+          <button onClick={() => setVisaTon(v => !v)} aria-expanded={visaTon} style={{
             background: "none", border: "none", cursor: "pointer", padding: "6px 2px", minHeight: 44,
             fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted,
           }}>
-            Ton: {(NUTRITION_STYLES.find(s => s.id === ton) || {}).label} ⌄
+            Ton: {(NUTRITION_STYLES.find(s => s.id === ton) || {}).label}{" "}
+            <span style={{ display: "inline-block",
+              transform: visaTon ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span>
           </button>
         </div>
 

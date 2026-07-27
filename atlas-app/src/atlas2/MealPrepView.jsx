@@ -96,10 +96,11 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ ...label(), color: C.muted }}>{antalRecept} recept passar din kost</div>
-        <button onClick={() => setVisaKost(v => !v)} style={{
+        <button onClick={() => setVisaKost(v => !v)} aria-expanded={visaKost} style={{
           background: "none", border: "none", cursor: "pointer", padding: "6px 2px", minHeight: 44,
           fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted,
-        }}>Ändra kost ⌄</button>
+        }}>Ändra kost <span style={{ display: "inline-block",
+          transform: visaKost ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span></button>
       </div>
 
       {visaKost && (
@@ -169,7 +170,7 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
 
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button onClick={() => setFrö(f => f + 1)} style={btnGhost}>Ny vecka</button>
-            <button onClick={() => setVisaInköp(v => !v)} style={btnPrimary}>
+            <button onClick={() => setVisaInköp(v => !v)} aria-expanded={visaInköp} style={btnPrimary}>
               {visaInköp ? "Dölj inköpslista" : "Inköpslista"}
             </button>
           </div>
