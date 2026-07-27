@@ -506,16 +506,35 @@ och sport- och cardiologgning.
   datakälla. En vy med tomma fält är sämre än ingen vy. Tas upp igen först när
   en klocka kopplas in.
 
+**BLOCKERAT (utanför repot) — inte beslutat bort:**
+
+Följande är BYGGT och ligger i repot. Det som saknas är ett APK-bygge, och det
+går inte att göra härifrån: **signeringsnyckeln ligger medvetet utanför repot.**
+Utan exakt samma nyckel går appen inte att uppdatera — en ny nyckel tvingar
+avinstallation och all data i skalet försvinner.
+
+*Låses upp av: signeringsnyckeln + en riktig telefon + `adb`.* Se
+`android-app/BYGG.md`; kräver **JDK 17** (d8 i build-tools 34 kraschar under
+JDK 21).
+
+- **App-ikonerna i Android-skalet.** Filerna ÄR bytta — alla fem
+  `ic_launcher.png` i `android-app/res/mipmap-*` (`b133ef0`), och
+  `android:label` är redan `Askr`. De slår igenom först i en ny APK. En
+  installerad app visar alltså fortfarande den gamla ikonen tills dess.
+- **Mikrofonkraschen.** Rösten är avstängd i installerad Android-app
+  (`engines/platform.js`, `isInstalledAndroid()`) tills kraschen är verifierad.
+  Den fungerar i Chrome, så felet ligger i WebView-skalet. Kräver `adb logcat`
+  på en riktig telefon — exakt samma lås som ikonerna.
+
 **Namnbytet — kvar:**
-- Android-appens etikett och paket-ID.
+- **Paket-ID `se.atlas.app`.** Inte blockerat utan MEDVETET obytt: ett byte
+  till `body.askr.app` gör att Android ser en ny app, kräver avinstallation och
+  raderar data i skalet. Etiketten är redan bytt.
 - `bildbank.md` och skill-filerna säger fortfarande ATLAS.
 - @ATLAS-karaktären i bildpipelinen.
 - Repo-namn och domän (vänta på `askr.body`, se ovan).
 
 **Nuvarande appen:**
-- Rösten avstängd i installerad Android-app (`engines/platform.js`,
-  `isInstalledAndroid()`) tills mikrofonkraschen är verifierad. Fungerar i
-  Chrome. **Pending: test på riktig telefon eller `adb logcat`.**
 - Webbversionen har nya paletten men inte skissernas layout.
 - OS-bakåtknapp (`pushState`/`popstate`): byggd i **2.0** (se ovan). Desktop och
   mobil-PWA har den inte än — samma mönster kan återanvändas ur `atlas2/backnav.js`.
