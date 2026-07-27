@@ -2,6 +2,7 @@
 import { ADAPTIVE_EXERCISES, MODE_WEIGHTS } from "../data/coach.js";
 import { BODYWEIGHT, EXERCISES, HIIT_MULT, HIIT_MUSCLE_MULT, MAIN_LIFTS, STRENGTH_STD } from "../data/exercises.js";
 import { FOOD_DB, FOOD_INDEX, FOOD_KB, FOOD_SYN, NUTRITION_GOALS, PORTIONS } from "../data/foods.js";
+import { portionNutrition } from "../data/portions.js";
 import { ACT_RANK, BODY_ZONES, GROUP_SOURCES, GROUP_SV, MUSCLES, SLUG2ID, VOLUME_LANDMARKS } from "../data/muscles.js";
 import { H, T, now } from "../data/tokens.js";
 
@@ -334,13 +335,37 @@ function editDist(a, b) {
   for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; } return prev[n];
 }
 
+/**
+ * Lätt svensk stamning: plockar bort de vanligaste böjningsändelserna så att
+ * "frallor" och "mackor" hittar sina grundformer. Medvetet trubbig — ett
+ * riktigt lemmatiseringsbibliotek väger mer än hela appen. Bara FRÅGAN stammas
+ * och prefixmatchas sedan; att stamma båda sidor gav asymmetri (stam("bananer")
+ * blev "banan" men stam("banan") blev "bana", och de matchade aldrig).
+ */
+const SV_ÄNDELSER = ["arna", "erna", "orna", "ande", "aste", "ornas", "arnas", "ernas",
+  "en", "ar", "er", "or", "na", "et", "an", "n", "a", "e", "r", "s"];
+function svStam(w) {
+  if (!w || w.length < 5) return w || "";
+  for (const ä of SV_ÄNDELSER) if (w.length - ä.length >= 4 && w.endsWith(ä)) return w.slice(0, -ä.length);
+  return w;
+}
+
+/** Synonymtabellen även på stammad form: "frallor" ska nå "fralla"s mål. */
+const FOOD_SYN_STEM = Object.fromEntries(Object.entries(FOOD_SYN).map(([k, v]) => [svStam(k), v]));
+
 function scoreFood(qf, food, freq) {
   const nf = food._nf || (food._nf = foldStr(food.name)); if (!qf) return 0;
   let s = 0;
   if (nf === qf) s = 1000;
+  // Ordets PLATS är en signal: "Ost hårdost fett 10%" handlar om ost, medan
+  // "Paj m. ost" handlar om paj. Första ordet väger därför tyngre än ett ord
+  // längre in — utan det vann det kortaste namnet, oavsett vad det handlade om.
+  else if (nf.split(" ")[0] === qf) s = 760 - Math.min(180, nf.length - qf.length);
+  else if (nf.split(" ").includes(qf)) s = 700 - Math.min(180, nf.length - qf.length);
   else if (nf.startsWith(qf)) s = 640 - Math.min(180, nf.length - qf.length);
   else { const words = nf.split(" ");
     if (words.some(w => w.startsWith(qf))) s = 470;
+    else if (FOOD_SYN[qf] && FOOD_SYN[qf].some(t => nf.includes(t))) s = 420;
     else if (nf.includes(qf)) s = 360;
     else { // typo / fuzzy per word + whole
       let best = 0; if (qf.length >= 4) words.concat([nf]).forEach(w => { const d = editDist(qf, w.slice(0, qf.length + 2)); if (d <= 2) best = Math.max(best, 300 - d * 70); });
@@ -348,8 +373,25 @@ function scoreFood(qf, food, freq) {
       s = best;
     }
   }
-  if (!s) { const syn = FOOD_SYN[qf]; if (syn && syn.some(t => nf.includes(t))) s = 330; }
+  // 2. Böjningsformer. "frallor" och "mackor" hittade ingenting alls, eftersom
+  //    varken prefix eller trigram räckte. Lätt svensk stamning av FRÅGAN,
+  //    sedan prefixmatchning — att stamma båda sidor ger asymmetri.
+  if (!s && qf.length >= 5) {
+    const st = svStam(qf);
+    if (st.length >= 4) {
+      if (nf.split(" ").some(w => w.startsWith(st))) s = 300;
+      else { const syn = FOOD_SYN[st] || FOOD_SYN_STEM[st]; if (syn && syn.some(t => nf.includes(t))) s = 300; }
+    }
+  }
   if (!s) return 0;
+  // RÅVAROR NEDPRIORITERAS. Registret har både "Potatis rå" och "Potatis, kokt",
+  // och den råa har kortare namn — så den vann. Men i en matlogg har man nästan
+  // alltid ätit maten tillagad. Frågar man efter rått får man det ändå.
+  // OBS: \b duger inte här. I JavaScript räknas bara [A-Za-z0-9_] som
+  // ordtecken, så "å" är en ordgräns i sig och /\brå\b/ matchar aldrig
+  // "kyckling mage rå". Ordjämförelse i stället.
+  { const w = food.name.toLowerCase().split(/[^a-zà-ÿ0-9]+/);
+    if ((w.includes("rå") || w.includes("rått") || w.includes("råa")) && !qf.startsWith("ra")) s -= 200; }
   s += Math.min(90, (freq[food.id] || 0) * 30);          // user history (rank #2)
   if (food.name.length < 15) s += 18;                     // common/likely (rank #3)
   if (food.source === "livsmedelsverket") s += 4;
@@ -424,37 +466,82 @@ function estimateMeal(text, portion) {
   if (/^__(small|normal|large)$/.test(t.trim())) { pf = { __small: "small", __normal: "normal", __large: "large" }[t.trim()]; t = ""; }
   let kcal = 0, p = 0, c = 0, f = 0, hits = 0;
 
-  // ORDGRÄNS OCH LÄNGSTA MATCH. Den gamla raden lydde
-  //   FOOD_KB.forEach(it => { if (it.k.some(kw => t.includes(kw))) ... })
-  // och matchade inuti ord. Det gav tre systematiska dubbelräkningar:
-  //   "filmjölk" → matchade ÖL (150 kcal öl i frukosten) och MJÖLK
-  //   "potatismos" → matchade både potatismos OCH potatis
-  // Nu matchas ord för ord, och när flera komponenter gör anspråk på samma ord
-  // vinner den med längsta nyckelordet: potatismos slår potatis.
-  const orden = t.split(/[^a-zà-ÿ0-9]+/i).filter(Boolean);
-  const anspråk = new Map();                    // ord -> { it, len }
+  // ORDGRÄNS, LÄNGSTA MATCH OCH HELA LIVSMEDELSBANKEN.
+  //
+  // Tidigare matchades nyckelord med t.includes(kw), alltså inuti ord. Det gav
+  // "filmjölk" -> ÖL (150 kcal öl i frukosten) och "potatismos" -> potatis två
+  // gånger. Nu matchas ord för ord, och längsta nyckelordet vinner.
+  //
+  // Och det viktigare: texten delas i fraser, och en fras som INTE finns i den
+  // handkurerade komponentlistan slås upp i Livsmedelsverkets 2 600+ poster med
+  // gruppens normalportion. Utan det steget var varje saknat ord ett eget litet
+  // ärende — "fralla" en dag, "pyttipanna" nästa — och listan hade behövt växa
+  // för evigt. Nu är den kurerade listan bara till för de fall där en särskild
+  // portion är bättre än gruppens medel (en "macka" är bröd MED pålägg).
+  const fraser = t.split(/\b(?:och|med|samt|plus|till)\b|[,+&/]/i)
+    .map(x => x.trim()).filter(x => x.length >= 3);
+  const STOPP = new Set(["en", "ett", "två", "tre", "fyra", "lite", "stor", "stort",
+    "liten", "litet", "mycket", "halv", "halvt", "extra", "vanlig", "stora", "små"]);
+
+  const valda = [];
+  const seen = new Set();
+
+  // STEG 1: den handkurerade listan, ORD för ord över hela texten. Varje ord får
+  // göra anspråk på en komponent, och längsta nyckelordet vinner anspråket —
+  // så "potatismos" slår "potatis" utan att båda räknas. Det här steget går
+  // avsiktligt över hela texten och inte per fras: skriver man
+  // "köttbullar potatis gräddsås" utan bindeord är det ändå tre komponenter.
+  const alla = t.split(/[^a-zà-ÿ0-9]+/i).filter(w => w && !STOPP.has(w));
+  const anspråk = new Map();
   FOOD_KB.forEach(it => it.k.forEach(kw => {
     if (kw.includes(" ")) {
-      // Flerordiga nyckelord ("protein shake") kan inte ordmatchas.
-      if (t.includes(kw)) { const nyckel = "__" + kw; const f0 = anspråk.get(nyckel);
-        if (!f0 || kw.length > f0.len) anspråk.set(nyckel, { it, len: kw.length }); }
+      if (t.includes(kw)) { const n = "__" + kw; const f0 = anspråk.get(n);
+        if (!f0 || kw.length > f0.len) anspråk.set(n, { it, len: kw.length, ord: kw }); }
       return;
     }
-    orden.forEach(o => {
+    alla.forEach(o => {
       if (o === kw || o.startsWith(kw)) {
         const f0 = anspråk.get(o);
-        if (!f0 || kw.length > f0.len) anspråk.set(o, { it, len: kw.length });
+        if (!f0 || kw.length > f0.len) anspråk.set(o, { it, len: kw.length, ord: o });
       }
     });
   }));
-  [...new Set([...anspråk.values()].map(x => x.it))].forEach(it => {
-    kcal += it.kcal; p += it.p; c += it.c; f += it.f; hits++;
+  const täckta = new Set([...anspråk.keys()]);
+  [...anspråk.values()].forEach(({ it }) => {
+    if (!seen.has(it)) { seen.add(it); valda.push(it); }
   });
+
+  // STEG 2: fraser som INGEN kurerad komponent tog hand om slås upp i hela
+  // livsmedelsbanken med gruppens normalportion. Det är det här steget som gör
+  // att varje saknat ord inte längre är ett eget litet ärende.
+  for (const fras of fraser) {
+    const orden = fras.split(/[^a-zà-ÿ0-9]+/i).filter(w => w && !STOPP.has(w));
+    if (!orden.length || orden.some(o => täckta.has(o))) continue;
+    const träff = (searchFoods(fras, null, null, 1) || [])[0];
+    if (!träff) continue;
+    const n = portionNutrition(träff);
+    const nyckel = "slv:" + träff.id;
+    if (!seen.has(nyckel)) {
+      seen.add(nyckel);
+      valda.push({ k: [träff.name], kcal: n.kcal, p: n.p, c: n.c, f: n.f, slv: träff.name });
+    }
+  }
+
+  valda.forEach(it => { kcal += it.kcal; p += it.p; c += it.c; f += it.f; hits++; });
+  // Kom någon del ur den generella uppslagningen är gissningen trubbigare än
+  // när alla delar var kurerade: portionen är gruppens medel, inte en känd
+  // vardagsportion. Det ska synas i intervallet, inte döljas.
+  const frånBanken = valda.filter(x => x.slv).length;
+
   const m = PORTIONS[pf] || 1;
   let confidence, spread, method, assumptions;
   if (hits === 0) { kcal = 650; p = 28; c = 65; f = 28; confidence = "low"; spread = 0.35; method = "fallback"; assumptions = "Ingen igenkänd maträtt — generell normalmåltid antagen."; }
   else if (hits >= 3) { confidence = "medium"; spread = 0.18; method = "keyword"; assumptions = "Normala svenska portioner för igenkända delar."; }
   else { confidence = "medium"; spread = 0.25; method = "keyword"; assumptions = hits === 1 ? "En igenkänd komponent — övrigt antaget." : "Igenkända komponenter, normala portioner."; }
+  if (frånBanken) {
+    spread = Math.min(0.4, spread + 0.07);
+    assumptions += ` ${frånBanken === 1 ? "En del" : `${frånBanken} delar`} uppskattad med normalportion ur Livsmedelsverkets register.`;
+  }
   if (pf && pf !== "normal") assumptions += ` Portion: ${pf === "small" ? "liten" : "stor"}.`;
   const mid = Math.round(kcal * m);
   return {

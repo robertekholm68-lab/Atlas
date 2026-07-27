@@ -11,10 +11,10 @@
 // räknade potatisen två gånger. Den som loggade ärligt fick fel siffra.
 
 import { describe, it, expect } from "vitest";
-import { estimateMeal } from "../engines/index.js";
+import { estimateMeal, searchFoods } from "../engines/index.js";
 import { FOOD_KB, FOOD_INDEX } from "../data/foods.js";
 import { mealSuggestions, MEAL_TEMPLATES } from "../engines/mealSuggest.js";
-import { searchFoods } from "../engines/foodSearch.js";
+
 
 describe("dubbelräkningen — felet som fanns före tilläggen", () => {
   it("\"filmjölk\" räknar inte in öl", () => {
@@ -67,6 +67,38 @@ describe("komponenterna räcker till en vanlig svensk måltid", () => {
     // försöker täcka allt blir omöjlig att underhålla.
     expect(FOOD_KB.length).toBeGreaterThan(50);
     expect(FOOD_KB.length).toBeLessThan(120);
+  });
+});
+
+describe("sökningen — motorns egen, inte en andra", () => {
+  const först = q => { const r = searchFoods(q, null, null, 1) || []; return r[0] ? r[0].name : null; };
+
+  it("vardagsord når registerspråket via synonymtabellen", () => {
+    // "fralla" fanns i FOOD_SYN hela tiden, men synonymen kollades först när
+    // poängen var NOLL — och "ostfralla" gav träff på substräng, så synonymen
+    // fick aldrig chansen. Nu går synonymen före substräng.
+    expect(först("fralla")).toMatch(/bröd vitt/i);
+    expect(först("frallor")).toMatch(/bröd vitt/i);   // böjning, via stamning
+  });
+
+  it("ordets plats i namnet avgör: Ost före Paj m. ost", () => {
+    expect(först("ost")).toMatch(/^Ost/i);
+    expect(först("korv")).toMatch(/^Korv/i);
+  });
+
+  it("råvaror rankas ner — i en matlogg har man ätit maten tillagad", () => {
+    // OBS: \\b duger inte för "rå" i JavaScript, eftersom "å" inte räknas som
+    // ordtecken. Regeln använder ordjämförelse.
+    expect(först("kyckling")).not.toMatch(/\brå$/i);
+    expect(först("potatis")).not.toMatch(/rå/i);
+  });
+
+  it("stavfel tolereras — det fanns redan och ska fortsätta göra det", () => {
+    expect(först("abbore")).toMatch(/abborre/i);
+  });
+
+  it("sammanskrivet hittas via trigram — fanns också redan", () => {
+    expect(först("pyttipanna")).toMatch(/pytt i panna/i);
   });
 });
 
