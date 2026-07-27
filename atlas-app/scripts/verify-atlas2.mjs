@@ -106,15 +106,37 @@ await klickText("Uppskatta måltiden");
 await page.waitForTimeout(300);
 await kolla("snabblogg: vag beskrivning ger följdfråga", finnsText("hur stor måltid"));
 
-// Coachen: kostfråga ska nu få underlagssvar (inte "kan inte svara")
+// Coachen
 await klickText("Coach");
 await page.waitForTimeout(500);
+
+// CHATTEN GÅR ATT FÄLLA IN IGEN. Förut byttes rubriken ut mot chatten, så
+// vägen tillbaka fanns inte — man kunde öppna men aldrig stänga.
+const chattknapp = () => page.evaluate(() => {
+  const b = [...document.querySelectorAll("button")].find(x => /fråga coachen/i.test(x.innerText || ""));
+  return b ? b.getAttribute("aria-expanded") : null;
+});
+await kolla("coach: chattrubriken är hopfälld från start", chattknapp().then(v => v === "false"));
+await klickText("Fråga coachen");
+await page.waitForTimeout(400);
+await kolla("coach: rubriken finns KVAR när chatten är utfälld", chattknapp().then(v => v === "true"));
+await klickText("Fråga coachen");
+await page.waitForTimeout(400);
+await kolla("coach: chatten går att fälla in igen", chattknapp().then(v => v === "false"));
+
+// Kostfråga ska få underlagssvar (inte "kan inte svara"). Chatten måste öppnas
+// först — chipsen bor INUTI den. Steget stod tidigare bakom `if (chip)` och
+// hoppades därför över tyst i varje körning, eftersom chatten är hopfälld från
+// start. En kontroll som aldrig körs skyddar ingenting.
+await klickText("Fråga coachen");
+await page.waitForTimeout(400);
 const chip = await page.evaluate(() => {
   const b = [...document.querySelectorAll("button")].find(x => (x.innerText || "").includes("protein"));
   if (b) { b.click(); return true; } return false;
 });
+await kolla("coach: proteinchipet finns i den öppnade chatten", Promise.resolve(chip));
 await page.waitForTimeout(500);
-if (chip) await kolla("coach: proteinsvar utan 'saknar matlogg'-blockering", page.evaluate(() =>
+await kolla("coach: proteinsvar utan 'saknar matlogg'-blockering", page.evaluate(() =>
   !(document.body.innerText || "").toLowerCase().includes("kan inte svara på kostfrågor")));
 
 // Passfliken: röstknappen kräver ett pågående pass med program — verifiera

@@ -144,24 +144,38 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
       {/* 39 px luft kring en 1 px-linje var mer avstånd än gränsen behövde. */}
       <div style={{ height: 1, background: C.hairline, margin: "16px 0 12px" }} />
 
-      {visaChatt ? (
-        <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
-          foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
-      ) : (
-        <button onClick={() => setVisaChatt(true)} style={{
-          ...card, width: "100%", textAlign: "left", cursor: "pointer", color: C.text,
+      {/* Rubriken ligger KVAR när chatten är utfälld, så den går att fälla in
+          igen. Förut byttes knappen ut mot chatten och vägen tillbaka fanns
+          inte — man kunde öppna men aldrig stänga.
+
+          Samma mönster som "Varför denna rekommendation?" ovan: aria-expanded
+          och en pil som vänder. Två sätt att fälla ut saker i samma vy är ett
+          sätt för mycket. */}
+      <div style={{ ...card, paddingTop: 12, paddingBottom: visaChatt ? 16 : 12 }}>
+        <button onClick={() => setVisaChatt(v => !v)} aria-expanded={visaChatt} style={{
+          width: "100%", textAlign: "left", cursor: "pointer", color: C.text,
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-          paddingTop: 12, paddingBottom: 12, minHeight: 44,
+          background: "none", border: "none", padding: 0, minHeight: 44,
         }}>
           <span style={{ minWidth: 0 }}>
             <span style={{ ...label(C.lime), display: "block" }}>Fråga coachen</span>
-            <span style={{ display: "block", fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>
-              Om din återhämtning, ditt program eller din kost.
-            </span>
+            {!visaChatt && (
+              <span style={{ display: "block", fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>
+                Om din återhämtning, ditt program eller din kost.
+              </span>
+            )}
           </span>
-          <span style={{ color: C.muted, fontSize: 20, flexShrink: 0 }}>›</span>
+          <span style={{ color: C.muted, fontSize: 15, flexShrink: 0,
+            transform: visaChatt ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span>
         </button>
-      )}
+
+        {visaChatt && (
+          <div style={{ marginTop: 12 }}>
+            <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
+              foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
+          </div>
+        )}
+      </div>
 
       {/* Ärlighetsraden. Står kvar även när underlaget är gott — den är en
           egenskap hos produkten, inte en ursäkt när det går dåligt. */}
