@@ -423,7 +423,33 @@ function estimateMeal(text, portion) {
   let t = (text || "").toLowerCase(); let pf = portion;
   if (/^__(small|normal|large)$/.test(t.trim())) { pf = { __small: "small", __normal: "normal", __large: "large" }[t.trim()]; t = ""; }
   let kcal = 0, p = 0, c = 0, f = 0, hits = 0;
-  FOOD_KB.forEach(it => { if (it.k.some(kw => t.includes(kw))) { kcal += it.kcal; p += it.p; c += it.c; f += it.f; hits++; } });
+
+  // ORDGRÄNS OCH LÄNGSTA MATCH. Den gamla raden lydde
+  //   FOOD_KB.forEach(it => { if (it.k.some(kw => t.includes(kw))) ... })
+  // och matchade inuti ord. Det gav tre systematiska dubbelräkningar:
+  //   "filmjölk" → matchade ÖL (150 kcal öl i frukosten) och MJÖLK
+  //   "potatismos" → matchade både potatismos OCH potatis
+  // Nu matchas ord för ord, och när flera komponenter gör anspråk på samma ord
+  // vinner den med längsta nyckelordet: potatismos slår potatis.
+  const orden = t.split(/[^a-zà-ÿ0-9]+/i).filter(Boolean);
+  const anspråk = new Map();                    // ord -> { it, len }
+  FOOD_KB.forEach(it => it.k.forEach(kw => {
+    if (kw.includes(" ")) {
+      // Flerordiga nyckelord ("protein shake") kan inte ordmatchas.
+      if (t.includes(kw)) { const nyckel = "__" + kw; const f0 = anspråk.get(nyckel);
+        if (!f0 || kw.length > f0.len) anspråk.set(nyckel, { it, len: kw.length }); }
+      return;
+    }
+    orden.forEach(o => {
+      if (o === kw || o.startsWith(kw)) {
+        const f0 = anspråk.get(o);
+        if (!f0 || kw.length > f0.len) anspråk.set(o, { it, len: kw.length });
+      }
+    });
+  }));
+  [...new Set([...anspråk.values()].map(x => x.it))].forEach(it => {
+    kcal += it.kcal; p += it.p; c += it.c; f += it.f; hits++;
+  });
   const m = PORTIONS[pf] || 1;
   let confidence, spread, method, assumptions;
   if (hits === 0) { kcal = 650; p = 28; c = 65; f = 28; confidence = "low"; spread = 0.35; method = "fallback"; assumptions = "Ingen igenkänd maträtt — generell normalmåltid antagen."; }

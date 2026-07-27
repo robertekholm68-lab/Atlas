@@ -96,7 +96,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 819 i 74 filer |
+| Tester (vitest) | 831 i 75 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -203,6 +203,20 @@ gav Kycklingfilé. Den som loggade fil fick kyckling. Nu väger ordbörjan tyngr
 grundvaran. `FOOD_SYNONYMS` översätter vardagsord (fralla, macka, läsk) till
 registrets ord, och **vyn skriver ut att den gjort det** ("Visar träffar för
 …"), annars ser det ut som magi och användaren lär sig aldrig vad banken heter.
+
+**Textloggen räknar ord, inte teckenföljder.** `estimateMeal` matchade
+tidigare med `includes`, vilket gav systematiska dubbelräkningar: "filmjölk"
+träffade ÖL (150 kcal öl i frukosten) och MJÖLK, "potatismos" träffade både
+potatismos och potatis. Nu matchas ord för ord, och när flera komponenter gör
+anspråk på samma ord vinner **längsta nyckelordet** — potatismos slår potatis.
+Flerordiga nyckelord ("protein shake") kan inte ordmatchas och jämförs som
+förut. Ändringen ligger i `index.js` och gäller därför **alla tre byggmålen**.
+
+`FOOD_KB` utökades från 32 till 64 komponenter efter riktig användning:
+"fralla med ost och skinka" gav bara ost. Siffrorna är uträknade ur
+Livsmedelsverkets data i `FOOD_INDEX` — (post per 100 g) × (typisk portion) —
+och varje rad namnger sin källpost i en kommentar, så talen går att spåra och
+räkna om när banken uppdateras. `engines/mealSuggest.js` föreslår måltider.
 
 Sökningen klarar också **sammanskrivning**: svenskan tillåter både "pytt i
 panna" och "pyttipanna", och registret har valt den ena medan folk skriver den

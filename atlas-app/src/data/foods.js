@@ -179,6 +179,45 @@ const FOOD_KB = [
   { k: ["glass", "ice cream"], kcal: 280, p: 5, c: 34, f: 14 }, { k: ["proteinbar", "protein bar"], kcal: 220, p: 20, c: 22, f: 7 },
   { k: ["whey", "protein shake", "shake", "proteinshake"], kcal: 120, p: 24, c: 4, f: 2 }, { k: ["öl", "beer", "bira"], kcal: 150, p: 1, c: 13, f: 0 },
   { k: ["vin", "wine"], kcal: 125, p: 0, c: 4, f: 0 }, { k: ["chips"], kcal: 300, p: 4, c: 30, f: 19 }, { k: ["godis", "candy", "choklad", "chocolate"], kcal: 250, p: 2, c: 34, f: 12 },
+// TILLÄGG 2026-07-27, efter riktig användning: "fralla med ost och skinka" gav
+// bara ost. Banken hade 32 komponenter och saknade halva den svenska frukosten.
+//
+// Siffrorna nedan är INTE påhittade — de är uträknade ur Livsmedelsverkets
+// egen data i FOOD_INDEX: (post per 100 g) × (typisk portion). Kommentaren på
+// varje rad namnger porten och posten, så att varje tal går att spåra tillbaka
+// till sin källa och räknas om när banken uppdateras.
+  { k: ["fralla", "småfranska", "portionsbröd", "frukostbröd"], kcal: 170, p: 5, c: 28, f: 4 },  // 60 g Bröd vitt fibrer 3,5%
+  { k: ["skinka", "kalkonpålägg", "pålägg"], kcal: 36, p: 5, c: 0, f: 2 },  // 25 g Skinka
+  { k: ["lingon", "lingonsylt"], kcal: 44, p: 0, c: 11, f: 0 },  // 30 g Lingonsylt
+  { k: ["smörgåsfett"], kcal: 54, p: 0, c: 0, f: 6 },  // 7 g Smör fett 80%
+  { k: ["gröt", "havregrynsgröt", "havregröt"], kcal: 165, p: 4, c: 28, f: 3 },  // 250 g Havregrynsgröt fullkorn
+  { k: ["filmjölk", "långfil"], kcal: 143, p: 8, c: 12, f: 7 },  // 250 g Filmjölk fett 3% berikad
+  { k: ["müsli", "musli", "flingor", "frukostflingor"], kcal: 225, p: 6, c: 36, f: 6 },  // 60 g Müsli
+  { k: ["banan"], kcal: 107, p: 1, c: 28, f: 0 },  // 120 g Banan
+  { k: ["äpple", "päron", "frukt"], kcal: 68, p: 0, c: 18, f: 0 },  // 130 g Äpple
+  { k: ["mjölk", "mellanmjölk", "lättmjölk"], kcal: 94, p: 7, c: 10, f: 3 },  // 200 g Mjölk 1,5%
+  { k: ["juice", "apelsinjuice"], kcal: 78, p: 1, c: 17, f: 0 },  // 200 g Apelsinjuice drickf.
+  { k: ["tomat"], kcal: 11, p: 1, c: 2, f: 0 },  // 60 g Tomat
+  { k: ["gurka"], kcal: 4, p: 0, c: 1, f: 0 },  // 30 g Gurka
+  { k: ["soppa"], kcal: 69, p: 3, c: 12, f: 1 },  // 300 g Grönsakssoppa klar veg.
+  { k: ["pannkaka", "pannkakor", "plättar"], kcal: 204, p: 8, c: 20, f: 10 },  // 150 g Pannkaka tunn hemlagad
+  { k: ["ärtsoppa"], kcal: 234, p: 15, c: 36, f: 1 },  // 300 g Ärtsoppa veg.
+  { k: ["tonfisk"], kcal: 116, p: 26, c: 0, f: 1 },  // 100 g Tonfisk (konserv)
+  { k: ["mandel", "nötter", "cashew", "valnöt"], kcal: 178, p: 6, c: 0, f: 16 },  // 30 g Sötmandel
+  { k: ["keso", "cottage"], kcal: 196, p: 24, c: 6, f: 7 },  // 200 g Keso
+  { k: ["falukorv"], kcal: 205, p: 9, c: 6, f: 16 },  // 100 g Korv falukorv ugnsstekt
+  { k: ["blodpudding"], kcal: 327, p: 13, c: 35, f: 14 },  // 150 g Blodpudding blodkorv tillagad
+  { k: ["raggmunk"], kcal: 298, p: 8, c: 40, f: 11 },  // 200 g Raggmunk potatisplätt potatispannkaka hemlagad
+  { k: ["nudlar", "noodles"], kcal: 270, p: 2, c: 62, f: 1 },  // 250 g Nudlar risnudlar kokta
+  { k: ["quinoa"], kcal: 180, p: 7, c: 32, f: 3 },  // 150 g Quinoa (kokt)
+  { k: ["bulgur", "couscous"], kcal: 194, p: 6, c: 35, f: 2 },  // 150 g Bulgur kokt
+  { k: ["kalkon"], kcal: 159, p: 36, c: 0, f: 1 },  // 150 g Kalkon filé rå
+  { k: ["bacon"], kcal: 103, p: 4, c: 0, f: 10 },  // 30 g Gris bacon rå
+  { k: ["avokado"], kcal: 128, p: 2, c: 7, f: 12 },  // 80 g Avokado,
+  { k: ["sylt", "marmelad"], kcal: 51, p: 0, c: 12, f: 0 },  // 30 g Jordgubbssylt
+  { k: ["brödskiva", "skiva bröd", "limpa"], kcal: 99, p: 3, c: 16, f: 2 },  // 35 g Bröd vitt fibrer 3,5%
+  { k: ["köttfärssås", "bolognese"], kcal: 232, p: 18, c: 9, f: 13 },  // 200 g Köttfärssås nöt
+  { k: ["grädde", "vispgrädde"], kcal: 112, p: 1, c: 1, f: 12 },  // 30 g Vispgrädde fett 40%
 ];
 
 const PORTIONS = { small: 0.7, normal: 1, large: 1.35 };
