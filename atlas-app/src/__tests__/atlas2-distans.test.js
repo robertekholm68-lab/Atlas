@@ -10,7 +10,7 @@
 // krävt en modell för hur snabbt just den här personen springer.
 
 import { describe, it, expect } from "vitest";
-import { harDistans, tempoPerKm, DISTANS_SPORTER } from "../data/sportLibrary.js";
+import { harDistans, tempoPerKm, DISTANS_SPORTER } from "../data/sportDistans.js";
 import { SPORT_META } from "../data/sportLibrary.js";
 import { byggSportpass } from "../atlas2/SportView.jsx";
 import { resolveActivity } from "../data/exercises.js";
@@ -113,5 +113,23 @@ describe("passet som sparas", () => {
     expect(kort.cardioLoad).toBe(utan.cardioLoad);
     expect(lång.cardioLoad).toBe(utan.cardioLoad);
     expect(lång.muscleLoads).toEqual(utan.muscleLoads);
+  });
+});
+
+describe("distanslogiken bor utanför den genererade filen", () => {
+  it("sportLibrary.js exporterar den INTE — den skrivs över vid regenerering", async () => {
+    // sportLibrary.js är genererad från ett externt masterbibliotek. Låg
+    // distanslogiken kvar där skulle nästa generering radera både listan och
+    // tempoberäkningen tyst, och distanstestet falla utan uppenbar orsak.
+    const lib = await import("../data/sportLibrary.js");
+    expect(lib.DISTANS_SPORTER).toBe(undefined);
+    expect(lib.harDistans).toBe(undefined);
+    expect(lib.tempoPerKm).toBe(undefined);
+  });
+
+  it("och den genererade filen är märkt så att ingen skriver där igen", async () => {
+    const src = await import("../data/sportLibrary.js?raw").catch(() => null);
+    // Kan inte läsas som text i alla lägen — då räcker exporttestet ovan.
+    if (src) expect(src.default).toMatch(/GENERERAD FIL/);
   });
 });

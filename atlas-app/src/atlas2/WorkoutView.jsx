@@ -21,7 +21,7 @@ import { buildPostSession, attachReason, reasonSignal } from "../engines/post-se
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
-import { tempoPerKm } from "../data/sportLibrary.js";
+import { tempoPerKm } from "../data/sportDistans.js";
 
 /** Bygger passets övningslista med förslag ur historiken. */
 export function buildLive(program, workout, sessions) {
