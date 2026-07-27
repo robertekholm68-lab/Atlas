@@ -75,7 +75,7 @@ await kolla("mål sparat: 2400 kcal syns i ringen", finnsText("/ 2400 KCAL"));
 await kolla("mål sparat: ändra-länk finns", finnsText("Ändra mål"));
 
 // Snabblogg: beskriv en måltid i text (rösten fyller samma fält)
-await klickText("Logga mat");
+await klickText("Logga måltid");
 await page.waitForTimeout(300);
 await kolla("snabblogg: fältet finns", finnsText("Beskriv eller säg vad du åt"));
 await kolla("snabblogg: mikrofonknapp renderas", page.evaluate(() =>
@@ -95,7 +95,7 @@ await kolla("snabblogg: kcal räknas i översikten", page.evaluate(() =>
   !/^0$/.test((document.querySelector("svg text") || {}).textContent || "0")));
 
 // Vag beskrivning → följdfråga
-await klickText("Logga mat");
+await klickText("Logga måltid");
 await page.waitForTimeout(300);
 await page.evaluate(() => {
   const inp = [...document.querySelectorAll("input")].find(i => (i.placeholder || "").includes("kyckling"));
