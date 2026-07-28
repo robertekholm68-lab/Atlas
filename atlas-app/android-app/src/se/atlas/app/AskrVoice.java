@@ -1,6 +1,8 @@
 package se.atlas.app;
 
+import android.content.Context;
 import android.content.Intent;
+import android.os.Vibrator;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -97,7 +99,12 @@ public class AskrVoice {
             // Flera tolkningar av samma yttrande. Webbappen tar den första som
             // går att läsa som ett set — det räddar en del "åtta/åttio".
             i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
-            i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+            // DELRESULTAT PÅ. Utan dem ser användaren ingenting förrän hela
+            // yttrandet är klart, och i ett gym med musik i lurarna går det inte
+            // att avgöra om mikrofonen ens hörde något. Med dem växer orden
+            // fram medan man talar — och man ser ett feltolkat ord direkt i
+            // stället för efter att ha släppt knappen.
+            i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             // Be om lokal tolkning där den finns: då fungerar rösten i en
             // gymkällare utan täckning. Får inte krävas — stödet varierar.
             if (Build.VERSION.SDK_INT >= 23) {
@@ -136,6 +143,31 @@ public class AskrVoice {
         }
         b.append("]");
         kör("window.__askrRöstResultat && window.__askrRöstResultat(" + b + ")");
+    }
+
+    /** Delresultat medan talet pågår. */
+    void skickaDel(String text) {
+        kör("window.__askrRöstDel && window.__askrRöstDel(" + citera(text) + ")");
+    }
+
+    /** Ljudnivå 0–1, så gränssnittet kan visa att mikrofonen hör något. */
+    void skickaNivå(float nivå) {
+        kör("window.__askrRöstNivå && window.__askrRöstNivå(" + nivå + ")");
+    }
+
+    /**
+     * En kort vibration när mikrofonen börjar lyssna.
+     *
+     * Med svettiga händer, musik i lurarna och blicken på stången är känseln
+     * den enda kanal som är ledig. Utan den vet man inte om trycket tog.
+     */
+    void pulsera(int ms) {
+        try {
+            Vibrator v = (Vibrator) host.getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null && v.hasVibrator()) v.vibrate(ms);
+        } catch (Throwable t) {
+            // Vibration är en bekvämlighet. Den får aldrig stoppa en inspelning.
+        }
     }
 
     void skickaFel(String kod) {
@@ -219,12 +251,24 @@ public class AskrVoice {
             v.skickaSlut();
         }
 
-        @Override public void onReadyForSpeech(Bundle b) { }
+        @Override public void onReadyForSpeech(Bundle b) {
+            v.pulsera(30);
+            v.kör("window.__askrRöstRedo && window.__askrRöstRedo()");
+        }
         @Override public void onBeginningOfSpeech() { }
-        @Override public void onRmsChanged(float rms) { }
+        @Override public void onRmsChanged(float rms) {
+            // Android ger ungefär -2..10 dB. Normaliseras till 0–1 här i stället
+            // för i webbappen, så att skalan hör ihop med den som mäter.
+            float n = (rms + 2f) / 12f;
+            v.skickaNivå(n < 0f ? 0f : n > 1f ? 1f : n);
+        }
         @Override public void onBufferReceived(byte[] buf) { }
-        @Override public void onEndOfSpeech() { }
-        @Override public void onPartialResults(Bundle b) { }
+        @Override public void onEndOfSpeech() { v.pulsera(15); }
+        @Override public void onPartialResults(Bundle b) {
+            ArrayList<String> alt = b != null
+                    ? b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION) : null;
+            if (alt != null && !alt.isEmpty()) v.skickaDel(alt.get(0));
+        }
         @Override public void onEvent(int t, Bundle b) { }
     }
 }

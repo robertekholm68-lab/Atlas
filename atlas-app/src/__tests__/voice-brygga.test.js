@@ -106,3 +106,28 @@ describe("bryggan lämnar samma sorts resultat som webbläsaren", () => {
     expect(anrop.stoppade).toBeGreaterThan(0);
   });
 });
+
+describe("delresultat och slutgiltigt svar hålls isär", () => {
+  it("ett delresultat är INTE slutgiltigt — annars avslutas lyssningen för tidigt", async () => {
+    skalMedRöst();
+    const { createDictation } = await import("../engines/voice.js");
+    const sedda = []; let avslutad = false;
+    createDictation({ onResult: (t, slut) => sedda.push([t, slut]), onEnd: () => { avslutad = true; } });
+
+    globalThis.__askrRöstDel("kyckling med");
+    expect(sedda[0]).toEqual(["kyckling med", false]);
+    expect(avslutad).toBe(false);
+  });
+
+  it("det slutgiltiga svaret ÄR slutgiltigt — annars tar lyssningen aldrig slut", async () => {
+    skalMedRöst();
+    const { createDictation } = await import("../engines/voice.js");
+    let sista = null, avslutad = false;
+    createDictation({ onResult: (t, slut) => { sista = [t, slut]; }, onEnd: () => { avslutad = true; } });
+
+    globalThis.__askrRöstDel("kyckling med ris");
+    globalThis.__askrRöstResultat(["kyckling med ris och broccoli"]);
+    expect(sista).toEqual(["kyckling med ris och broccoli", true]);
+    expect(avslutad).toBe(true);
+  });
+});
