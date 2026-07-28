@@ -145,6 +145,36 @@ export function parseSetSpeech(text) {
 /* ---------- webbläsardelen ---------- */
 
 /**
+ * Ställer in en igenkännare. `lokalt` styr om vi BER om bearbetning på enheten.
+ *
+ * VARFÖR DET ÄR EN PARAMETER OCH INTE ALLTID PÅ: `processLocally = true` kräver
+ * att språkpaketet är nedladdat. Saknas svenskan vägrar motorn med
+ * `language-not-supported` i stället för att gå över nätet — den faller inte
+ * tillbaka av sig själv. Kommentaren här sa tidigare "där den finns", men koden
+ * frågade aldrig om SPRÅKET fanns, bara om egenskapen fanns. Resultatet blev en
+ * knapp som slocknade direkt, med ett felmeddelande som skyllde på ljudet.
+ *
+ * Första försöket ber om lokalt (fungerar i en gymkällare utan täckning).
+ * Svarar motorn att språket inte stöds görs ETT försök till utan kravet.
+ */
+function ställIn(rec, { lokalt, interim, alternativ }) {
+  rec.lang = "sv-SE";
+  rec.continuous = false;
+  rec.interimResults = interim;
+  rec.maxAlternatives = alternativ;
+  try {
+    if ("processLocally" in rec) rec.processLocally = !!lokalt;
+  } catch (e) {}
+  return rec;
+}
+
+/** Är det här felet värt ett omförsök utan lokalt krav? */
+function börProvaUtanLokal(kod, rec, redanProvat) {
+  return kod === "language-not-supported" && !redanProvat
+    && !!rec && "processLocally" in rec && rec.processLocally === true;
+}
+
+/**
  * Översätter taligenkänningens felkod till något en människa kan agera på.
  *
  * FYND FRÅN RIKTIG ANVÄNDNING: knappen slocknade innan användaren hunnit säga
@@ -175,7 +205,9 @@ export function felText(kod) {
     case "aborted":
       return "Inspelningen avbröts innan något hanns säga. Sker ofta när sidan ligger i en inbäddad webbvy — öppna Askr direkt i webbläsaren.";
     case "language-not-supported":
-      return "Svenska stöds inte av taligenkänningen i den här webbläsaren.";
+      // Kommer efter att omförsöket utan lokalt krav också nekat — då saknas
+      // svenskan på riktigt, inte bara offline. Rådet ska peka på var den hämtas.
+      return "Svenska saknas i telefonens taligenkänning. Installera svenskt röstpaket under Inställningar → Allmän hantering → Röstinmatning (Google), eller prova Askr i Chrome.";
     default:
       // Namnet är det enda som gör felet lagbart. Att svälja det och skriva en
       // allmän mening har redan kostat två felsökningsvarv.
@@ -396,19 +428,18 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
   const städa = () => { if (vakt) { clearTimeout(vakt); vakt = null; } };
   const avsluta = () => { if (klar) return; klar = true; städa(); try { rec && rec.stop(); } catch (e) {} onEnd && onEnd(); };
 
+  const FORM = { interim: false, alternativ: 4 };
+  let utanLokal = false;   // har vi redan gett upp kravet på lokal bearbetning?
   try {
-    rec = new Rec();
-    rec.lang = "sv-SE";
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.maxAlternatives = 4;
-    // Be om lokal bearbetning där den finns — då fungerar det utan täckning i källaren.
-    try { if ("processLocally" in rec) rec.processLocally = true; } catch (e) {}
+    rec = ställIn(new Rec(), { ...FORM, lokalt: true });
   } catch (e) {
     onError && onError("start-misslyckades", "Kunde inte starta mikrofonen."); return () => {};
   }
 
-  rec.onresult = (ev) => {
+  // Hanterarna är namngivna och kopplas via koppla(), eftersom omförsöket utan
+  // lokalt krav skapar en NY igenkännare — den måste få samma hanterare, annars
+  // lyssnar ingen på svaret.
+  const vidResultat = (ev) => {
     const alt = ev.results && ev.results[0] ? Array.from(ev.results[0]) : [];
     let bäst = null;
     for (const a of alt) {
@@ -421,14 +452,27 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
     onEnd && onEnd();
   };
 
-  rec.onerror = (ev) => {
-    klar = true; städa();
+  const vidFel = (ev) => {
     const kod = (ev && ev.error) || "okänt";
+    // Vägrade motorn för att det svenska språkpaketet saknas lokalt? Släpp
+    // kravet och försök en gång till över nätet innan användaren får ett nej.
+    if (börProvaUtanLokal(kod, rec, utanLokal)) {
+      utanLokal = true;
+      try {
+        rec = koppla(ställIn(new Rec(), { ...FORM, lokalt: false }));
+        rec.start();
+        return;
+      } catch (e) { /* faller igenom till felet nedan */ }
+    }
+    klar = true; städa();
     onError && onError(kod, felText(kod));
     onEnd && onEnd();
   };
 
-  rec.onend = () => { clearVoiceAttempt(); if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+  const vidSlut = () => { clearVoiceAttempt(); if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+
+  function koppla(r) { r.onresult = vidResultat; r.onerror = vidFel; r.onend = vidSlut; return r; }
+  koppla(rec);
 
   // Vakthund: vissa webbläsare varken svarar eller avslutar. Släpp aldrig knappen i "lyssnar" för evigt.
   vakt = setTimeout(() => { if (!klar) { onError && onError("timeout", "Hörde ingenting."); avsluta(); } }, timeoutMs);
@@ -476,16 +520,14 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
   const städa = () => { if (vakt) { clearTimeout(vakt); vakt = null; } };
   const avsluta = () => { if (klar) return; klar = true; städa(); try { rec && rec.stop(); } catch (e) {} onEnd && onEnd(); };
 
+  // interimResults: visa texten medan den talas — känns levande.
+  const FORM = { interim: true, alternativ: 1 };
+  let utanLokal = false;
   try {
-    rec = new Rec();
-    rec.lang = "sv-SE";
-    rec.continuous = false;
-    rec.interimResults = true;          // visa texten medan den talas — känns levande
-    rec.maxAlternatives = 1;
-    try { if ("processLocally" in rec) rec.processLocally = true; } catch (e) {}
+    rec = ställIn(new Rec(), { ...FORM, lokalt: true });
   } catch (e) { onError && onError("start-misslyckades", "Kunde inte starta mikrofonen."); return () => {}; }
 
-  rec.onresult = (ev) => {
+  const vidResultat = (ev) => {
     let text = "", slutgiltig = false;
     for (let i = 0; i < ev.results.length; i++) {
       text += ev.results[i][0].transcript;
@@ -495,14 +537,27 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
     if (slutgiltig) { klar = true; städa(); onEnd && onEnd(); }
   };
 
-  rec.onerror = (ev) => {
-    klar = true; städa();
+  const vidFel = (ev) => {
     const kod = (ev && ev.error) || "okänt";
+    // Samma omförsök som i set-vägen: saknas svenskan lokalt, pröva över nätet.
+    if (börProvaUtanLokal(kod, rec, utanLokal)) {
+      utanLokal = true;
+      try {
+        rec = koppla(ställIn(new Rec(), { ...FORM, lokalt: false }));
+        rec.start();
+        return;
+      } catch (e) { /* faller igenom */ }
+    }
+    klar = true; städa();
     onError && onError(kod, felText(kod));
     onEnd && onEnd();
   };
 
-  rec.onend = () => { clearVoiceAttempt(); if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+  const vidSlut = () => { clearVoiceAttempt(); if (!klar) { klar = true; städa(); onEnd && onEnd(); } };
+
+  function koppla(r) { r.onresult = vidResultat; r.onerror = vidFel; r.onend = vidSlut; return r; }
+  koppla(rec);
+
   vakt = setTimeout(() => { if (!klar) avsluta(); }, timeoutMs);
 
   try { rec.start(); } catch (e) { klar = true; städa(); onError && onError("start-misslyckades", "Mikrofonen är upptagen."); onEnd && onEnd(); }

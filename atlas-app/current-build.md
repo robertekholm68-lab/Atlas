@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 914 i 86 filer |
+| Tester (vitest) | 916 i 86 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -852,6 +852,15 @@ aldrig göms bakom en utvilad.
 - **Ett urval är inte en helhet.** `grep | head` vid en refaktorering visar de
   första träffarna, inte alla — en importör utanför avkortningen blir kvar och
   faller först i bygget. Räkna träffarna innan du börjar ändra.
+- **`processLocally` kräver ett SPRÅKPAKET, inte bara egenskapen.** Röstknappen
+  slocknade direkt i Samsung Browser. Koden satte `rec.processLocally = true`
+  för att rösten skulle fungera utan täckning i en gymkällare — men kravet
+  gäller ett nedladdat språkpaket, och saknas svenskan **vägrar motorn med
+  `language-not-supported` i stället för att gå över nätet**. Den faller inte
+  tillbaka av sig själv. Kommentaren sa "be om lokal bearbetning där den finns";
+  koden frågade om EGENSKAPEN fanns, aldrig om SPRÅKET fanns. Nu görs ett
+  omförsök utan kravet, och hanterarna kopplas om till den nya igenkännaren —
+  glöms det steget lyssnar ingen på svaret.
 - **Kasta aldrig felkoden.** Taligenkänningens `onerror` översatte fyra kända
   koder och lät alla andra bli "Det gick inte att tolka ljudet." Texten LÄT som
   att användaren sagt något otydligt, men mikrofonen hade troligen aldrig
