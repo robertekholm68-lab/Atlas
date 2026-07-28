@@ -14,7 +14,7 @@
 // appar som spelar in", nu ljudet. Varje gång skickades användaren åt fel håll.
 
 import { describe, it, expect } from "vitest";
-import { felText } from "../engines/voice.js";
+import { felText, createSetListener } from "../engines/voice.js";
 
 describe("felkoden når alltid skärmen", () => {
   it("en okänd kod skrivs ut i klartext", () => {
@@ -76,5 +76,63 @@ describe("meddelandena är gemensamma för set och diktering", () => {
     const koder = ["not-allowed", "no-speech", "network", "audio-capture", "aborted", "okänt"];
     koder.forEach(k => expect(typeof felText(k)).toBe("string"));
     expect(felText("network").length).toBeGreaterThan(20);
+  });
+});
+
+// ── OMFÖRSÖKET UTAN LOKALT SPRÅKKRAV ─────────────────────────────────
+//
+// Roten till att knappen slocknade: koden satte `processLocally = true` för att
+// rösten skulle fungera utan täckning i en gymkällare. Men kravet gäller ett
+// SPRÅKPAKET som måste vara nedladdat — saknas svenskan vägrar motorn med
+// `language-not-supported` i stället för att gå över nätet. Den faller inte
+// tillbaka av sig själv.
+//
+// Kommentaren i koden sa "be om lokal bearbetning där den finns". Koden frågade
+// om EGENSKAPEN fanns, aldrig om SPRÅKET fanns. Skillnaden var en död knapp.
+describe("saknas svenskan lokalt görs ett försök till över nätet", () => {
+  function fejkMotor({ felaLokalt = true, felaAlltid = false } = {}) {
+    const spår = { skapade: 0, startade: [], lokalt: [] };
+    class Fejk {
+      constructor() { spår.skapade++; this.processLocally = false; }
+      start() {
+        spår.startade.push(this.lang);
+        spår.lokalt.push(this.processLocally);
+        const ska = felaAlltid || (felaLokalt && this.processLocally === true);
+        if (ska) setTimeout(() => this.onerror && this.onerror({ error: "language-not-supported" }), 0);
+        else setTimeout(() => this.onresult && this.onresult({ results: [[{ transcript: "åttio åtta" }]] }), 0);
+      }
+      stop() {}
+    }
+    globalThis.window = globalThis;
+    globalThis.SpeechRecognition = Fejk;
+    Object.defineProperty(globalThis, "navigator", {
+      value: { userAgent: "Mozilla/5.0 (Linux; Android 14)", mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } },
+      configurable: true, writable: true,
+    });
+    return spår;
+  }
+  const vänta = () => new Promise(r => setTimeout(r, 30));
+
+  it("första försöket ber om lokalt, andra gör det inte", async () => {
+    const spår = fejkMotor();
+    let resultat = null;
+    createSetListener({ onResult: r => { resultat = r; }, onError: () => {}, onEnd: () => {} });
+    await vänta();
+    expect(spår.lokalt).toEqual([true, false]);
+    expect(spår.skapade).toBe(2);
+    // Och omförsöket når hela vägen fram — hanterarna följde med till den nya
+    // igenkännaren. Utan det hade ingen lyssnat på svaret.
+    expect(resultat && resultat.ok).toBe(true);
+    expect(resultat.weight).toBe(80);
+  });
+
+  it("stöds språket inte alls ges ett ärligt nej, inte en evig loop", async () => {
+    const spår = fejkMotor({ felaAlltid: true });
+    let fel = null;
+    createSetListener({ onResult: () => {}, onError: (k, t) => { fel = { k, t }; }, onEnd: () => {} });
+    await vänta();
+    expect(spår.skapade).toBe(2);            // ett omförsök, inte fler
+    expect(fel.k).toBe("language-not-supported");
+    expect(fel.t).toMatch(/svenska/i);
   });
 });
