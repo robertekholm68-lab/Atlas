@@ -149,6 +149,7 @@ function SnabbLogg({ onLägg }) {
   const [estText, setEstText] = useState("");
   const [portion, setPortion] = useState("normal");
   const [lyssnar, setLyssnar] = useState(false);
+  const [nivå, setNivå] = useState(0);
   const [röstNote, setRöstNote] = useState(null);
   const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
@@ -180,11 +181,12 @@ function SnabbLogg({ onLägg }) {
   const lyssna = () => {
     if (lyssnar) { if (stoppa.current) stoppa.current(); setLyssnar(false); return; }
     if (!stöd.ok) { setRöstNote(stöd.note); return; }
-    setRöstNote(null); setLyssnar(true);
+    setRöstNote(null); setLyssnar(true); setNivå(0);
     stoppa.current = createDictation({
       onResult: t => setText(t),
       onError: (kod, note) => setRöstNote(note),
-      onEnd: () => setLyssnar(false),
+      onLevel: n => setNivå(n),
+      onEnd: () => { setLyssnar(false); setNivå(0); },
     });
   };
 
@@ -201,6 +203,11 @@ function SnabbLogg({ onLägg }) {
           border: `1px solid ${lyssnar ? C.lime : C.border}`,
           background: lyssnar ? volt(.12) : C.card2,
           color: stöd.ok ? (lyssnar ? C.lime : C.text) : C.muted, fontSize: 19,
+          // Ringen växer med ljudnivån. Det är den enda återkopplingen som
+          // fungerar på håll: man ser att mikrofonen hör en utan att läsa text.
+          boxShadow: lyssnar && nivå > 0.05
+            ? `0 0 0 ${Math.round(2 + nivå * 7)}px ${volt(0.16)}` : "none",
+          transition: "box-shadow 90ms linear",
         }}>{lyssnar ? "◼" : "🎤"}</button>
       </div>
       {röstNote && <div style={{ fontSize: 11.5, color: C.recovering, lineHeight: 1.5, marginTop: 8 }}>{röstNote}</div>}
