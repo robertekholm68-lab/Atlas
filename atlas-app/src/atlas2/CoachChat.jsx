@@ -11,7 +11,26 @@
 import { useState, useRef, useEffect } from "react";
 import { C, HFONT, BFONT, hdr, label, card, volt } from "./design.js";
 import { coachReply } from "../features/ai-coach/index.jsx";
+import { frågaCoachen } from "../engines/coach-llm.js";
+import { coachFacts } from "../engines/facts.js";
 import { bodyState, nutritionCtx } from "./store.js";
+
+/**
+ * Proxyn som håller API-nyckeln. Appen anropar aldrig Claude direkt — en nyckel
+ * i klienten kan läsas av vem som helst med telefonen i handen.
+ */
+const COACH_PROXY = "https://askr-coach.vercel.app/api/coach";
+
+async function hämtaSvar({ system, meddelande }) {
+  const r = await fetch(COACH_PROXY, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ system, meddelande }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.fel || "proxyfel");
+  return d.text;
+}
 
 /** Startförslag. Korta, och formulerade som man faktiskt pratar. */
 const FÖRSLAG = [
@@ -25,13 +44,14 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
   const [rader, setRader] = useState([]);
   const [text, setText] = useState("");
   const [ämne, setÄmne] = useState(null);
+  const [tänker, setTänker] = useState(false);
   const botten = useRef(null);
 
   useEffect(() => {
     if (botten.current) botten.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [rader]);
 
-  const fråga = q => {
+  const fråga = async q => {
     const f = (q || "").trim();
     if (!f) return;
 
@@ -64,6 +84,33 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
     setRader(r => [...r, { från: "du", text: f }, { från: "coachen", ...svar }]);
     if (svar.topic) setÄmne(svar.topic);
     setText("");
+
+    // CLAUDE KLIVER IN DÄR REGLERNA INTE RÄCKER.
+    //
+    // coachReply är förstahandsvalet: testad, känner igen avsikter, citerar
+    // kunskapsbanken med källa. Men den svarar generellt när frågan inte
+    // matchar något — och "jag har ont i axeln när jag pressar" är en riktig
+    // fråga som ingen regeltabell fångar.
+    //
+    // Modellen får BARA formulera kring coachFacts. Hittar den på ett tal
+    // förkastas svaret av coach-llm, och då står det regelbaserade svaret kvar.
+    // Det är därför den här körs EFTER: användaren har redan fått ett svar, och
+    // det här kan bara förbättra det.
+    // Fallback-grenen i coachReply känns igen på att den saknar topic och i
+    // stället erbjuder chips — den har alltså inte förstått frågan, bara
+    // föreslagit vad man KAN fråga. Det är där Claude tillför något.
+    const förstodInte = !svar.topic && Array.isArray(svar.chips) && svar.chips.length > 0;
+    if (förstodInte) {
+      setTänker(true);
+      const facts = coachFacts({ sessions, activeProgram, weights, goal });
+      const r = await frågaCoachen({
+        fråga: f, facts,
+        extra: { frågaGällde: ämne || null },
+        hämtaSvar,
+      });
+      setTänker(false);
+      if (r.ok) setRader(rad => [...rad, { från: "coachen", text: r.text, källa: "claude" }]);
+    }
   };
 
   return (
@@ -80,6 +127,9 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
         </div>
       ) : (
         <div>
+          {tänker && (
+            <div style={{ fontSize: 12.5, color: C.muted, padding: "8px 2px" }}>Tänker…</div>
+          )}
           {rader.map((r, i) => (
             <div key={i} style={{ marginBottom: 12 }}>
               {r.från === "du" ? (
