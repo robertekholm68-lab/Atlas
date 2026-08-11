@@ -334,6 +334,11 @@ export function Atlas2() {
   // av per dag. Kryssrutor, inte alarm — kunskapsbanken säger att det är det
   // dagliga intaget över tid som räknas, inte klockslaget.
   const [suppLog, setSuppLog] = useState([]);
+  // Pass som legat öppet för länge — visas som fråga, inte som pågående.
+  const [övergivet, setÖvergivet] = useState(null);
+  // Sätts när användaren valt "Spara det som loggades" — WorkoutView avslutar då
+  // passet direkt i stället för att visa det som pågående.
+  const [avslutaDirekt, setAvslutaDirekt] = useState(false);
   const bockaSupp = id => setSuppLog(l => {
     const ny = pruneLog(toggleToday(l, id));
     save("supplementLog", ny);
@@ -387,7 +392,24 @@ export function Atlas2() {
       const migr = migrera({ sessions: sess, weights: w, foodLog: fl, goal: g }, idn);
       setMode(m); setProfile(p); setSex(p.sex || null);
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
-      setWeights(migr.weights); setLive(lv); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
+      setWeights(migr.weights); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
+
+      // ÖVERGIVET PASS: fråga i stället för att tyst räkna vidare.
+      //
+      // Ett pass som startats och lämnats ligger kvar i lagringen. Förut
+      // återupptogs det utan ett ord, med klockan fortfarande igång — Robert såg
+      // "PASSTID 9746 min", nästan sju dygn.
+      //
+      // Gränsen är åtta timmar från sista aktivitet. Under den kan man rimligen
+      // ha lagt ifrån sig telefonen mitt i ett pass; över den har man gått hem.
+      // Passet raderas ALDRIG automatiskt — det kan innehålla riktiga set som
+      // användaren vill ha kvar.
+      if (lv) {
+        const sista = (lv.items || []).reduce((max, x) =>
+          (x.loggade || []).reduce((m, l) => (l.ts && l.ts > m ? l.ts : m), max), 0) || lv.startad || 0;
+        if (sista && Date.now() - sista > 8 * 3600e3) setÖvergivet(lv);
+        else setLive(lv);
+      }
       // Städa avfärdanden vid boot — annars växer listan med id:n som aldrig
       // kan återkomma, eftersom de bär passets id.
       setAvfärdade(pruneDismissed(nd || {}));
@@ -531,9 +553,46 @@ export function Atlas2() {
         onHome={() => { setKlart(null); setFlik("hem"); }} />
     );
     if (flik === "pass") {
+      // ÖVERGIVET PASS — fråga innan något händer.
+      //
+      // Tre svar, och alla tre är riktiga. "Fortsätt" behåller passet som det
+      // är. "Spara" avslutar det med den tid som faktiskt loggades, inte den tid
+      // det legat öppet. "Kasta" raderar — men bara efter att användaren sett
+      // hur många set som står på spel, och aldrig automatiskt.
+      if (övergivet) {
+        const antalSet = (övergivet.items || []).reduce((n, x) => n + (x.loggade || []).length, 0);
+        const sedan = Math.round((Date.now() - (övergivet.startad || Date.now())) / 3600e3);
+        return (
+          <div style={{ padding: "28px 20px 72px" }}>
+            <div style={label(C.recovering)}>Oavslutat pass</div>
+            <div style={{ ...hdr(20), marginTop: 8 }}>{övergivet.namn}</div>
+            <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 12 }}>
+              Startades för {sedan < 48 ? `${sedan} timmar` : `${Math.round(sedan / 24)} dygn`} sedan
+              och avslutades aldrig. {antalSet
+                ? `${antalSet} ${antalSet === 1 ? "set är" : "set är"} loggade.`
+                : "Inga set hann loggas."}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6, marginTop: 10 }}>
+              Sparar du det räknas tiden fram till sista loggade set — inte tiden
+              det legat öppet.
+            </div>
+            <button onClick={() => { setLive(övergivet); setÖvergivet(null); }}
+              style={{ ...btnPrimary, marginTop: 22 }}>Fortsätt passet</button>
+            {antalSet > 0 && (
+              <button onClick={() => { setLive(övergivet); setÖvergivet(null); setAvslutaDirekt(true); }}
+                style={{ ...btnGhost, marginTop: 10 }}>Spara det som loggades</button>
+            )}
+            <button onClick={() => { save("live", null); setÖvergivet(null); }}
+              style={{ ...btnGhost, marginTop: 10, color: C.muted }}>
+              {antalSet ? "Kasta passet" : "Kasta"}
+            </button>
+          </div>
+        );
+      }
       if (live) return (
         <WorkoutView live={live} setLive={setLive} sessions={sessions} setSessions={setSessions}
-          onDone={r => { setLive(null); setKlart(r); }}
+          avslutaDirekt={avslutaDirekt}
+          onDone={r => { setLive(null); setAvslutaDirekt(false); setKlart(r); }}
           onAbort={() => setFlik("hem")} />
       );
       return (
