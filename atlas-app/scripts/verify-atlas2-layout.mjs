@@ -80,12 +80,34 @@ for (const [etikett, bredd, höjd] of [["SE", 375, 667], ["14", 390, 844], ["des
   };
   const mät = async namn => {
     await page.waitForTimeout(450);
-    const m = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, vp: window.innerHeight }));
+    const m = await page.evaluate(() => {
+      const d = document.documentElement;
+      // Vilket element sticker ut åt höger? Utan namnet är ett sidscroll-fel
+      // nästan omöjligt att spåra.
+      const skyldig = [...document.querySelectorAll("*")]
+        .filter(el => { const r = el.getBoundingClientRect();
+                        return r.width > 20 && r.right > window.innerWidth + 1; })
+        .map(el => (el.innerText || el.tagName).replace(/\s+/g, " ").slice(0, 24))
+        .pop() || null;
+      return { doc: d.scrollHeight, vp: window.innerHeight,
+               bredd: d.scrollWidth - d.clientWidth, skyldig };
+    });
     const över = m.doc - m.vp;
     const ryms = över <= 4;                       // 4 px marginal för avrundning
     const krav = MÅSTE_RYMMAS.includes(namn);
-    const ok = krav ? ryms : true;
-    steg.push(`${ok ? "OK " : "FEL"} ${etikett.padEnd(7)} ${namn.padEnd(9)} ${ryms ? "ryms" : `scroll +${över} px`}${krav ? "" : "  (får scrolla)"}`);
+
+    // SIDSCROLL ÄR ALLTID FEL, i varje vy och på varje bredd.
+    //
+    // Den här kontrollen saknades helt: skriptet mätte bara scrollHeight, så
+    // passvyn kunde ligga 107 px utanför skärmkanten på en 375 px-telefon och
+    // ändå rapportera 24 OK. Felet levde i månader och hittades först när någon
+    // svepte i sidled på riktigt. En vy som får scrolla vertikalt får ändå
+    // aldrig scrolla horisontellt — det finns ingen vy där det är avsett.
+    const bredtFel = m.bredd > 1;
+    const ok = (krav ? ryms : true) && !bredtFel;
+    const höjdtext = ryms ? "ryms" : `scroll +${över} px`;
+    const bredtext = bredtFel ? `  SIDSCROLL +${m.bredd} px${m.skyldig ? ` ("${m.skyldig}")` : ""}` : "";
+    steg.push(`${ok ? "OK " : "FEL"} ${etikett.padEnd(7)} ${namn.padEnd(9)} ${höjdtext}${krav || !ryms ? "" : "  (får scrolla)"}${bredtext}`);
   };
 
   await page.goto("http://localhost:8947/"); await page.waitForTimeout(800);

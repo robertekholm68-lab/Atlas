@@ -44,6 +44,16 @@ export function layoutFor(bredd) {
     spalter: desktop ? 2 : 1,
     // Färgnyckeln får plats på en rad först när det finns bredd till det.
     kompaktNyckel: (bredd || 0) < 420,
+    // Under 375 px finns inte bredden för två stegare med 44 px träffytor och
+    // full sifferstorlek bredvid varandra. Träffytorna är inte förhandlingsbara,
+    // så det är siffran som får ge vika. Mätt: vid 360 px har viktens tal 71 px
+    // och behöver 70 vid grad 20 — marginalen är för tunn för att lita på.
+    smalSkärm: (bredd || 0) < 375,
+    // Under 360 px räcker bredden inte ens med nedskalad siffra: två 44 px-
+    // knappar per stegare lämnar för lite kvar. Då staplas vikt och reps i
+    // stället. Det kostar höjd, men på en så liten skärm scrollar passvyn ändå
+    // (mätt: +101 px vid 320x568), så kostnaden är redan betald.
+    staplaStegare: (bredd || 0) < 360,
   };
 }
 

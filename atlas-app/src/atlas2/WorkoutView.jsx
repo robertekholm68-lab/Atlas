@@ -17,6 +17,7 @@ import { save } from "./store.js";
 import { workoutExercises } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
+import { useLayout } from "./layout.js";
 import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
@@ -79,43 +80,71 @@ const kvant = (v, raster) => Math.round(v / raster) * raster;
 
 const STEG_KG = [2.5, 1.25, 0.25];
 
-function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false }) {
+function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = false }) {
   const [i, setI] = useState(0);
   const s = valbart ? STEG_KG[i] : steg;
   const raster = enhet === "kg" ? 0.25 : 1;
+  // flexShrink: 0 — träffytan är 44 px och får aldrig krympa bort.
   const knapp = {
-    width: 44, height: 44, borderRadius: 999, border: `1px solid ${C.border}`,
-    background: C.card2, color: C.text, fontSize: 21, cursor: "pointer", lineHeight: 1,
+    width: 44, height: 44, borderRadius: 999, flexShrink: 0,
+    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+    fontSize: 21, cursor: "pointer", lineHeight: 1,
   };
   const flytta = d => sätt(Math.max(min, kvant((värde || 0) + d * s, raster)));
+  // UNDERETIKETTEN BARA NÄR DEN SÄGER NÅGOT NYTT.
+  //
+  // Kortet har redan en rubrik ("Vikt" / "Reps"). För vikten bär raden under
+  // talet extra information — enhet och vald steglängd — men för reps stod bara
+  // "REPS" en gång till. Den upprepningen var dessutom det som klipptes vid
+  // 360 px: ordet behövde 27 px och hade 24.
+  const tal = (
+    <>
+      <div style={{ ...hdr(valbart ? (smal ? 17 : 20) : (smal ? 19 : 23)), whiteSpace: "nowrap" }}>{formatWeight(värde)}</div>
+      {valbart && (
+        <div style={{ ...label(C.lime), marginTop: 1, whiteSpace: "nowrap" }}>
+          {enhet} ±{formatWeight(s)}
+        </div>
+      )}
+    </>
+  );
+
+  // TALET KRYMPER, KNAPPARNA GÖR DET INTE.
+  //
+  // Talet hade minWidth 96, vilket gav varje stegare ett hårt golv på 212 px
+  // (44 + 14 + 96 + 14 + 44). Två stegare bredvid varandra krävde då ~490 px
+  // inklusive kort- och sidmarginal, och på en 375 px-telefon sköt reps-kortet
+  // 107 px utanför skärmen — hela passvyn fick sidscroll. Felet fanns långt före
+  // viktrastret och upptäcktes aldrig, eftersom layoutverifieringen bara mätte
+  // HÖJD. Den mäter nu båda.
+  //
+  // Talet ligger kvar MELLAN knapparna i stället för ovanför dem: en variant med
+  // talet på egen rad löste bredden men kostade 51 px på höjden, och passvyn
+  // hade två pixlars marginal. Mätt, inte gissad.
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
       <button onClick={() => flytta(-1)} style={knapp} aria-label="Minska">−</button>
-      {/* Steglängden byts genom att trycka på SIFFRAN. Blocket är redan ~50 px
-          högt, så träffytan finns utan att något växer — en egen knapp under
-          enheten sköt passvyn 33 px över skärmkanten på en liten telefon.
-          Utan valbar steglängd vore 0,25 kg oanvändbart (åtta tryck för 2,5 kg)
-          och 2,5 skulle omöjliggöra finjustering. */}
       {valbart ? (
         <button onClick={() => setI(x => (x + 1) % STEG_KG.length)}
           aria-label={`Vikt ${formatWeight(värde)} kilo. Steglängd ${formatWeight(s)} kilo — tryck för att ändra.`}
-          style={{ minWidth: 96, textAlign: "center", background: "none", border: "none",
-            padding: 0, cursor: "pointer", color: C.text }}>
-          <div style={{ ...hdr(27) }}>{formatWeight(värde)}</div>
-          <div style={{ ...label(C.lime), marginTop: 2 }}>{enhet} ±{formatWeight(s)}</div>
+          style={{ flex: 1, minWidth: 0, textAlign: "center", background: "none",
+            border: "none", padding: 0, cursor: "pointer", color: C.text, overflow: "hidden" }}>
+          {tal}
         </button>
       ) : (
-        <div style={{ minWidth: 96, textAlign: "center" }}>
-          <div style={{ ...hdr(27) }}>{formatWeight(värde)}</div>
-          <div style={{ ...label(), marginTop: 2 }}>{enhet}</div>
-        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: "center", overflow: "hidden" }}>{tal}</div>
       )}
       <button onClick={() => flytta(1)} style={knapp} aria-label="Öka">+</button>
     </div>
   );
 }
 
+
+
 export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort }) {
+  // Hooks före villkorade returer (projektlag). Bredden avgör sifferstorleken i
+  // stegarna: träffytorna är låsta vid 44 px, så det är talet som får ge vika
+  // när skärmen är smal.
+  const layout = useLayout();
   const it = live.items[live.idx];
   const [vikt, setVikt] = useState(it ? it.vikt : null);
   const [reps, setReps] = useState(it ? it.reps : 8);
@@ -253,14 +282,15 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
-            <div style={{ ...card, flex: 1, padding: "14px 6px" }}>
+          <div style={{ display: "flex", flexDirection: layout.staplaStegare ? "column" : "row", gap: 12, marginTop: 22 }}>
+            {/* Vikten får mer bredd än reps — "70,75" är fem tecken, "9" är ett. */}
+            <div style={{ ...card, flex: 1.35, minWidth: 0, padding: "14px 4px" }}>
               <div style={{ ...label(), textAlign: "center", marginBottom: 8 }}>Vikt</div>
-              <Steg värde={vikt} sätt={setVikt} steg={2.5} enhet="kg" valbart />
+              <Steg värde={vikt} sätt={setVikt} steg={2.5} enhet="kg" valbart smal={layout.smalSkärm} />
             </div>
-            <div style={{ ...card, flex: 1, padding: "14px 6px" }}>
+            <div style={{ ...card, flex: 1, minWidth: 0, padding: "14px 4px" }}>
               <div style={{ ...label(), textAlign: "center", marginBottom: 8 }}>Reps</div>
-              <Steg värde={reps} sätt={setReps} steg={1} enhet="reps" min={1} />
+              <Steg värde={reps} sätt={setReps} steg={1} enhet="reps" min={1} smal={layout.smalSkärm} />
             </div>
           </div>
 
