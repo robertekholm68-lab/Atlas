@@ -80,6 +80,17 @@ const kvant = (v, raster) => Math.round(v / raster) * raster;
 
 const STEG_KG = [2.5, 1.25, 0.25];
 
+/**
+ * Skriver en passtid begripligt. Över två timmar säger "min" ingenting —
+ * "163 h" går att läsa, "9746 min" måste räknas om i huvudet. Och över ett dygn
+ * är talet i sig en signal om att något är fel, vilket också ska synas.
+ */
+function passtid(min) {
+  if (min < 120) return { tal: String(min), enhet: "min" };
+  if (min < 1440) return { tal: String(Math.round(min / 60)), enhet: "tim" };
+  return { tal: String(Math.round(min / 1440)), enhet: min < 2880 ? "dygn" : "dygn" };
+}
+
 function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = false }) {
   const [i, setI] = useState(0);
   const s = valbart ? STEG_KG[i] : steg;
@@ -154,7 +165,7 @@ function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = fal
 
 
 
-export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort }) {
+export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort, avslutaDirekt = false }) {
   // Hooks före villkorade returer (projektlag). Bredden avgör sifferstorleken i
   // stegarna: träffytorna är låsta vid 44 px, så det är talet som får ge vika
   // när skärmen är smal.
@@ -226,7 +237,10 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const avslutaSet = () => {
     if (saknarVikt) return;
     const nya = live.items.map((x, i) => i === live.idx
-      ? { ...x, loggade: [...x.loggade, { vikt, reps }] } : x);
+      // ts på varje loggat set. Utan den går det inte att veta NÄR passet
+      // faktiskt pågick, bara när det startades — och ett pass som startats och
+      // glömts ser då ut att ha tagit flera dygn.
+      ? { ...x, loggade: [...x.loggade, { vikt, reps, ts: Date.now() }] } : x);
     const sista = klara + 1 >= it.set;
     const nästaIdx = sista ? Math.min(live.idx + 1, live.items.length - 1) : live.idx;
     setLive({ ...live, items: nya, idx: nästaIdx });
@@ -235,7 +249,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
 
   const avsluta = () => {
     const sets = [];
-    live.items.forEach(x => x.loggade.forEach(l => sets.push({ exerciseId: x.exId, weight: l.vikt, reps: l.reps })));
+    live.items.forEach(x => x.loggade.forEach(l => sets.push({ exerciseId: x.exId, weight: l.vikt, reps: l.reps, ts: l.ts })));
     if (!sets.length) { onAbort(); return; }
     const session = buildSession({
       sets, source: "training", title: live.namn,
@@ -243,8 +257,30 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     });
     setSessions(s => [...s, session]);
     save("live", null);
-    onDone({ session, minuter: Math.max(1, Math.round((Date.now() - live.startad) / 60000)) });
+    onDone({ session, minuter: Math.max(1, passMin) });
   };
+
+  // PASSTIDEN RÄKNAS TILL SISTA LOGGADE SET, INTE TILL NU.
+  //
+  // Ett pass som startats och lämnats utan att avslutas ligger kvar i
+  // lagringen, och klockan fortsatte tidigare att räkna. Robert såg
+  // "PASSTID 9746 min" — nästan sju dygn — och den siffran gick vidare till
+  // kvittot när passet väl avslutades.
+  //
+  // Tiden till sista set är den enda ärliga uppgiften: det är då vi vet att han
+  // fortfarande tränade. Att i stället räkna till "nu" antar att passet pågått
+  // hela tiden det legat öppet, vilket är ett påstående appen inte kan belägga.
+  const sistaSetTs = live.items.reduce((max, x) =>
+    x.loggade.reduce((m, l) => (l.ts && l.ts > m ? l.ts : m), max), 0);
+  const passMs = Math.max(0, (sistaSetTs || Date.now()) - live.startad);
+  const passMin = Math.round(passMs / 60000);
+
+  // Kom vi hit från "Spara det som loggades" avslutas passet direkt. Effekten
+  // ligger efter alla hooks (projektlag) och kör bara en gång.
+  const avslutat = useRef(false);
+  useEffect(() => {
+    if (avslutaDirekt && !avslutat.current) { avslutat.current = true; avsluta(); }
+  }, [avslutaDirekt]);
 
   const allaKlara = klaraSet >= totaltSet;
 
@@ -269,7 +305,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       </div>
 
       <div style={{ ...card, marginTop: 14, display: "flex", padding: "13px 4px" }}>
-        {[["Passtid", `${Math.max(0, Math.round((Date.now() - live.startad) / 60000))}`, "min"],
+        {[["Passtid", passtid(passMin).tal, passtid(passMin).enhet],
           ["Set klara", `${klaraSet}`, `av ${totaltSet}`],
           ["Övning", `${live.idx + 1}`, `av ${live.items.length}`]].map(([l, v, e], i) => (
           <div key={l} style={{ flex: 1, textAlign: "center", borderLeft: i ? `1px solid ${C.border}` : "none" }}>
