@@ -1371,6 +1371,29 @@ function formatKg(w) {
 }
 
 /**
+ * Byggstämpeln som läsbar LOKAL tid.
+ *
+ * `__ATLAS_BUILD__` sätts i vite-configerna med `toISOString()` och är alltså
+ * **UTC**: "202608110653". Skrivs siffrorna ut rakt av visas 06:53 för en
+ * användare vars klocka säger 08:53 — och just den skillnaden är förödande här,
+ * eftersom versionen finns till för att man ska kunna avgöra OM en ny version
+ * landat. En stämpel som ser gammal ut får någon att jaga ett problem som inte
+ * finns.
+ *
+ * Låg tidigare bara i mobilen (`byggTidLokalt`). 2.0 fick en egen, felaktig
+ * kopia som slice:ade siffrorna — två uppsättningar regler för samma sak, varav
+ * den ena var fel. Nu en, delad av alla tre målen.
+ */
+function formatBuildTime(stämpel) {
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(String(stämpel || ""));
+  if (!m) return String(stämpel || "okänt");
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+  if (isNaN(d)) return String(stämpel);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
  * Skriver en VOLYM (summan av vikt × reps) för visning.
  *
  * MOTORN AVRUNDAR INTE. `sessionVolume` räknar exakt, och ska fortsätta göra
@@ -1713,4 +1736,4 @@ function recoveryColor(score) {
   return `rgb(${r},${g},${b})`;
 }
 
-export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, formatVolume, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
+export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, formatVolume, formatBuildTime, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };

@@ -4,11 +4,20 @@
 // exakt vad som kommer in, och avgöra de fall appen inte kan avgöra själv.
 
 import { useState, useRef } from "react";
-import { C, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
+import { C, MONO, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { scanna, förbered, genomför } from "./import.js";
 import { buildV3Backup, v3BackupFilename, inspectV3Backup, restoreV3Backup } from "./backup2.js";
+import { formatBuildTime } from "../engines/index.js";
 
 const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" }) : "—";
+
+/**
+ * Byggstämpeln som läsbar tid. Stämpeln är UTC — konverteringen ligger i
+ * motorns formatBuildTime, delad med mobilen. En egen slice av siffrorna hade
+ * visat 06:53 när klockan är 08:53, och då ser en FÄRSK version gammal ut.
+ */
+const byggeLäsbart = () =>
+  formatBuildTime(typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "");
 
 export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onClose }) {
   const [steg, setSteg] = useState("scan");
@@ -92,6 +101,20 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
         {filFel && (
           <div style={{ fontSize: 12, color: C.recovering, lineHeight: 1.55, marginTop: 8 }}>{filFel}</div>
         )}
+
+        {/* VERSIONEN, EFTER backup-knapparna. Spara och Läs in hör ihop och ska
+            inte skiljas åt av ett annat ämne. Här hör den däremot hemma: man är
+            i datasäkerhet när man undrar vad appen egentligen har i sig.
+
+            Utan den går det inte att avgöra om appen hämtat ny kod eller kör på
+            cache — frågan uppstod när rösten ändrades flera gånger om dagen.
+            Ett stämpelnummer som ingen kan se är ingen versionsmärkning. */}
+        <div style={{ ...label(), margin: "26px 0 8px" }}>Version</div>
+        <div style={{ fontFamily: MONO, fontSize: 12, color: C.text2 }}>{byggeLäsbart()}</div>
+        <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.6, marginTop: 6 }}>
+          Appen hämtar senaste versionen varje gång du öppnar den med nät.
+          Stämmer inte tiden: stäng appen helt och öppna igen.
+        </div>
 
         <button onClick={onClose} style={{ ...btnGhost, marginTop: 18 }}>Stäng</button>
       </div>
