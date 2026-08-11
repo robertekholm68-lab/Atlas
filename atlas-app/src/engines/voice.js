@@ -80,9 +80,27 @@ function taUtTal(normaliserad) {
   const ut = [];
   for (let i = 0; i < ord.length; i++) {
     const o = ord[i];
-    if (/^\d+(\.\d+)?$/.test(o)) { ut.push({ v: parseFloat(o), efter: ord[i + 1] || "" }); continue; }
+    // "sjuttio komma fem" -> 70.5. Utan det här blev decimalen sönderdelad:
+    // "sjuttio komma fem åtta" tolkades som 70 kg x 5 reps, alltså fel vikt OCH
+    // fel reps. Siffror har redan fått sin punkt i normalisera(); det här gäller
+    // talen som sägs med ord.
+    const decimal = (v, i) => {
+      if (ord[i + 1] !== "komma") return null;
+      const d = /^\d$/.test(ord[i + 2]) ? Number(ord[i + 2]) : ordTillTal(ord[i + 2]);
+      if (d === null || d === undefined || d < 0 || d > 9) return null;
+      return { v: v + d / 10, hopp: 2 };
+    };
+    if (/^\d+(\.\d+)?$/.test(o)) {
+      const d = decimal(parseFloat(o), i);
+      if (d) { ut.push({ v: d.v, efter: ord[i + 3] || "" }); i += d.hopp; continue; }
+      ut.push({ v: parseFloat(o), efter: ord[i + 1] || "" }); continue;
+    }
     const direkt = ordTillTal(o);
-    if (direkt !== null) ut.push({ v: direkt, efter: ord[i + 1] || "" });
+    if (direkt !== null) {
+      const d = decimal(direkt, i);
+      if (d) { ut.push({ v: d.v, efter: ord[i + 3] || "" }); i += d.hopp; continue; }
+      ut.push({ v: direkt, efter: ord[i + 1] || "" });
+    }
   }
   return ut;
 }
