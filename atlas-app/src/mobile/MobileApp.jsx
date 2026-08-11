@@ -13,7 +13,7 @@ import { nfcSupported, scanTags, writeTag, encodeTag } from "../engines/nfc.js";
 import { installAdvice, capabilities, isStandalone, platformKind } from "../engines/platform.js";
 import { writeBridge } from "../engines/bridge.js";
 import { MACHINE_TYPES } from "../data/machines.js";
-import { computeRecovery, computeReadiness, computeSystemicFatigue, computeSessionLoad, progressionSuggestion, computeCardioLoad, computeSportLoad, lastPerformance, lastSessionSets, lookupBarcode, estimateMeal, startOfLocalDay, formatWeight, formatKg } from "../engines/index.js";
+import { computeRecovery, computeReadiness, computeSystemicFatigue, computeSessionLoad, progressionSuggestion, computeCardioLoad, computeSportLoad, lastPerformance, lastSessionSets, lookupBarcode, estimateMeal, startOfLocalDay, formatWeight, formatKg, formatBuildTime } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
 import { ALL_TEMPLATES, copyProgram, nextWorkout, workoutExercises } from "../engines/programs.js";
 import { Icon } from "../components/common/index.jsx";
@@ -1703,15 +1703,6 @@ function InstallCard({ onDismiss }) {
 // Ärlig översikt: vad just den här telefonen klarar.
 
 // "202607202054" (UTC) -> lokal tid enligt telefonens tidszon.
-function byggTidLokalt(stämpel) {
-  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(String(stämpel || ""));
-  if (!m) return String(stämpel || "okänt");
-  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
-  if (isNaN(d)) return String(stämpel);
-  const p = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
 function CapsSheet({ onClose }) {
   const caps = capabilities();
   const ok = caps.filter(c => c.ok).length;
@@ -1720,7 +1711,7 @@ function CapsSheet({ onClose }) {
   const bygge = typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "okänt";
   // Stämpeln sätts i UTC vid bygget. Visas den rakt av ser den fel ut för alla som
   // inte sitter i UTC — i Sverige två timmar bak på sommaren. Tolka som UTC, visa lokalt.
-  const läsligt = byggTidLokalt(bygge);
+  const läsligt = formatBuildTime(bygge);
   return (
     <div>
       <SheetTitle>Vad din telefon klarar</SheetTitle>

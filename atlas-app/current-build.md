@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 916 i 86 filer |
+| Tester (vitest) | 922 i 87 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -852,6 +852,15 @@ aldrig göms bakom en utvilad.
 - **Ett urval är inte en helhet.** `grep | head` vid en refaktorering visar de
   första träffarna, inte alla — en importör utanför avkortningen blir kvar och
   faller först i bygget. Räkna träffarna innan du börjar ändra.
+- **Byggstämpeln är UTC.** `__ATLAS_BUILD__` sätts med `toISOString()`, så en
+  rak utskrift av siffrorna visar 06:53 när svensk klocka säger 08:53 — och över
+  dygnsgränsen fel DATUM. Förödande just för en versionsvisning: den finns till
+  för att avgöra om ny kod landat, och texten bredvid säger "stämmer inte tiden,
+  starta om". En färsk app ser då gammal ut och någon jagar ett problem som inte
+  finns. Konverteringen bor i motorns `formatBuildTime`, delad av alla tre
+  målen. Mobilen hade den rätt hela tiden i en egen kopia; 2.0 fick först en
+  andra, felaktig. Testet sätter `process.env.TZ` — containern kör UTC, där är
+  även den trasiga varianten grön.
 - **`processLocally` kräver ett SPRÅKPAKET, inte bara egenskapen.** Röstknappen
   slocknade direkt i Samsung Browser. Koden satte `rec.processLocally = true`
   för att rösten skulle fungera utan täckning i en gymkällare — men kravet
