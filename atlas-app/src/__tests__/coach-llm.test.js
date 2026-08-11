@@ -118,3 +118,30 @@ describe("svaret förkastas hellre än visas fel", () => {
     expect(r.skäl).toBe("tomt");
   });
 });
+
+describe("markdown städas i stället för att förkasta svaret", () => {
+  // Första provet mot den skarpa proxyn gav "Du tränar **Push A** idag", trots
+  // att prompten bad om ren text. Stjärnor är fult, inte farligt — att kasta
+  // ett korrekt svar för formateringens skull vore fel avvägning.
+  const f = coachFacts({ sessions: [] });
+
+  it("fetstil plockas bort", async () => {
+    const r = await frågaCoachen({ fråga: "hej", facts: f,
+      hämtaSvar: async () => "Du tränar **Push A** idag." });
+    expect(r.ok).toBe(true);
+    expect(r.text).toBe("Du tränar Push A idag.");
+  });
+
+  it("rubriker och punktlistor plattas ut", async () => {
+    const r = await frågaCoachen({ fråga: "hej", facts: f,
+      hämtaSvar: async () => "## Dagens pass\n- Bänkpress\n- Axelpress" });
+    expect(r.text).not.toMatch(/^#|^-\s/m);
+  });
+
+  it("men ett påhittat tal förkastas fortfarande — städning räddar inte det", async () => {
+    const r = await frågaCoachen({ fråga: "hej", facts: f,
+      hämtaSvar: async () => "**Readiness 4711.**" });
+    expect(r.ok).toBe(false);
+    expect(r.skäl).toBe("påhittade-tal");
+  });
+});

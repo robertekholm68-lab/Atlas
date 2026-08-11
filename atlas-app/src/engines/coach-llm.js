@@ -103,7 +103,11 @@ Högst 60 ord. Är svaret enkelt: en mening. Utförlighet är en signal om att d
 HÄLSOGRÄNS.
 Du talar om träning och kost utifrån användarens data. Du är inte läkare. Gäller frågan smärta, skada eller symtom: säg kort att du inte kan bedöma det och hänvisa vidare, utan att låtsas veta.
 
-Svara med ren text. Ingen markdown, inga rubriker, inga punktlistor.`;
+INGEN MARKDOWN. Skriv aldrig **stjärnor** kring ord, inga rubriker, inga punktlistor. Appen visar din text rakt av, så stjärnor syns som stjärnor.
+
+INGA UPPMANINGAR OM ATT BOKA VÅRD I BRÅDSKANDE TON. Gäller frågan smärta: säg att du inte kan bedöma det och att en läkare eller fysioterapeut kan. Skriv det lugnt och utan utropstecken — du vet inte hur allvarligt det är, och ska inte låtsas veta det heller.
+
+ALDRIG "vi" eller "tillsammans". Du är ett verktyg, inte en träningskompis.`;
 
 /**
  * Frågar Claude. Anropet går genom `hämtaSvar`, som injiceras — motorn ska inte
@@ -130,5 +134,15 @@ export async function frågaCoachen({ fråga, facts, extra, hämtaSvar }) {
   const påhittade = påhittadeTal(text, underlag);
   if (påhittade.length) return { ok: false, skäl: "påhittade-tal", påhittade, text };
 
-  return { ok: true, text: String(text).trim() };
+  // Markdown städas i stället för att förkasta svaret. Stjärnor är fult, inte
+  // farligt — och att kasta ett i övrigt korrekt svar för formateringens skull
+  // vore att låta det perfekta stå i vägen. Första provet mot den skarpa proxyn
+  // gav "Du tränar **Push A** idag", trots att prompten bad om ren text.
+  const städat = String(text).trim()
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(^|\s)\*(\S.*?)\*(?=\s|$)/g, "$1$2")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-•]\s+/gm, "");
+
+  return { ok: true, text: städat };
 }
