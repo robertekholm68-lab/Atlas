@@ -97,9 +97,23 @@ function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = fal
   // talet extra information — enhet och vald steglängd — men för reps stod bara
   // "REPS" en gång till. Den upprepningen var dessutom det som klipptes vid
   // 360 px: ordet behövde 27 px och hade 24.
+  // SIFFERSTORLEKEN FÖLJER TALETS EGEN LÄNGD.
+  //
+  // Förut fick viktkortet extra bredd (flex 1.35) för att rymma "70,75". Det
+  // löste bredden men gjorde korten olika stora: knapparna hamnade 88 px isär i
+  // viktkortet och 43 px isär i reps, och det såg ut som två olika kontroller.
+  //
+  // Nu är korten lika breda och det är TALET som anpassar sig. De flesta vikter
+  // är korta ("70", "72,5"); bara kvartskilon blir fem tecken, och då räcker en
+  // mindre grad. Kontrollerna ser likadana ut oavsett vad som står i dem.
+  const text = formatWeight(värde);
+  // Femteckensvikter ("75,75") uppstår bara med kvartskilosteg och är därför
+  // ovanliga — de får bära nedskalningen så att de vanliga fallen kan vara
+  // stora. Mätt: vid 375 px har talet 56 px, vid 360 px har det 52.
+  const grad = (text.length >= 5 ? 16 : text.length >= 4 ? 20 : 23) - (smal ? 2 : 0);
   const tal = (
     <>
-      <div style={{ ...hdr(valbart ? (smal ? 17 : 20) : (smal ? 19 : 23)), whiteSpace: "nowrap" }}>{formatWeight(värde)}</div>
+      <div style={{ ...hdr(grad), whiteSpace: "nowrap" }}>{text}</div>
       {valbart && (
         <div style={{ ...label(C.lime), marginTop: 1, whiteSpace: "nowrap" }}>
           {enhet} ±{formatWeight(s)}
@@ -121,7 +135,7 @@ function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = fal
   // talet på egen rad löste bredden men kostade 51 px på höjden, och passvyn
   // hade två pixlars marginal. Mätt, inte gissad.
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
       <button onClick={() => flytta(-1)} style={knapp} aria-label="Minska">−</button>
       {valbart ? (
         <button onClick={() => setI(x => (x + 1) % STEG_KG.length)}
@@ -283,12 +297,11 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       ) : (
         <>
           <div style={{ display: "flex", flexDirection: layout.staplaStegare ? "column" : "row", gap: 12, marginTop: 22 }}>
-            {/* Vikten får mer bredd än reps — "70,75" är fem tecken, "9" är ett. */}
-            <div style={{ ...card, flex: 1.35, minWidth: 0, padding: "14px 4px" }}>
+            <div style={{ ...card, flex: 1, minWidth: 0, padding: "14px 3px" }}>
               <div style={{ ...label(), textAlign: "center", marginBottom: 8 }}>Vikt</div>
               <Steg värde={vikt} sätt={setVikt} steg={2.5} enhet="kg" valbart smal={layout.smalSkärm} />
             </div>
-            <div style={{ ...card, flex: 1, minWidth: 0, padding: "14px 4px" }}>
+            <div style={{ ...card, flex: 1, minWidth: 0, padding: "14px 3px" }}>
               <div style={{ ...label(), textAlign: "center", marginBottom: 8 }}>Reps</div>
               <Steg värde={reps} sätt={setReps} steg={1} enhet="reps" min={1} smal={layout.smalSkärm} />
             </div>
