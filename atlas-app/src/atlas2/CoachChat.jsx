@@ -47,9 +47,20 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
   const [tänker, setTänker] = useState(false);
   const botten = useRef(null);
 
+  // ROLLA TILL SVARETS ÖVERKANT, INTE TILL SIDANS BOTTEN.
+  //
+  // Regelsvaret visas direkt; Claudes svar läggs till flera sekunder senare och
+  // hamnar då utanför skärmen. Symtomet blir "AI:n funkar inte", trots att
+  // svaret ligger där — och det var precis vad Robert rapporterade.
+  //
+  // block:"end" var fel: under chatten finns inputfält och bottennav, så sidans
+  // botten hamnar långt förbi svaret och texten sköts 195 px OVANFÖR kanten
+  // (mätt, inte gissat). Ankaret sitter nu på sista raden och rullas med
+  // block:"start" — svarets början hamnar överst i vyn, där man vill läsa.
   useEffect(() => {
-    if (botten.current) botten.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [rader]);
+    const el = botten.current;
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [rader, tänker]);
 
   const fråga = async q => {
     const f = (q || "").trim();
@@ -131,7 +142,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
             <div style={{ fontSize: 12.5, color: C.muted, padding: "8px 2px" }}>Tänker…</div>
           )}
           {rader.map((r, i) => (
-            <div key={i} style={{ marginBottom: 12 }}>
+            <div key={i} ref={i === rader.length - 1 ? botten : null} style={{ marginBottom: 12 }}>
               {r.från === "du" ? (
                 <div style={{
                   marginLeft: "auto", maxWidth: "85%", padding: "10px 13px", borderRadius: "14px 14px 3px 14px",
@@ -143,6 +154,11 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
                   background: volt(.045), border: `1px solid ${C.border}`,
                   fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap",
                 }}>
+                  {/* Claudes svar kommer sekunder efter regelsvaret. Utan en
+                      markering ser det ut som att coachen sagt emot sig själv. */}
+                  {r.källa === "claude" && (
+                    <div style={{ ...label(C.lime), marginBottom: 6 }}>Coachen tänkte vidare</div>
+                  )}
                   {r.text}
                   {r.action && r.action.kind === "start" && activeProgram && (
                     <button onClick={onStart} style={{
@@ -155,7 +171,7 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
               )}
             </div>
           ))}
-          <div ref={botten} />
+
         </div>
       )}
 
