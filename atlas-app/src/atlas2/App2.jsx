@@ -407,7 +407,20 @@ export function Atlas2() {
       if (lv) {
         const sista = (lv.items || []).reduce((max, x) =>
           (x.loggade || []).reduce((m, l) => (l.ts && l.ts > m ? l.ts : m), max), 0) || lv.startad || 0;
-        if (sista && Date.now() - sista > 8 * 3600e3) setÖvergivet(lv);
+        // TVÅ GRÄNSER, för två olika situationer.
+        //
+        // Har man loggat set är passet igång på riktigt: åtta timmar, så att
+        // man kan lägga ifrån sig telefonen mitt i ett pass utan att bli
+        // avbruten av en fråga.
+        //
+        // Har man INTE loggat något är det inte ett pass man är mitt i — det är
+        // ett man startat och glömt. Robert såg "PASSTID 3 tim, 0 av 15 set"
+        // och kom inte åt passlistan, eftersom ett pågående pass tar över hela
+        // vyn. En timme räcker där: ett pass utan ett enda set efter en timme
+        // har ingen pågår-karaktär kvar.
+        const harSet = (lv.items || []).some(x => (x.loggade || []).length > 0);
+        const gräns = (harSet ? 8 : 1) * 3600e3;
+        if (sista && Date.now() - sista > gräns) setÖvergivet(lv);
         else setLive(lv);
       }
       // Städa avfärdanden vid boot — annars växer listan med id:n som aldrig
@@ -608,7 +621,17 @@ export function Atlas2() {
         <WorkoutView live={live} setLive={setLive} sessions={sessions} setSessions={setSessions}
           avslutaDirekt={avslutaDirekt}
           onDone={r => { setLive(null); setAvslutaDirekt(false); setKlart(r); }}
-          onAbort={() => setFlik("hem")} />
+          // AVSLUTA I FÖRTID MÅSTE RENSA PASSET, inte bara byta flik.
+          //
+          // Förut satte onAbort bara flik till "hem". Passet låg kvar i
+          // lagringen, så nästa gång man öppnade Pass var man tillbaka i exakt
+          // samma pass — och kom aldrig åt passlistan. Knappen såg ut att göra
+          // något men gjorde ingenting bestående.
+          //
+          // Inget kastas som är värt att spara: avsluta() lägger passet i
+          // historiken när det finns loggade set, och anropar onAbort BARA när
+          // listan är tom. Ett pass utan set har inget innehåll att förlora.
+          onAbort={() => { setLive(null); save("live", null); setFlik("hem"); }} />
       );
       return (
         <div style={{ padding: "70px 24px", textAlign: "center" }}>
