@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { C, hdr, label, btnText, card, volt } from "./design.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES, GROUP_SV } from "../data/muscles.js";
+import { sökordFör } from "./sokord.js";
 
 /**
  * ÖVNINGSBANKEN.
@@ -35,34 +36,7 @@ const SV = { external: "Vikt", bodyweight: "Kroppsvikt", time: "Tid" };
  * lista per övning — det skalar till 160 utan att någon måste underhålla en
  * översättning per rad.
  */
-const SÖKORD = [
-  [/bench press/i, "bänkpress bänk press bröst"],
-  [/squat/i, "knäböj böj ben"],
-  [/deadlift/i, "marklyft mark lyft rygg"],
-  [/row/i, "rodd rodda rygg"],
-  [/curl/i, "curl biceps armar"],
-  [/press/i, "press"],
-  [/pull-?up|chin-?up/i, "chins pullups räck"],
-  [/lat pulldown/i, "latsdrag drag rygg"],
-  [/lunge/i, "utfall ben"],
-  [/dip/i, "dips triceps"],
-  [/fly|flye/i, "flyes bröst"],
-  [/raise/i, "lyft"],
-  [/extension/i, "extension sträck"],
-  [/calf/i, "vad vader"],
-  [/plank/i, "planka bål"],
-  [/crunch|sit-?up/i, "situps mage bål"],
-  [/hip thrust/i, "höftlyft säte"],
-  [/shrug/i, "shrugs axlar trapezius"],
-  [/overhead/i, "axelpress över huvudet"],
-  [/leg press/i, "benpress"],
-  [/pushup|push-?up/i, "armhävning armhävningar"],
-];
 
-/** Extra sökord för en övning, eller tom sträng. */
-function sökordFör(namn) {
-  return SÖKORD.filter(([re]) => re.test(namn)).map(([, ord]) => ord).join(" ");
-}
 
 const UTRUSTNING_SV = {
   Barbell: "Skivstång", Dumbbell: "Hantlar", Machine: "Maskin", Cable: "Kabel",
