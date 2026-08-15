@@ -53,3 +53,27 @@ describe("otränade muskler lyser fortfarande inte", () => {
     expect(src).toMatch(/: \(aktiv \? 0\.22 : 0\)/);
   });
 });
+
+describe("figuren är ljus nog att se anatomin i", () => {
+  it("anatomibilden ljusas upp", () => {
+    // Bilden mörkades vid genereringen för att de färgade musklerna skulle
+    // bära informationen. Med overlay behövs det inte längre — färgen tar sin
+    // ton ur underlaget i stället för att konkurrera med det, så ett mörkt
+    // foto ger bara en mörk karta.
+    expect(src).toMatch(/brightness\(1\.\d+\)/);
+  });
+
+  it("kontrasten höjs tillsammans med ljusstyrkan", () => {
+    // Enbart brightness gör bilden gråare: muskeldefinitionen bleks ut, och
+    // det är just den som gör att färgen inte ser påklistrad ut.
+    expect(src).toMatch(/contrast\(1\.\d+\)/);
+  });
+
+  it("filtret sitter på bilden, inte på färglagret", () => {
+    // Ljusar man SVG:n i stället bleks statusfärgerna och rött närmar sig gult.
+    const img = src.slice(src.indexOf("<img src={bildUrl"), src.indexOf("</svg>"));
+    expect(img).toMatch(/brightness/);
+    const paths = src.slice(src.indexOf("r.d.map"));
+    expect(paths).not.toMatch(/brightness/);
+  });
+});

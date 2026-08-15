@@ -89,7 +89,20 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
           färre detaljer, men fortfarande läsbar och fortfarande sann. */}
       {bildOk && (
         <img src={bildUrl(vy)} alt="" onError={() => setBildOk(false)}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
+            // LJUSARE FIGUR.
+            //
+            // Bilden mörkades vid genereringen för att de färgade musklerna
+            // skulle bära informationen. Med overlay-blandningen behövs det
+            // inte längre: färgen tar sin ton ur underlaget i stället för att
+            // konkurrera med det, så ett mörkare foto ger bara en mörkare karta.
+            //
+            // Kontrasten höjs en aning tillsammans med ljusstyrkan. Enbart
+            // brightness gör bilden gråare — muskeldefinitionen bleks ut, och
+            // det är just den som gör att färgen inte ser påklistrad ut.
+            filter: "brightness(1.45) contrast(1.12)",
+          }} />
       )}
       <svg viewBox={data.viewBox} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
         role="img" aria-label={vy === "front" ? "Muskelkarta framifrån" : "Muskelkarta bakifrån"}>
