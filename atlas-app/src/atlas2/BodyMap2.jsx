@@ -101,7 +101,11 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
             // Kontrasten höjs en aning tillsammans med ljusstyrkan. Enbart
             // brightness gör bilden gråare — muskeldefinitionen bleks ut, och
             // det är just den som gör att färgen inte ser påklistrad ut.
-            filter: "brightness(1.45) contrast(1.12)",
+            // Mättnaden dras NER på underlaget så att statusfärgen får bära
+            // kulören ensam. Utan det konkurrerar figurens egen hudton med
+            // färgen, och vid hög ljusstyrka blir resultatet ljusrosa i stället
+            // för rött. Mätt: grönt tappade 31 % mättnad mellan 1,45 och 1,8.
+            filter: "brightness(1.8) contrast(1.15) saturate(0.55)",
           }} />
       )}
       <svg viewBox={data.viewBox} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
@@ -148,7 +152,11 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
                 // Otränade muskler ritas nästan inte alls — anatomibilden under
                 // räcker för att visa att de finns. Det som lyser är det som
                 // faktiskt har underlag.
-                fillOpacity={st ? (aktiv ? 0.72 : 0.5) : (aktiv ? 0.22 : 0)}
+                // Opaciteten höjs med den ljusare figuren. Overlay späder ut
+                // färgen mot ett ljust underlag — samma 0,5 som räckte mot ett
+                // mörkt foto ger blek status mot ett ljust. Mätt i pixelvärden,
+                // inte uppskattat.
+                fillOpacity={st ? (aktiv ? 0.85 : 0.66) : (aktiv ? 0.22 : 0)}
                 stroke={aktiv && st ? färg : "none"} strokeWidth={1.5}
                 style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "overlay" }} />
             ))}
