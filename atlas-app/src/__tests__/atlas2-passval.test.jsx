@@ -10,6 +10,8 @@
 // syns tydligt, men det finns alltid en väg runt det.
 
 import { describe, it, expect, afterEach } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import { createElement } from "react";
@@ -118,5 +120,38 @@ describe("startaPass tål att få ett klick-event", () => {
   it("ett halvt pass utan övningslista räknas inte", () => {
     // Hellre falla tillbaka på nästa pass än starta något tomt.
     expect(ärPass({ id: "w1", name: "Trasigt" })).toBe(false);
+  });
+});
+
+describe("passen syns i PASSVYN, inte bara i programarket", () => {
+  // Roberts fynd: "Jag ser fortfarande ingenstans där jag kan välja pass."
+  //
+  // Listan byggdes först inuti ProgramSheet — ett ark som stängs så fort man
+  // går därifrån. I praktiken fanns valet alltså ingenstans: man såg
+  // "Starta pass" i passvyn och fick det pass appen räknat fram, utan att veta
+  // att programmet hade fler.
+  //
+  // Testet vaktar att listan ligger i App2:s passvy. Flyttas den tillbaka in i
+  // ett ark blir det rött.
+  it("App2 renderar passen med startaPass, inte bara en Starta pass-knapp", () => {
+    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+    // Passvyns gren måste innehålla en lista över activeProgram.workouts.
+    const passvy = src.slice(src.indexOf('if (flik === "pass")'));
+    expect(passvy).toMatch(/activeProgram\.workouts.*\.map/s);
+    expect(passvy).toMatch(/startaPass\(w\)/);
+    expect(passvy).toMatch(/data-pass="1"/);
+  });
+
+  it("det pass som står på tur märks ut", () => {
+    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+    const passvy = src.slice(src.indexOf('if (flik === "pass")'));
+    expect(passvy).toMatch(/påTur/);
+    expect(passvy).toMatch(/står på tur/);
+  });
+
+  it("passnumret står med — flera pass kan heta samma sak", () => {
+    // Ett Upper/Lower med fyra dagar har två "Överkropp" och två "Underkropp".
+    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+    expect(src.slice(src.indexOf('if (flik === "pass")'))).toMatch(/Pass \{i \+ 1\}/);
   });
 });

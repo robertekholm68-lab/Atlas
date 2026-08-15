@@ -5,7 +5,7 @@
 // gräns: motorerna bär 550 tester och flera års domänbeslut, utseendet bär noll.
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
+import { C, volt, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
 import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout, identitet, migrera, stämplaLista, stämplaPost, identitetSync } from "./store.js";
 import { AskrWordmark, AskrLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
@@ -616,9 +616,47 @@ export function Atlas2() {
           <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.6, margin: "12px 0 22px" }}>
             {activeProgram ? `Nästa pass i ${activeProgram.name} väntar.` : "Välj ett program först, så vet Askr vad som kommer härnäst."}
           </div>
-          <button onClick={startaPass} style={btnPrimary}>
-            {activeProgram ? "Starta pass" : "Välj program"} <span style={{ fontSize: 19 }}>→</span>
-          </button>
+          {/* PASSEN LIGGER HÄR, INTE BARA I PROGRAMARKET.
+              Listan byggdes först inuti ProgramSheet, som stängs så fort man
+              går därifrån — så i praktiken fanns valet ingenstans. Man såg
+              "Starta pass" och fick det pass appen räknat fram, utan att veta
+              att programmet hade fler.
+
+              Nu står de i passvyn, som är där man faktiskt är när man ska
+              träna. Det på tur är märkt och står först; övriga går att välja.
+              Appen föreslår, användaren bestämmer. */}
+          {activeProgram && (activeProgram.workouts || []).length > 0 ? (
+            <div style={{ textAlign: "left", maxWidth: 420, margin: "0 auto" }}>
+              {(activeProgram.workouts || []).map((w, i) => {
+                const nästaW = (nästaPass(activeProgram, sessions) || {}).workout;
+                const påTur = nästaW && nästaW.id === w.id;
+                const antal = (w.exercises || []).length;
+                return (
+                  <button key={w.id || i} onClick={() => startaPass(w)} data-pass="1"
+                    aria-label={`Starta ${w.name}, pass ${i + 1} av ${activeProgram.workouts.length}`}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      gap: 12, width: "100%", textAlign: "left", padding: "13px 15px",
+                      marginBottom: 8, borderRadius: 14, cursor: "pointer", minHeight: 44,
+                      border: `1px solid ${påTur ? C.lime : C.border}`,
+                      background: påTur ? volt(.07) : C.card2, color: C.text,
+                    }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ ...hdr(14), display: "block" }}>{w.name}</span>
+                      <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>
+                        Pass {i + 1} · {antal} övning{antal === 1 ? "" : "ar"}{påTur ? " · står på tur" : ""}
+                      </span>
+                    </span>
+                    <span style={{ color: påTur ? C.lime : C.muted, fontSize: 18, flexShrink: 0 }}>→</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <button onClick={startaPass} style={btnPrimary}>
+              {activeProgram ? "Starta pass" : "Välj program"} <span style={{ fontSize: 19 }}>→</span>
+            </button>
+          )}
           {/* Sport och kondition belastar kroppen lika mycket som gympass.
               Loggas de inte ligger readiness kvar för högt. */}
           <div style={{ fontSize: 12.5, color: C.muted, margin: "20px 0 10px" }}>
