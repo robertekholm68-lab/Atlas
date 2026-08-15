@@ -319,7 +319,7 @@ function TrainingMode({ muscleStates, onComplete, onExit, equip, sessions, seed 
     const first = EXERCISES.find(x => x.id === resolved[0].id);
     if (first) pickPlan(first, resolved[0].reps);
   };
-  useEffect(() => { if (seed && seed.items && seed.items.length) startProgram({ plan: seed.items.map(x => [x.exId, x.sets, x.repMin]) }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (seed && seed.items && seed.items.length) startProgram({ plan: seed.items.map(x => [x.exId, x.sets, x.repMin]) }); }, []);
   const addSet = () => ex && setSets(s => [...s, { exerciseId: ex.id, weight: isBw ? 0 : weight, reps, rpe, duration }]);
   const prevSets = ex ? lastSessionSets(allSessions, ex.id) : null;
   const copyLast = () => { if (!prevSets) return; setSets(s => [...s, ...prevSets.sets.map(p => ({ exerciseId: ex.id, weight: isBw ? 0 : (p.weight ?? weight), reps: p.reps ?? reps, rpe: p.rpe ?? null, duration: isTime ? duration : null }))]); };
