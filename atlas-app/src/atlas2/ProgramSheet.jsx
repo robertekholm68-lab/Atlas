@@ -4,12 +4,14 @@
 // program, och då är det första man måste kunna göra att välja ett.
 
 import { useState } from "react";
-import { C, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
+import { C, hdr, btnText, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { ALL_TEMPLATES, copyProgram } from "../engines/programs.js";
 
 export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onStarta, onClose }) {
-  const [alla, setAlla] = useState(false);
-  const mallar = alla ? ALL_TEMPLATES : ALL_TEMPLATES.slice(0, 6);
+  const [vald, setVald] = useState(null);   // vald familj, null = visa familjelistan
+  // Familjerna i den ordning de står i ALL_TEMPLATES — Full Body, Upper/Lower
+  // och Push/Pull/Legs först, alltså de vanligaste uppläggen.
+  const familjer = [...new Set(ALL_TEMPLATES.map(t => t.family || t.name))];
 
   const välj = mall => {
     const kopia = copyProgram(mall, { name: mall.name, active: true });
@@ -83,23 +85,83 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
         </div>
       )}
 
-      <div style={{ ...label(), margin: "20px 0 9px" }}>{aktiv ? "Byt program" : "Välj program"}</div>
+      {/* FAMILJ FÖRST, NIVÅ SEDAN.
+          Förut låg alla 31 mallar i en enda rad med sex synliga och resten
+          bakom "Visa alla". Upper/Lower och Push/Pull/Legs hamnade på plats
+          5-10, alltså precis utanför — Robert hade dem hela tiden men såg dem
+          aldrig. Nivån stod dessutom bara som text i namnet.
 
-      {mallar.map(t => (
-        <button key={t.id} onClick={() => välj(t)} style={{ width: "100%", textAlign: "left", padding: 15, marginBottom: 9, borderRadius: 15, border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer" }}>
-          <div style={hdr(14.5)}>{t.name}</div>
-          {t.desc && <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, margin: "5px 0 8px" }}>{t.desc}</div>}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: t.desc ? 0 : 8 }}>
-            {[t.level, `${t.daysPerWeek} pass/vecka`, t.sessionDuration ? `${t.sessionDuration} min` : null].filter(Boolean).map(x => (
-              <span key={x} style={{ fontSize: 10.5, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 999, padding: "3px 9px" }}>{x}</span>
-            ))}
-          </div>
-        </button>
-      ))}
+          Nu är det tio familjer i stället för trettioen rader, och nivån blir
+          ett eget steg. Man ser direkt att Upper/Lower finns i tre varianter
+          i stället för att leta efter dem i en lista. */}
+      <div style={{ ...label(), margin: "20px 0 9px" }}>
+        {vald ? "Välj nivå" : aktiv ? "Byt program" : "Välj program"}
+      </div>
 
-      {!alla && ALL_TEMPLATES.length > 6 && (
-        <button onClick={() => setAlla(true)} style={btnGhost}>Visa alla {ALL_TEMPLATES.length} program</button>
+      {vald ? (
+        <>
+          <button onClick={() => setVald(null)}
+            style={{ ...btnText, marginBottom: 12, padding: "8px 0", minHeight: 44 }}>
+            ‹ Alla upplägg
+          </button>
+          <div style={{ ...hdr(17), marginBottom: 4 }}>{vald}</div>
+          {(() => {
+            const iFamiljen = ALL_TEMPLATES.filter(t => (t.family || t.name) === vald);
+            const ex = iFamiljen[0];
+            return (
+              <>
+                {ex && ex.desc && (
+                  <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>{ex.desc}</div>
+                )}
+                {iFamiljen.map(t => (
+                  <button key={t.id} onClick={() => välj(t)} data-mall="1"
+                    style={{ width: "100%", textAlign: "left", padding: 15, marginBottom: 9, borderRadius: 15,
+                      border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer", minHeight: 44 }}>
+                    <div style={hdr(14.5)}>{t.level || t.name}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                      {[`${(t.workouts || []).length} olika pass`, `${t.daysPerWeek} pass/vecka`,
+                        t.sessionDuration ? `${t.sessionDuration} min` : null].filter(Boolean).map(x => (
+                        <span key={x} style={{ fontSize: 10.5, color: C.muted, border: `1px solid ${C.border}`,
+                          borderRadius: 999, padding: "3px 9px" }}>{x}</span>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </>
+            );
+          })()}
+        </>
+      ) : (
+        familjer.map(f => {
+          const iFamiljen = ALL_TEMPLATES.filter(t => (t.family || t.name) === f);
+          const nivåer = iFamiljen.map(t => t.level).filter(Boolean);
+          const ex = iFamiljen[0];
+          // En familj med bara en variant behöver inget nivåsteg — välj direkt.
+          const direkt = iFamiljen.length === 1;
+          return (
+            <button key={f} data-familj="1"
+              onClick={() => direkt ? välj(iFamiljen[0]) : setVald(f)}
+              style={{ width: "100%", textAlign: "left", padding: 15, marginBottom: 9, borderRadius: 15,
+                border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer", minHeight: 44 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={hdr(14.5)}>{f}</div>
+                  {ex && ex.desc && (
+                    <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, margin: "5px 0 0" }}>{ex.desc}</div>
+                  )}
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 7 }}>
+                    {direkt
+                      ? `${(iFamiljen[0].workouts || []).length} olika pass · ${iFamiljen[0].daysPerWeek} pass/vecka`
+                      : `${nivåer.join(" · ")}`}
+                  </div>
+                </div>
+                <span style={{ color: C.muted, fontSize: 18, flexShrink: 0 }}>→</span>
+              </div>
+            </button>
+          );
+        })
       )}
+
     </div>
   );
 }
