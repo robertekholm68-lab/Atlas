@@ -155,3 +155,36 @@ describe("passen syns i PASSVYN, inte bara i programarket", () => {
     expect(src.slice(src.indexOf('if (flik === "pass")'))).toMatch(/Pass \{i \+ 1\}/);
   });
 });
+
+describe("ett tryck visar passet, det startar det inte", () => {
+  // Robert: "istället för att direkt köra igång passet som man valt vill jag se
+  // vilka övningar som ingår först".
+  //
+  // Rimligt: man väljer pass i omklädningsrummet och vill veta vad som väntar
+  // innan man går ut på golvet. Och att av misstag starta ett pass man bara
+  // ville titta på är dyrt — klockan börjar gå, och passet tar över hela vyn
+  // tills man avslutar det.
+  const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+  const passvy = src.slice(src.indexOf('if (flik === "pass")'));
+
+  it("passknappen fäller ut, den startar inte", () => {
+    expect(passvy).toMatch(/data-pass="1"[^>]*aria-expanded/s);
+    expect(passvy).toMatch(/setFörhandsvisat/);
+  });
+
+  it("start kräver en egen knapp", () => {
+    expect(passvy).toMatch(/data-starta="1"/);
+    expect(passvy).toMatch(/startaPass\(w\)/);
+  });
+
+  it("övningarnas namn slås upp ur banken, inte ur passet", () => {
+    // Passet bär id och volym; namnet hör hemma på ett ställe. Annars kan ett
+    // omdöpt övningsnamn stå kvar i gamla program.
+    expect(passvy).toMatch(/EXERCISES\.find/);
+  });
+
+  it("set och reps visas — det är det man vill veta i förväg", () => {
+    expect(passvy).toMatch(/set`/);
+    expect(passvy).toMatch(/reps`/);
+  });
+});

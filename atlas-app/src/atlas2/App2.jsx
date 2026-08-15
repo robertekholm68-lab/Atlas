@@ -33,6 +33,7 @@ import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
 import { useLayout, UTAN_NAV, MOBIL_MAX, PANEL_BREDD, INNEHÅLL_MAX, FULL_HÖJD } from "./layout.js";
 import { nextWorkout as nästaPass } from "../engines/programs.js";
+import { EXERCISES } from "../data/exercises.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 
 /* ══════════ STARTSIDA ══════════ */
@@ -341,6 +342,9 @@ export function Atlas2() {
   // Sätts när användaren valt "Spara det som loggades" — WorkoutView avslutar då
   // passet direkt i stället för att visa det som pågående.
   const [avslutaDirekt, setAvslutaDirekt] = useState(false);
+  // Vilket pass som är uppfällt i passvyn. Ett tryck visar innehållet; att
+  // starta kräver ett andra, uttryckligt tryck.
+  const [förhandsvisat, setFörhandsvisat] = useState(null);
   const bockaSupp = id => setSuppLog(l => {
     const ny = pruneLog(toggleToday(l, id));
     save("supplementLog", ny);
@@ -644,37 +648,76 @@ export function Atlas2() {
           </div>
           {/* PASSEN LIGGER HÄR, INTE BARA I PROGRAMARKET.
               Listan byggdes först inuti ProgramSheet, som stängs så fort man
-              går därifrån — så i praktiken fanns valet ingenstans. Man såg
-              "Starta pass" och fick det pass appen räknat fram, utan att veta
-              att programmet hade fler.
+              går därifrån — så i praktiken fanns valet ingenstans.
 
-              Nu står de i passvyn, som är där man faktiskt är när man ska
-              träna. Det på tur är märkt och står först; övriga går att välja.
-              Appen föreslår, användaren bestämmer. */}
+              ETT TRYCK ÖPPNAR PASSET, DET STARTAR DET INTE. Robert: "istället
+              för att direkt köra igång passet som man valt vill jag se vilka
+              övningar som ingår först". Rimligt: man väljer pass i
+              omklädningsrummet och vill veta vad som väntar innan man går ut på
+              golvet — och att av misstag starta ett pass man bara ville titta
+              på är dyrt, eftersom klockan börjar gå. */}
           {activeProgram && (activeProgram.workouts || []).length > 0 ? (
             <div style={{ textAlign: "left", maxWidth: 420, margin: "0 auto" }}>
               {(activeProgram.workouts || []).map((w, i) => {
                 const nästaW = (nästaPass(activeProgram, sessions) || {}).workout;
                 const påTur = nästaW && nästaW.id === w.id;
-                const antal = (w.exercises || []).length;
+                const övningar = w.exercises || [];
+                const öppet = förhandsvisat === (w.id || i);
                 return (
-                  <button key={w.id || i} onClick={() => startaPass(w)} data-pass="1"
-                    aria-label={`Starta ${w.name}, pass ${i + 1} av ${activeProgram.workouts.length}`}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      gap: 12, width: "100%", textAlign: "left", padding: "13px 15px",
-                      marginBottom: 8, borderRadius: 14, cursor: "pointer", minHeight: 44,
-                      border: `1px solid ${påTur ? C.lime : C.border}`,
-                      background: påTur ? volt(.07) : C.card2, color: C.text,
-                    }}>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ ...hdr(14), display: "block" }}>{w.name}</span>
-                      <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>
-                        Pass {i + 1} · {antal} övning{antal === 1 ? "" : "ar"}{påTur ? " · står på tur" : ""}
+                  <div key={w.id || i} style={{
+                    marginBottom: 8, borderRadius: 14, overflow: "hidden",
+                    border: `1px solid ${påTur ? C.lime : C.border}`,
+                    background: påTur ? volt(.07) : C.card2,
+                  }}>
+                    <button onClick={() => setFörhandsvisat(öppet ? null : (w.id || i))}
+                      data-pass="1" aria-expanded={öppet}
+                      aria-label={`${w.name}, pass ${i + 1} av ${activeProgram.workouts.length}, ${övningar.length} övningar`}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        gap: 12, width: "100%", textAlign: "left", padding: "13px 15px",
+                        cursor: "pointer", minHeight: 44, background: "none", border: "none", color: C.text,
+                      }}>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ ...hdr(14), display: "block" }}>{w.name}</span>
+                        <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>
+                          Pass {i + 1} · {övningar.length} övning{övningar.length === 1 ? "" : "ar"}{påTur ? " · står på tur" : ""}
+                        </span>
                       </span>
-                    </span>
-                    <span style={{ color: påTur ? C.lime : C.muted, fontSize: 18, flexShrink: 0 }}>→</span>
-                  </button>
+                      <span style={{ color: påTur ? C.lime : C.muted, fontSize: 15, flexShrink: 0,
+                        transform: öppet ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span>
+                    </button>
+
+                    {öppet && (
+                      <div style={{ padding: "0 15px 14px" }}>
+                        {övningar.map((ex, n) => {
+                          // Övningens namn slås upp ur banken. Passet bär bara id
+                          // och volym; namnet hör hemma på ett ställe.
+                          const info = EXERCISES.find(e => e.id === (ex.exerciseId || ex.exId || ex.id)) || {};
+                          const reps = ex.repMin && ex.repMax && ex.repMin !== ex.repMax
+                            ? `${ex.repMin}–${ex.repMax}` : (ex.reps || ex.repMin || "");
+                          return (
+                            <div key={n} style={{
+                              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                              gap: 10, padding: "6px 0",
+                              borderTop: n ? `1px solid ${C.hairline}` : "none",
+                            }}>
+                              <span style={{ fontSize: 12.5, color: C.text2, minWidth: 0 }}>
+                                {info.name || ex.exerciseId || "—"}
+                              </span>
+                              <span style={{ fontSize: 11.5, color: C.muted, flexShrink: 0, whiteSpace: "nowrap" }}>
+                                {[ex.sets ? `${ex.sets} set` : null, reps ? `${reps} reps` : null]
+                                  .filter(Boolean).join(" · ")}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <button onClick={() => startaPass(w)} data-starta="1"
+                          style={{ ...btnPrimary, marginTop: 13 }}>
+                          Starta {w.name} <span style={{ fontSize: 18 }}>→</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -747,6 +790,22 @@ export function Atlas2() {
               borderRadius: desktop ? 28 : "22px 22px 0 0",
               border: desktop ? `1px solid ${C.hairline}` : "none",
               padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto",
+              // ARKET SCROLLAR — OCH DET SKA SYNAS ATT DET GÖR DET.
+              //
+              // Programlistan är 1202 px hög i ett ark på 726 px. Alla elva
+              // upplägg finns i DOM:en, men Robert såg tre och trodde att det
+              // var alla. En scrollyta utan kant ser ut som ett slut.
+              //
+              // Gradienten i nederkant är en mjuk skugga som avslöjar att det
+              // finns mer under. Den ligger som bakgrund, inte som ett element,
+              // så den kostar ingen höjd och fångar inga tryck.
+              backgroundImage: `linear-gradient(${C.card} 30%, transparent),
+                linear-gradient(transparent, ${C.card} 70%) 0 100%,
+                radial-gradient(farthest-side at 50% 0, rgba(0,0,0,.4), transparent),
+                radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.4), transparent) 0 100%`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "100% 34px, 100% 34px, 100% 11px, 100% 11px",
+              backgroundAttachment: "local, local, scroll, scroll",
             }}>
             {!desktop && <div style={{ width: 40, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />}
             {sheet === "sport" ? (
