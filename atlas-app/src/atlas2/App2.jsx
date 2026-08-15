@@ -730,7 +730,21 @@ export function Atlas2() {
               Loggas de inte ligger readiness kvar för högt. */}
           {/* Vägen till övningsbanken. Den ligger i passvyn eftersom det är
               där frågan uppstår: "vad tränar egentligen den här övningen?" */}
-          <button onClick={() => setSheet("ovningar")} style={{ ...btnText, marginTop: 18, minHeight: 44 }}>
+          {/* BYTA PROGRAM MÅSTE GÅ NÄR MAN REDAN HAR ETT.
+              "Välj program"-knappen låg bara i else-grenen, alltså när man
+              SAKNADE program. Så fort ett var valt fylldes passvyn med dess
+              pass och vägen till programlistan försvann helt — Robert såg
+              "Helkropp A, B, C" och trodde att det var alla program som fanns.
+
+              Ett val man gjort en gång måste gå att göra om. */}
+          {activeProgram && (
+            <button onClick={() => setSheet("program")} data-byt="1"
+              style={{ ...btnText, marginTop: 16, minHeight: 44 }}>
+              Byt program — {activeProgram.name} →
+            </button>
+          )}
+
+          <button onClick={() => setSheet("ovningar")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
             Bläddra bland alla övningar →
           </button>
           <button onClick={() => setSheet("maskiner")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
