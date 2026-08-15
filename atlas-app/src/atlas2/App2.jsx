@@ -535,12 +535,27 @@ export function Atlas2() {
   if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setSex(s); setProfile(p); save("profile", p); setStep("mode"); }} />;
   if (step === "mode") return <ModeChoice onPick={pickMode} />;
 
-  const startaPass = () => {
+  /**
+   * Startar ett pass. Utan argument tas det som står på tur.
+   *
+   * `pass` gör det möjligt att välja ett ANNAT pass i programmet. Förut fanns
+   * bara "Starta pass" och appen bestämde vilket — ett program med Pass A och B
+   * visade bara "Nästa: Pass A", och B gick inte att nå. Man kunde varken se
+   * vad som ingick eller köra i en annan ordning än den appen räknat fram.
+   */
+  const startaPass = (pass) => {
     if (live) { setFlik("pass"); return; }        // återuppta i stället för att kasta
     if (!activeProgram) { setSheet("program"); return; }
-    const nw = nästaPass(activeProgram, sessions);
-    if (!nw) return;
-    setLive(buildLive(activeProgram, nw.workout, sessions));
+    // VAKTA MOT KLICK-EVENTET. `onClick={startaPass}` skickar med Reacts
+    // SyntheticEvent som första argument, och utan den här kontrollen tolkades
+    // det som ett valt pass — buildLive fick ett event i stället för ett
+    // träningspass och renderade tomt. Skärmen blev blank så när som på
+    // bottennavet, utan felmeddelande.
+    const ärPass = pass && typeof pass === "object" && Array.isArray(pass.exercises);
+    const valt = ärPass ? pass : (nästaPass(activeProgram, sessions) || {}).workout;
+    if (!valt) return;
+    setLive(buildLive(activeProgram, valt, sessions));
+    setSheet(null);
     setFlik("pass");
   };
 
@@ -702,6 +717,7 @@ export function Atlas2() {
               <ProgramSheet aktiv={activeProgram} sessions={sessions}
                 setPrograms={setPrograms} setActiveProgramId={setActiveProgramId}
                 nästa={activeProgram ? nästaPass(activeProgram, sessions) : null}
+                onStarta={startaPass}
                 onClose={() => setSheet(null)} />
             ) : (
               <>

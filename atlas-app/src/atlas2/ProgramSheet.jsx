@@ -7,7 +7,7 @@ import { useState } from "react";
 import { C, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { ALL_TEMPLATES, copyProgram } from "../engines/programs.js";
 
-export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onClose }) {
+export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onStarta, onClose }) {
   const [alla, setAlla] = useState(false);
   const mallar = alla ? ALL_TEMPLATES : ALL_TEMPLATES.slice(0, 6);
 
@@ -34,8 +34,44 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5 }}>
             {vecka ? `Vecka ${vecka} · ` : ""}{aktiv.daysPerWeek} pass i veckan · {(aktiv.workouts || []).length} olika pass
           </div>
-          {nästa && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>Nästa: {nästa.workout.name}</div>}
           <button onClick={onClose} style={{ ...btnPrimary, marginTop: 14 }}>Tillbaka till hem <span style={{ fontSize: 18 }}>→</span></button>
+
+          {/* PROGRAMMETS PASS, alla synliga och valbara.
+              Förut stod bara "Nästa: Pass A" och en knapp som startade just det.
+              Ett program med två pass visade alltså aldrig det andra — man kunde
+              varken se vad som ingick eller köra i en annan ordning än den appen
+              räknat fram. Nu står de på tur-märkta först, men alla går att välja:
+              appen föreslår, användaren bestämmer. */}
+          <div style={{ ...label(), margin: "16px 0 8px" }}>Passen i programmet</div>
+          {(aktiv.workouts || []).map((w, i) => {
+            const påTur = nästa && nästa.workout && nästa.workout.id === w.id;
+            const övningar = (w.exercises || []).length;
+            return (
+              <button key={w.id || i} onClick={() => onStarta && onStarta(w)}
+                data-pass="1" aria-label={`Starta ${w.name}, pass ${i + 1} av ${(aktiv.workouts || []).length}`}
+                style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                width: "100%", textAlign: "left", padding: "13px 14px", marginBottom: 8,
+                borderRadius: 14, cursor: "pointer", minHeight: 44,
+                border: `1px solid ${påTur ? C.lime : C.border}`,
+                background: påTur ? volt(.07) : C.card2, color: C.text,
+              }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ ...hdr(14), display: "block" }}>{w.name}</span>
+                  <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>
+                    {/* Passnummer, eftersom flera pass kan ha samma namn. Ett
+                        Upper/Lower-program med fyra dagar har två "Överkropp"
+                        och två "Underkropp", och utan numret går de inte att
+                        skilja åt i listan. */}
+                    Pass {i + 1} · {övningar} övning{övningar === 1 ? "" : "ar"}
+                    {påTur ? " · står på tur" : ""}
+                  </span>
+                </span>
+                <span style={{ color: påTur ? C.lime : C.muted, fontSize: 18, flexShrink: 0 }}>→</span>
+              </button>
+            );
+          })}
+
           <button onClick={() => setActiveProgramId(null)} style={{ width: "100%", marginTop: 9, padding: 11, borderRadius: 999, border: "none", background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer" }}>
             Sluta följa programmet
           </button>
