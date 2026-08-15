@@ -3,6 +3,7 @@ import { C, hdr, label, btnText, card, volt } from "./design.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES, GROUP_SV } from "../data/muscles.js";
 import { sökordFör } from "./sokord.js";
+import { bildFör } from "../data/exerciseImages.js";
 
 /**
  * ÖVNINGSBANKEN.
@@ -157,6 +158,17 @@ export function ExerciseBank({ onClose }) {
 
             {är && (
               <div style={{ padding: "0 15px 14px" }}>
+                {/* BILDEN FÖRST — den svarar på "hur ser rörelsen ut?" snabbare
+                    än någon text. Diptyk: start till vänster, slut till höger.
+
+                    Saknas bilden visas ingenting alls. En platshållare med ett
+                    kamera-ikon ser ut som en trasig bild, och 157 av 160
+                    övningar saknar bild i skrivande stund. */}
+                {bildFör(e.id) && (
+                  <img src={bildFör(e.id)} alt={`${e.name} — startposition till vänster, slutposition till höger`}
+                    loading="lazy"
+                    style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 13 }} />
+                )}
                 <div style={{ ...label(), marginBottom: 8 }}>Belastar</div>
                 {akt.map(a => (
                   <div key={a.muscleId} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
