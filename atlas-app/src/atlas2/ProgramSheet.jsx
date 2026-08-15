@@ -6,9 +6,11 @@
 import { useState } from "react";
 import { C, hdr, btnText, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { ALL_TEMPLATES, copyProgram } from "../engines/programs.js";
+import { CustomProgram } from "./CustomProgram.jsx";
 
 export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onStarta, onClose }) {
-  const [vald, setVald] = useState(null);   // vald familj, null = visa familjelistan
+  const [vald, setVald] = useState(null);
+  const [bygger, setBygger] = useState(false);   // vald familj, null = visa familjelistan
   // Familjerna i den ordning de står i ALL_TEMPLATES — Full Body, Upper/Lower
   // och Push/Pull/Legs först, alltså de vanligaste uppläggen.
   const familjer = [...new Set(ALL_TEMPLATES.map(t => t.family || t.name))];
@@ -26,6 +28,20 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
     return första ? Math.floor((Date.now() - första) / 6048e5) + 1 : null;
   })();
 
+  if (bygger) {
+    return (
+      <CustomProgram
+        onClose={() => setBygger(false)}
+        onKlar={prog => {
+          // Sparas som vilket program som helst — samma form som en mall-kopia,
+          // så nextWorkout, progression och programanalys fungerar direkt.
+          setPrograms(ps => [...ps.filter(x => x.id !== prog.id), prog]);
+          setActiveProgramId(prog.id);
+          setBygger(false);
+        }} />
+    );
+  }
+
   return (
     <div>
       <div style={hdr(19)}>Program</div>
@@ -38,41 +54,14 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
           </div>
           <button onClick={onClose} style={{ ...btnPrimary, marginTop: 14 }}>Tillbaka till hem <span style={{ fontSize: 18 }}>→</span></button>
 
-          {/* PROGRAMMETS PASS, alla synliga och valbara.
-              Förut stod bara "Nästa: Pass A" och en knapp som startade just det.
-              Ett program med två pass visade alltså aldrig det andra — man kunde
-              varken se vad som ingick eller köra i en annan ordning än den appen
-              räknat fram. Nu står de på tur-märkta först, men alla går att välja:
-              appen föreslår, användaren bestämmer. */}
-          <div style={{ ...label(), margin: "16px 0 8px" }}>Passen i programmet</div>
-          {(aktiv.workouts || []).map((w, i) => {
-            const påTur = nästa && nästa.workout && nästa.workout.id === w.id;
-            const övningar = (w.exercises || []).length;
-            return (
-              <button key={w.id || i} onClick={() => onStarta && onStarta(w)}
-                data-pass="1" aria-label={`Starta ${w.name}, pass ${i + 1} av ${(aktiv.workouts || []).length}`}
-                style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                width: "100%", textAlign: "left", padding: "13px 14px", marginBottom: 8,
-                borderRadius: 14, cursor: "pointer", minHeight: 44,
-                border: `1px solid ${påTur ? C.lime : C.border}`,
-                background: påTur ? volt(.07) : C.card2, color: C.text,
-              }}>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ ...hdr(14), display: "block" }}>{w.name}</span>
-                  <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>
-                    {/* Passnummer, eftersom flera pass kan ha samma namn. Ett
-                        Upper/Lower-program med fyra dagar har två "Överkropp"
-                        och två "Underkropp", och utan numret går de inte att
-                        skilja åt i listan. */}
-                    Pass {i + 1} · {övningar} övning{övningar === 1 ? "" : "ar"}
-                    {påTur ? " · står på tur" : ""}
-                  </span>
-                </span>
-                <span style={{ color: påTur ? C.lime : C.muted, fontSize: 18, flexShrink: 0 }}>→</span>
-              </button>
-            );
-          })}
+          {/* PASSLISTAN LIGGER I PASSVYN, INTE HÄR.
+              Den byggdes ursprungligen i det här arket, men arket stängs så
+              fort man går därifrån — så i praktiken fanns valet ingenstans.
+              När listan flyttades till passvyn blev den här kvar, och samma
+              pass renderades två gånger: en gång med förhandsvisning, en gång
+              utan. Den utan startade dessutom passet direkt.
+
+              Ett val ska finnas på ETT ställe. */}
 
           <button onClick={() => setActiveProgramId(null)} style={{ width: "100%", marginTop: 9, padding: 11, borderRadius: 999, border: "none", background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer" }}>
             Sluta följa programmet
@@ -160,6 +149,26 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
             </button>
           );
         })
+      )}
+
+      {/* BYGG EGET, sist i listan. Den som tränat länge har oftast ett upplägg
+          i huvudet som ingen mall matchar — men mallarna står först, eftersom de
+          är rätt svar för de flesta och alltid rätt svar för en nybörjare. */}
+      {!vald && (
+        <button onClick={() => setBygger(true)} data-bygg="1"
+          style={{ width: "100%", textAlign: "left", padding: 15, marginTop: 4, borderRadius: 15,
+            border: `1px dashed ${C.border}`, background: "transparent", color: C.text,
+            cursor: "pointer", minHeight: 44 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={hdr(14.5)}>Bygg eget</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginTop: 5 }}>
+                Välj övningar själv och sätt set och reps.
+              </div>
+            </div>
+            <span style={{ color: C.muted, fontSize: 18, flexShrink: 0 }}>+</span>
+          </div>
+        </button>
       )}
 
     </div>
