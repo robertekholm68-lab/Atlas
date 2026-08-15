@@ -16,6 +16,7 @@ import { ProgressView } from "./ProgressView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
+import { ExerciseBank } from "./ExerciseBank.jsx";
 import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
@@ -525,7 +526,8 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "import" ? "Historik"
+    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar"
+    : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
 
@@ -682,6 +684,12 @@ export function Atlas2() {
           )}
           {/* Sport och kondition belastar kroppen lika mycket som gympass.
               Loggas de inte ligger readiness kvar för högt. */}
+          {/* Vägen till övningsbanken. Den ligger i passvyn eftersom det är
+              där frågan uppstår: "vad tränar egentligen den här övningen?" */}
+          <button onClick={() => setSheet("ovningar")} style={{ ...btnText, marginTop: 18, minHeight: 44 }}>
+            Bläddra bland alla övningar →
+          </button>
+
           <div style={{ fontSize: 12.5, color: C.muted, margin: "20px 0 10px" }}>
             Tränat något annat?
           </div>
@@ -770,6 +778,8 @@ export function Atlas2() {
                 logg={loggTillit}
                 onKost={() => { setSheet(null); setFlik("mat"); }}
                 onClose={() => setSheet(null)} />
+            ) : sheet === "ovningar" ? (
+              <ExerciseBank onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
               <ImportSheet sessions={sessions} setSessions={setSessions}
                 setWeights={setWeights} setFoodLog={setFoodLog}
