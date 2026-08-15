@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Normal behörighet, beviljas vid installation utan dialog. En kort puls
+         när mikrofonen börjar lyssna är den enda återkoppling som når fram med
+         musik i lurarna och blicken på stången. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:label="Askr"

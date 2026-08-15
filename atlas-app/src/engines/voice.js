@@ -283,11 +283,34 @@ function NativRecognition() {
 NativRecognition.prototype.start = function () {
   const jag = this;
   this._aktiv = true;
+  // Delresultat och ljudnivå. Webbläsaren ger det förra via interimResults och
+  // saknar det senare; bryggan ger båda, och gränssnittet behandlar dem lika.
+  window.__askrRöstDel = function (text) {
+    if (!jag._aktiv) return;
+    // isFinal FALSE. Dikteringen läser den flaggan för att veta om yttrandet är
+    // slut; utan den vet den inte skillnad på ett delresultat och ett svar.
+    const alt = [{ transcript: text, confidence: 0 }];
+    alt.isFinal = false;
+    jag.onresult && jag.onresult({ results: [alt] });
+  };
+  window.__askrRöstNivå = function (n) {
+    if (!jag._aktiv) return;
+    jag.onlevel && jag.onlevel(n);
+  };
+  window.__askrRöstRedo = function () {
+    if (!jag._aktiv) return;
+    jag.onready && jag.onready();
+  };
   // Java svarar genom att anropa de här. Formen på ev.results[0] efterliknar
   // webbläsarens, så koden nedanför inte behöver veta varifrån orden kom.
   window.__askrRöstResultat = function (alternativ) {
     if (!jag._aktiv) return;
     const lista = (alternativ || []).map(t => ({ transcript: t, confidence: 1 }));
+    // isFinal TRUE — annars avslutas dikteringen aldrig. Webbläsarens
+    // SpeechRecognition sätter flaggan själv, och adaptern måste göra samma sak
+    // för att resten av koden ska kunna behandla vägarna lika. Saknades den
+    // dök texten upp men lyssningen tog aldrig slut.
+    lista.isFinal = true;
     jag.onresult && jag.onresult({ results: [lista] });
   };
   window.__askrRöstFel = function (kod) {
@@ -304,6 +327,7 @@ NativRecognition.prototype.start = function () {
 };
 NativRecognition.prototype.stop = function () {
   this._aktiv = false;
+  window.__askrRöstDel = null; window.__askrRöstNivå = null; window.__askrRöstRedo = null;
   try { window.AskrNative.stoppa(); } catch (e) {}
 };
 
@@ -509,7 +533,7 @@ function _startcreateSetListener({ onResult, onError, onEnd, timeoutMs }) {
  * Coachen förstår meningen själv, och blir texten fel ser du den i rutan innan
  * du skickar. Därför ingen sifferparser, ingen rimlighetsspärr — bara text.
  */
-export function createDictation({ onResult, onError, onEnd, timeoutMs = 12000 } = {}) {
+export function createDictation({ onResult, onError, onEnd, onLevel, timeoutMs = 12000 } = {}) {
   const stöd0 = voiceSupport();
   if (!stöd0.ok) { onError && onError(stöd0.reason, stöd0.note); return () => {}; }
   // Fråga mikrofonen först. Startar vi igenkänningen utan lov dör processen.
@@ -518,18 +542,18 @@ export function createDictation({ onResult, onError, onEnd, timeoutMs = 12000 } 
   // Samma sak här: den nativa vägen rör aldrig WebViewens mikrofon.
   if (hasNativeVoice()) {
     clearVoiceAttempt();
-    return _startcreateDictation({ onResult, onError, onEnd, timeoutMs });
+    return _startcreateDictation({ onResult, onError, onEnd, onLevel, timeoutMs });
   }
   let avbruten0 = false, stoppaInre = null;
   micReady().then(m => {
     if (avbruten0) return;
     if (!m.ok) { clearVoiceAttempt(); onError && onError(m.reason, m.note); onEnd && onEnd(); return; }
-    stoppaInre = _startcreateDictation({ onResult, onError, onEnd, timeoutMs });
+    stoppaInre = _startcreateDictation({ onResult, onError, onEnd, onLevel, timeoutMs });
   });
   return () => { avbruten0 = true; if (stoppaInre) stoppaInre(); };
 }
 
-function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
+function _startcreateDictation({ onResult, onError, onEnd, onLevel, timeoutMs }) {
   const stöd = voiceSupport();
   if (!stöd.ok) { onError && onError(stöd.reason, stöd.note); return () => {}; }
 
@@ -543,6 +567,9 @@ function _startcreateDictation({ onResult, onError, onEnd, timeoutMs }) {
   let utanLokal = false;
   try {
     rec = ställIn(new Rec(), { ...FORM, lokalt: true });
+    // Ljudnivån finns bara på den nativa vägen. Webbläsaren ger ingen, och då
+    // ska gränssnittet inte visa en mätare som alltid står på noll.
+    if (onLevel && "onlevel" in rec) rec.onlevel = onLevel;
   } catch (e) { onError && onError("start-misslyckades", "Kunde inte starta mikrofonen."); return () => {}; }
 
   const vidResultat = (ev) => {
