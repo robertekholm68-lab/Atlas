@@ -27,11 +27,13 @@ describe("färgen ligger i anatomin, inte ovanpå den", () => {
   });
 
   it("opaciteten lämnar plats åt anatomin under", () => {
-    // Med overlay behövs mindre färg för samma läsbarhet.
+    // Med overlay behövs mindre färg än med screen (0,9/0,72). Taket höjdes
+    // när figuren ljusnade till 1,8 — overlay späder ut färgen mot ett ljust
+    // underlag, mätt i pixelvärden: grönt tappade 31 % mättnad.
     const m = src.match(/fillOpacity=\{st \? \(aktiv \? ([\d.]+) : ([\d.]+)\)/);
     expect(m, "hittade inte fillOpacity").toBeTruthy();
-    expect(Number(m[1])).toBeLessThanOrEqual(0.75);
-    expect(Number(m[2])).toBeLessThanOrEqual(0.55);
+    expect(Number(m[1])).toBeLessThan(0.9);
+    expect(Number(m[2])).toBeLessThan(0.72);
   });
 
   it("kanten är mjuk — en path slutar annars tvärt på en pixel", () => {
@@ -67,6 +69,12 @@ describe("figuren är ljus nog att se anatomin i", () => {
     // Enbart brightness gör bilden gråare: muskeldefinitionen bleks ut, och
     // det är just den som gör att färgen inte ser påklistrad ut.
     expect(src).toMatch(/contrast\(1\.\d+\)/);
+  });
+
+  it("underlagets mättnad dras ner så statusfärgen bär kulören", () => {
+    // Utan saturate konkurrerar figurens egen hudton med statusfärgen, och vid
+    // hög ljusstyrka blir rött ljusrosa i stället för rött.
+    expect(src).toMatch(/saturate\(0?\.\d+\)/);
   });
 
   it("filtret sitter på bilden, inte på färglagret", () => {
