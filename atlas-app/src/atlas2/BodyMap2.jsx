@@ -93,6 +93,18 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
       )}
       <svg viewBox={data.viewBox} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
         role="img" aria-label={vy === "front" ? "Muskelkarta framifrån" : "Muskelkarta bakifrån"}>
+        {/* MJUK KANT.
+            En SVG-path slutar tvärt på en pixel. Muskler gör det inte — de går
+            in i varandra, och en knivskarp gräns ovanpå ett foto läses av ögat
+            som en dekal. Suddningen låter färgen tona ut mot grannmuskeln.
+
+            Radien är angiven i viewBox-enheter, inte pixlar, så den skalar med
+            figuren i stället för att bli grov på en liten skärm. */}
+        <defs>
+          <filter id={`mjuk-${vy}`} x="-6%" y="-6%" width="112%" height="112%">
+            <feGaussianBlur stdDeviation="3.5" />
+          </filter>
+        </defs>
       {data.regions.map(r => {
         const st = regionState(r.id, states);
         const färg = st ? statusColor(st.status) : GRUNDTON;
@@ -105,12 +117,27 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
             <title>{NAMN[r.id] || r.id}{st ? ` — ${Math.round(st.readiness)}%` : " — ingen data"}</title>
             {r.d.map((d, i) => (
               <path key={i} d={d} fill={färg}
+                filter={`url(#mjuk-${vy})`}
+                // FÄRGEN SKA LIGGA I ANATOMIN, INTE OVANPÅ DEN.
+                //
+                // Tidigare: mixBlendMode "screen" med opacitet 0,72–0,9.
+                // "screen" ljusnar bara och tar ingen hänsyn till vad som finns
+                // under — ett mörkt veck och en ljus höjdpunkt fick samma
+                // färgpålägg. Tillsammans med den höga opaciteten dränktes
+                // fotots muskeldefinition just där färgen var som mest
+                // intressant, och resultatet såg påklistrat ut.
+                //
+                // "overlay" behåller fotots ljus och skugga och lägger färgen
+                // som en ton ovanpå. Muskeln behåller sin volym. Då behövs
+                // dessutom mindre färg för samma läsbarhet, därav den lägre
+                // opaciteten.
+                //
                 // Otränade muskler ritas nästan inte alls — anatomibilden under
                 // räcker för att visa att de finns. Det som lyser är det som
                 // faktiskt har underlag.
-                fillOpacity={st ? (aktiv ? 0.9 : 0.72) : (aktiv ? 0.28 : 0)}
+                fillOpacity={st ? (aktiv ? 0.72 : 0.5) : (aktiv ? 0.22 : 0)}
                 stroke={aktiv && st ? färg : "none"} strokeWidth={1.5}
-                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "screen" }} />
+                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "overlay" }} />
             ))}
           </g>
         );
