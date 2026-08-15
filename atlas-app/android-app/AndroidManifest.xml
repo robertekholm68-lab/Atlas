@@ -12,6 +12,16 @@
          musik i lurarna och blicken på stången. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- KAMERA för streckkodsläsaren i matloggen. onPermissionRequest beviljar
+         redan allt sidan ber om, men Android kräver att appen DEKLARERAR
+         behörigheten — utan den får getUserMedia samma tysta nej som mikrofonen
+         fick, med samma vilseledande felmeddelande. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- required=false: en telefon utan kamera ska fortfarande kunna installera
+         appen. Streckkoden är en av många vägar att logga mat, inte den enda. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:label="Askr"
         android:icon="@mipmap/ic_launcher"

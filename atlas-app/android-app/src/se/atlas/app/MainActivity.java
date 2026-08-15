@@ -3,7 +3,11 @@ package se.atlas.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -35,6 +39,17 @@ public class MainActivity extends Activity {
 
     /** Godtyckligt id — vi har bara en behörighetsfråga. */
     private static final int MIK_KOD = 1001;
+    private static final int KAMERA_KOD = 1002;
+    private static final int FIL_KOD = 2001;
+
+    /**
+     * Väntande filväljar-callback.
+     *
+     * MÅSTE alltid anropas — även när användaren trycker bakåt utan att välja
+     * något. Lämnas den hängande låser sig WebView och nästa tryck på ett
+     * filfält gör ingenting alls, för resten av appens livstid.
+     */
+    private ValueCallback<Uri[]> filSvar;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -124,5 +139,47 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         if (web != null) web.saveState(out);
+    }
+
+    /** Begär kamerabehörighet vid första skanningen, inte vid start. */
+    void begarKamera() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(new String[] { Manifest.permission.CAMERA }, KAMERA_KOD);
+        }
+    }
+
+    /**
+     * Öppnar systemets filväljare för ett <input type="file"> i sidan.
+     * Returnerar true om vi tar hand om det; false låter WebView ge upp tyst.
+     */
+    boolean oppnaFilvaljare(ValueCallback<Uri[]> svar, WebChromeClient.FileChooserParams params) {
+        // En tidigare, ej besvarad väljare måste stängas först — annars läcker
+        // callbacken och WebView slutar be om nya.
+        if (filSvar != null) { filSvar.onReceiveValue(null); }
+        filSvar = svar;
+        try {
+            Intent i = params != null ? params.createIntent() : new Intent(Intent.ACTION_GET_CONTENT);
+            if (i.getType() == null) i.setType("*/*");
+            startActivityForResult(Intent.createChooser(i, "Välj fil"), FIL_KOD);
+            return true;
+        } catch (Throwable t) {
+            filSvar = null;
+            svar.onReceiveValue(null);
+            return false;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int kod, int resultat, Intent data) {
+        super.onActivityResult(kod, resultat, data);
+        if (kod != FIL_KOD) return;
+        if (filSvar == null) return;
+        // Avbrott ger null — och det MÅSTE skickas, annars låser sig fältet.
+        Uri[] filer = null;
+        if (resultat == RESULT_OK && data != null) {
+            filer = WebChromeClient.FileChooserParams.parseResult(resultat, data);
+        }
+        filSvar.onReceiveValue(filer);
+        filSvar = null;
     }
 }

@@ -70,3 +70,48 @@ describe.skipIf(!finns)("Android-skalet", () => {
     expect(Number(m[1])).toBeGreaterThanOrEqual(23);
   });
 });
+
+describe.skipIf(!finns)("kameran och filväljaren i skalet", () => {
+  const läs = f => readFileSync(join(SKAL, f), "utf8");
+
+  it("CAMERA är deklarerad i manifestet", () => {
+    // onPermissionRequest beviljar redan allt sidan ber om, men Android kräver
+    // att appen DEKLARERAR behörigheten. Utan den får getUserMedia samma tysta
+    // nej som mikrofonen fick — och samma vilseledande felmeddelande.
+    expect(läs("AndroidManifest.xml")).toMatch(/permission\.CAMERA/);
+  });
+
+  it("kameran är inte ett installationskrav", () => {
+    // En telefon utan kamera ska kunna installera appen. Streckkoden är en av
+    // flera vägar att logga mat, inte den enda.
+    const m = läs("AndroidManifest.xml");
+    expect(m).toMatch(/uses-feature[^>]*android\.hardware\.camera[^>]*required="false"/s);
+  });
+
+  it("onShowFileChooser finns — annars går backup inte att återställa", () => {
+    // Utan den händer INGENTING när man trycker på ett <input type="file"> i en
+    // WebView. ImportSheet.jsx läser in v3-backupen den vägen, och det är just
+    // den funktion man behöver när något gått fel.
+    expect(läs("src/se/atlas/app/AtlasChromeClient.java")).toMatch(/onShowFileChooser/);
+  });
+
+  it("filväljarens callback besvaras ÄVEN vid avbrott", () => {
+    // Lämnas den hängande låser sig WebView: nästa tryck på filfältet gör
+    // ingenting alls, resten av appens livstid.
+    const m = läs("src/se/atlas/app/MainActivity.java");
+    expect(m).toMatch(/onActivityResult/);
+    expect(m).toMatch(/onReceiveValue/);
+    // Både i resultathanteraren och när en tidigare väljare ersätts.
+    expect((m.match(/onReceiveValue/g) || []).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("kameran begärs vid behov, inte vid start", () => {
+    // Mikrofonen frågas vid start eftersom rösten används i varje pass.
+    // Kameran används bara vid streckkodsskanning — en systemdialog vid start
+    // för något man kanske aldrig gör är fel.
+    const m = läs("src/se/atlas/app/MainActivity.java");
+    expect(m).toMatch(/begarKamera/);
+    const start = m.slice(0, m.indexOf("web = new WebView"));
+    expect(start).not.toMatch(/permission\.CAMERA/);
+  });
+});
