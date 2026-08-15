@@ -7,7 +7,7 @@
 // finns. Under tröskeln visas en tom ram som säger hur mycket som saknas.
 
 import { useState } from "react";
-import { C, HFONT, hdr, label, card, statRow, statCell, orDash, DASH } from "./design.js";
+import { C, btnText, HFONT, hdr, label, card, statRow, statCell, orDash, DASH } from "./design.js";
 import { coachFacts } from "./facts.js";
 import { weekSessions, sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
@@ -20,7 +20,7 @@ const TRÖSKEL = 3;
 // men vyn ska inte bli en oändlig logg — de senaste veckorna är det man rättar.
 const LISTA_STEG = 8;
 
-export function ProgressView({ sessions = [], weights = [], activeProgram, nutRec, onOpenSession }) {
+export function ProgressView({ sessions = [], weights = [], activeProgram, nutRec, onOpenSession, onOpenFordelning }) {
   const now = Date.now();
   const done = sessions.filter(s => s && s.completedAt);
   const facts = coachFacts({ sessions, activeProgram, weights, nutRec }, now);
@@ -71,6 +71,17 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
           </div>
         ))}
       </div>
+
+
+      {/* MUSKELFÖRDELNING. Volym per övning säger vad man gjort; volym per
+          muskel säger vad kroppen fått. Obalanser syns bara i den andra vyn,
+          och den datan har funnits på varje session sedan schemaV 2. */}
+      {onOpenFordelning && sessions.length > 0 && (
+        <button onClick={onOpenFordelning} data-fordelning="1"
+          style={{ ...btnText, marginTop: 14, minHeight: 44 }}>
+          Muskelfördelning — vad kroppen fått →
+        </button>
+      )}
 
       <div style={{ ...label(), marginTop: 22, marginBottom: 9 }}>Volym per vecka</div>
       {nog ? (

@@ -18,6 +18,7 @@ import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { ExerciseBank } from "./ExerciseBank.jsx";
 import { MachineGuide } from "./MachineGuide.jsx";
+import { MuscleSplit } from "./MuscleSplit.jsx";
 import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
 import { MuscleSheet } from "./MuscleSheet.jsx";
@@ -531,7 +532,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner"
+    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -770,7 +771,8 @@ export function Atlas2() {
     );
     if (flik === "framsteg") return (
       <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} nutRec={nutRec}
-        onOpenSession={id => setSheet("pass:" + id)} />
+        onOpenSession={id => setSheet("pass:" + id)}
+        onOpenFordelning={() => setSheet("fordelning")} />
     );
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
@@ -859,6 +861,8 @@ export function Atlas2() {
               <ExerciseBank onClose={() => setSheet(null)} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
+            ) : sheet === "fordelning" ? (
+              <MuscleSplit sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
               <ImportSheet sessions={sessions} setSessions={setSessions}
                 setWeights={setWeights} setFoodLog={setFoodLog}
