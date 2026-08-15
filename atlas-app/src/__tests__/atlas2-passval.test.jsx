@@ -162,3 +162,34 @@ describe("ett tryck visar passet, det startar det inte", () => {
     expect(passvy).toMatch(/reps`/);
   });
 });
+
+describe("ett valt program går att byta", () => {
+  // Robert, tredje gången: "ser fortfarande bara helkropp".
+  //
+  // "Välj program"-knappen låg bara i else-grenen — alltså när man SAKNADE
+  // program. Så fort ett var valt fylldes passvyn med dess pass och vägen till
+  // programlistan försvann helt. Han såg "Helkropp A, B, C" och drog den rimliga
+  // slutsatsen att det var alla program som fanns.
+  //
+  // Ett val man gjort en gång måste gå att göra om.
+  const app2 = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+  const passvy = app2.slice(app2.indexOf('if (flik === "pass")'));
+
+  it("bytesknappen visas NÄR ett program är aktivt", () => {
+    // Villkoret står före knappen; en kommentar kan ligga emellan, så testet
+    // läser ordningen i stället för exakt formatering.
+    const i = passvy.indexOf('data-byt="1"');
+    expect(i).toBeGreaterThan(0);
+    expect(passvy.slice(Math.max(0, i - 400), i)).toMatch(/activeProgram &&/);
+  });
+
+  it("den öppnar programarket", () => {
+    const bit = passvy.slice(passvy.indexOf('data-byt="1"') - 200, passvy.indexOf('data-byt="1"') + 100);
+    expect(bit).toMatch(/setSheet\("program"\)/);
+  });
+
+  it("den säger vilket program som är valt", () => {
+    // "Byt program" ensamt svarar inte på frågan "vad kör jag nu?".
+    expect(passvy).toMatch(/Byt program.*activeProgram\.name/s);
+  });
+});
