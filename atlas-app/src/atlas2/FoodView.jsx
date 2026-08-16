@@ -22,6 +22,7 @@ import { useLayout } from "./layout.js";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
+import { grupperaMåltider, måltidAvTid, MÅLTID_SV, MÅLTID_ORDNING } from "../engines/recipes.js";
 import { receptBild } from "../data/recipeImages.js";
 import { dagensNutrition, nyId } from "./store.js";
 import { mealDecision, estimateMeal } from "../engines/index.js";
@@ -74,7 +75,7 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onTaBort }) {
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onTaBort }) {
   const [redigerar, setRedigerar] = useState(null);
 
   const stegKnapp = {
@@ -87,6 +88,7 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
   const ändraGram = (id, delta) => onÄndra && onÄndra(id, delta);
   const ändraNamn = (id, namn) => onÄndraNamn && onÄndraNamn(id, namn);
   const sättGram = (id, värde) => onSättGram && onSättGram(id, värde);
+  const sättMåltid = (id, typ) => onSättMåltid && onSättMåltid(id, typ);
   const taBort = id => { setRedigerar(null); onTaBort && onTaBort(id); };
 
   // Samma summering (dagensNutrition → computeNutrition) som coachen läser — en
@@ -139,7 +141,29 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
         <div style={{ padding: "26px 16px", textAlign: "center", border: `1px dashed ${C.border}`, borderRadius: 14, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
           Inget loggat idag.
         </div>
-      ) : dagensLogg.map((e) => {
+      ) : grupperaMåltider(dagensLogg, e => {
+        const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
+        return f
+          ? { kcal: f.kcal * (Number(e.grams) || 0) / 100, protein: f.protein * (Number(e.grams) || 0) / 100 }
+          : e;
+      }).map(grupp => (
+        <div key={grupp.typ}>
+          {/* MÅLTIDSRUBRIKEN BÄR SIN EGEN SUMMA.
+              En lista på sex poster säger inte var kalorierna ligger; fyra
+              rubriker med summor gör det på en blick. Proteinet står med
+              eftersom fördelningen över dagen är det enda här som har verkligt
+              träningsvärde — 130 g på fyra måltider bygger mer än samma mängd
+              på två. */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "baseline",
+            gap: 10, margin: "16px 0 2px", paddingTop: 10, borderTop: `1px solid ${C.hairline}`,
+          }}>
+            <span style={{ ...label(), color: C.muted }}>{grupp.namn}</span>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>
+              {grupp.kcal} kcal · P {grupp.protein} g
+            </span>
+          </div>
+          {grupp.rader.map((e) => {
         const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
         const k = f ? Math.round(f.kcal * (Number(e.grams) || 0) / 100) : Math.round(e.kcal || 0);
         const p = f ? Math.round(f.protein * (Number(e.grams) || 0) / 100) : Math.round(e.protein || 0);
@@ -229,6 +253,25 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                   </div>
                 )}
 
+                {/* MÅLTIDEN GÅR ATT RÄTTA.
+                    Klockslaget är en schablon: den som jobbar natt äter middag
+                    klockan fyra på morgonen, och då är etiketten fel. Man
+                    behöver aldrig sätta den, men ska kunna. */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+                  {MÅLTID_ORDNING.map(t => {
+                    const nu = e.meal || måltidAvTid(e.ts);
+                    return (
+                      <button key={t} onClick={() => sättMåltid(e.id, t)} data-maltid={t}
+                        style={{
+                          padding: "6px 11px", minHeight: 38, borderRadius: 999, fontSize: 11.5, cursor: "pointer",
+                          border: `1px solid ${nu === t ? C.lime : C.border}`,
+                          color: nu === t ? C.lime : C.muted,
+                          background: nu === t ? volt(.08) : C.card2,
+                        }}>{MÅLTID_SV[t]}</button>
+                    );
+                  })}
+                </div>
+
                 <button onClick={() => taBort(e.id)} data-tabort="1"
                   style={{
                     width: "100%", marginTop: 12, padding: "11px 0", minHeight: 44, borderRadius: 999,
@@ -242,6 +285,8 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
           </div>
         );
       })}
+        </div>
+      ))}
 
 
     </div>
@@ -725,6 +770,10 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   // rättar "kyckl" till "kyckling" har inte ätit något annat.
   const ändraNamnPost = (id, namn) => setFoodLog(l => l.map(e => e.id === id ? { ...e, name: namn } : e));
 
+  // Sätter måltid uttryckligen. Postens egen meal vinner sedan över klockslaget
+  // — en rättelse ska stå kvar.
+  const sättMåltidPost = (id, typ) => setFoodLog(l => l.map(e => e.id === id ? { ...e, meal: typ } : e));
+
   /**
    * Sätter mängden till ett skrivet tal i stället för att stega.
    *
@@ -763,7 +812,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
         onLogga={() => setFlik("logga")} onSätta={onSätta}
         onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onSättGram={sättGramPost}
-        onTaBort={taBortPost} />}
+        onSättMåltid={sättMåltidPost} onTaBort={taBortPost} />}
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
