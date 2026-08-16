@@ -90,7 +90,19 @@ await page.waitForTimeout(300);
 await kolla("snabblogg: uppskattning med intervall visas", finnsText("troligen"));
 await klickText("Lägg till — uppskattat");
 await page.waitForTimeout(400);
-await kolla("snabblogg: posten ligger i dagens måltider som uppskattad", finnsText("uppskattat"));
+// Kolumnlistan visar tilliten som ett tecken (~) i mängdkolumnen i stället för
+// ordet "uppskattat" i löpande text — orden gjorde kolumnen omöjlig att skanna.
+// Kontrollen fäller fortfarande om markeringen försvinner helt: den öppnar
+// posten och letar ordet där det nu bor.
+await kolla("snabblogg: posten ligger i dagens måltider som uppskattad", await page.evaluate(() => {
+  const rad = [...document.querySelectorAll('button[data-post="1"]')]
+    .find(b => /~/.test(b.innerText));
+  if (!rad) return false;
+  rad.click();
+  return true;
+}));
+await page.waitForTimeout(350);
+await kolla("snabblogg: detaljvyn säger att posten är uppskattad", finnsText("uppskattat"));
 await kolla("snabblogg: kcal räknas i översikten", page.evaluate(() =>
   !/^0$/.test((document.querySelector("svg text") || {}).textContent || "0")));
 

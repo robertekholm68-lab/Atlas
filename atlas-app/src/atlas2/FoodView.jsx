@@ -199,6 +199,13 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                 fontFamily: MONO, fontSize: 12, color: C.text2, flexShrink: 0,
                 width: 58, textAlign: "right", whiteSpace: "nowrap",
               }}>
+                {/* TILLITEN SYNS PÅ RADEN, MEN SOM TECKEN INTE SOM MENING.
+                    Orden "uppskattat" och "ur foto" flyttades till detaljvyn
+                    för att kolumnen skulle gå att skanna — men då försvann all
+                    markering av att talet är osäkert, och DOM-verifieringen
+                    fångade det. En tilde före mängden säger samma sak utan att
+                    kosta en rad: ~ betyder ungefär. */}
+                {e.quality === "estimated" || e.quality === "photo" ? "~" : ""}
                 {e.antal ? `${e.antal} st` : e.grams ? `${e.grams} g` : ""}
               </span>
               <span style={{ fontFamily: HFONT, fontWeight: 700, fontSize: 15, color: C.lime, flexShrink: 0, marginLeft: 12 }}>
