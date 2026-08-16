@@ -19,9 +19,9 @@
 // Kameran stängs av när vyn lämnas. En kamera som lever vidare i bakgrunden är
 // både ett batteriläckage och en förtroendefråga.
 
-import { useState, useEffect, useRef } from "react";
-import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost } from "./design.js";
-import { lookupBarcode } from "../engines/index.js";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
+import { lookupBarcode, tolkaPortion } from "../engines/index.js";
 import { nyId } from "./store.js";
 
 const stöds = () => typeof window !== "undefined" && "BarcodeDetector" in window;
@@ -75,6 +75,17 @@ export function Streckkod({ onLägg, onStäng }) {
       if (ström) ström.getTracks().forEach(t => t.stop());
     };
   }, [kamera]);
+
+  // Portionsstorlek ur varans egen uppgift, inte ur en gissning.
+  const portionsGram = useMemo(() => (träff ? tolkaPortion(träff.serving) : null), [träff]);
+  const paketGram = useMemo(() => (träff ? tolkaPortion(träff.quantity) : null), [träff]);
+
+  const snabbval = aktiv => ({
+    padding: "8px 13px", minHeight: 40, borderRadius: 999, cursor: "pointer", fontSize: 12.5,
+    border: `1px solid ${aktiv ? C.lime : C.border}`,
+    color: aktiv ? C.lime : C.muted,
+    background: aktiv ? volt(.08) : C.card2,
+  });
 
   const logga = () => {
     const k = gram / 100;
@@ -185,14 +196,47 @@ export function Streckkod({ onLägg, onStäng }) {
           </div>
 
           <div style={{ ...label(), marginTop: 18, marginBottom: 7 }}>Mängd</div>
+
+          {/* SNABBVAL: PORTION, FÖRPACKNING, 100 G.
+              100 g är sällan det man äter — det är bara den enhet näringen
+              anges i. Portionsstorleken finns i Open Food Facts serving_size
+              men användes aldrig; utan den fick man knappa sig fram från 100
+              till 30 i tiogramssteg för en yoghurt.
+
+              Knapparna visas bara när varan faktiskt bär uppgiften. En
+              påhittad portion ger fel kalorital i loggen, vilket är sämre än
+              ingen knapp alls. */}
+          {(portionsGram || paketGram) && (
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 10 }}>
+              {portionsGram && (
+                <button onClick={() => setGram(portionsGram)} data-snabb="portion"
+                  style={snabbval(gram === portionsGram)}>
+                  Portion <span style={{ opacity: .7 }}>{portionsGram} g</span>
+                </button>
+              )}
+              {paketGram && paketGram !== portionsGram && (
+                <button onClick={() => setGram(paketGram)} data-snabb="paket"
+                  style={snabbval(gram === paketGram)}>
+                  Hela förpackningen <span style={{ opacity: .7 }}>{paketGram} g</span>
+                </button>
+              )}
+              <button onClick={() => setGram(100)} data-snabb="hundra"
+                style={snabbval(gram === 100)}>100 g</button>
+            </div>
+          )}
+
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => setGram(g => Math.max(10, g - 10))} aria-label="Minska mängd"
+            {/* 5-GRAMSSTEG. Tio gram är för trubbigt för en portion på 25 g —
+                man kan bara träffa 20 eller 30. Fem gram gör varje rimlig
+                portionsstorlek nåbar utan att fördubbla antalet tryck för de
+                stora mängderna, där man ändå använder snabbvalen. */}
+            <button onClick={() => setGram(g => Math.max(5, g - 5))} aria-label="Minska mängd"
               style={{ ...btnGhost, width: 52, padding: 0 }}>−</button>
             <div style={{ flex: 1, textAlign: "center" }}>
               <span style={hdr(24)}>{gram}</span>
               <span style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}> g</span>
             </div>
-            <button onClick={() => setGram(g => g + 10)} aria-label="Öka mängd"
+            <button onClick={() => setGram(g => g + 5)} aria-label="Öka mängd"
               style={{ ...btnGhost, width: 52, padding: 0 }}>+</button>
           </div>
 

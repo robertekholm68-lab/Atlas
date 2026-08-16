@@ -108,7 +108,9 @@ describe("streckkodsläsaren", () => {
     const el = await rendera({ onLägg: p => { loggad = p; } });
     await skrivKod(el, "7310865004703");
     await act(async () => { knapp(el, "Slå upp").click(); await new Promise(r => setTimeout(r, 20)); });
-    await act(async () => { for (let i = 0; i < 10; i++) el.querySelector('[aria-label="Öka mängd"]').click(); });
+    // Steglängden är 5 g sedan portionsvalet lades till: tio gram kunde inte
+    // träffa en portion på 25 g. Tjugo tryck från 100 ger alltså 200.
+    await act(async () => { for (let i = 0; i < 20; i++) el.querySelector('[aria-label="Öka mängd"]').click(); });
     await act(async () => { knapp(el, "Logga").click(); });
     expect(loggad.grams).toBe(200);
     expect(loggad.kcal).toBe(118);
