@@ -19,6 +19,7 @@
 import { useState, useMemo } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
 import { generateWeekMenu, shoppingList, filterRecipes, recipeLogEntry } from "../engines/recipes.js";
+import { receptBild } from "../data/recipeImages.js";
 import { DIETS, DIET_RESTRICTIONS } from "../engines/index.js";
 
 const DAGAR = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
@@ -147,6 +148,13 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
 
                   {öppna && d.meals.map((m, j) => (
                     <div key={j} style={{ display: "flex", gap: 10, alignItems: "center", paddingTop: 10, borderTop: j || !bred ? `1px solid ${C.hairline}` : "none", marginTop: j ? 8 : 10 }}>
+                      {/* Samma miniatyr som i receptlistan. I veckomenyn gör
+                          den mest nytta: man skummar sju dagar och känner igen
+                          rätterna snabbare på bild än på namn. */}
+                      {receptBild(m.recipe) && (
+                        <img src={receptBild(m.recipe)} alt="" loading="lazy"
+                          style={{ width: 44, height: 44, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
+                      )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ ...label(), color: C.muted }}>{m.mealLabel}</div>
                         <div style={{ fontSize: 13.5, color: C.text, marginTop: 3 }}>{m.recipe.name}</div>
