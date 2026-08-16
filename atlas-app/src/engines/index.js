@@ -488,8 +488,34 @@ function mealDecision(text) {
   return { kind: "unknown", ...VAGUE_MEAL };
 }
 
+/**
+ * Läser ut en mängd ur fritexten: "100 g keso", "keso 150g", "2 dl mjölk".
+ *
+ * ANGIVEN MÄNGD ÄR INGEN GISSNING. Skriver man "100 g keso" har man mätt, och
+ * då ska appen räkna på det talet i stället för att sätta en schablonportion
+ * och fråga om liten/normal/stor. Frågan är rimlig för "keso" — inte för
+ * "100 g keso".
+ *
+ * Returnerar null när ingen mängd står i texten, och då gäller schablonen som
+ * förut.
+ */
+function gramUrText(text) {
+  const t = (text || "").toLowerCase().replace(",", ".");
+  // g, gram, ml och dl. Talet får stå före eller efter livsmedlet.
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(gram|g|ml|dl|cl)\b/);
+  if (!m) return null;
+  let g = parseFloat(m[1]);
+  if (m[2] === "dl") g *= 100;
+  else if (m[2] === "cl") g *= 10;
+  // ml räknas som gram: för dryck ligger densiteten nära 1, och näringsdatan
+  // anges per 100 g även för flytande varor.
+  if (!(g > 0) || g > 3000) return null;
+  return Math.round(g);
+}
+
 function estimateMeal(text, portion) {
   let t = (text || "").toLowerCase(); let pf = portion;
+  const angivnaGram = gramUrText(text);
   if (/^__(small|normal|large)$/.test(t.trim())) { pf = { __small: "small", __normal: "normal", __large: "large" }[t.trim()]; t = ""; }
   let kcal = 0, p = 0, c = 0, f = 0, hits = 0;
 
@@ -538,6 +564,24 @@ function estimateMeal(text, portion) {
     if (!seen.has(it)) { seen.add(it); valda.push(it); }
   });
 
+  // ANGIVEN MÄNGD SKALAR DEN KURERADE POSTEN.
+  //
+  // FOOD_KB bär färdiga kcal-tal för en normalportion — keso ligger på 200 g,
+  // alltså 196 kcal. Skriver man "100 g keso" har man mätt, och då är 196 fel
+  // med det dubbla samtidigt som appen frågar om liten/normal/stor. Frågan är
+  // rimlig för "keso"; för "100 g keso" är den både överflödig och vilseledande.
+  //
+  // Skalningen görs bara när EN komponent nämnts. "100 g keso och bröd" säger
+  // inte hur mycket bröd, och att lägga 100 g på båda vore att hitta på.
+  if (angivnaGram && valda.length === 1 && valda[0].slv == null) {
+    const bas = FOOD_INDEX.find(x => (valda[0].k || []).some(kw => x.name.toLowerCase().startsWith(kw)));
+    if (bas) {
+      const k = angivnaGram / 100;
+      valda[0] = { ...valda[0], kcal: Math.round((bas.kcal || 0) * k), p: Math.round((bas.protein || 0) * k),
+        c: Math.round((bas.carbs || 0) * k), f: Math.round((bas.fat || 0) * k), angivet: angivnaGram };
+    }
+  }
+
   // STEG 2: fraser som INGEN kurerad komponent tog hand om slås upp i hela
   // livsmedelsbanken med gruppens normalportion. Det är det här steget som gör
   // att varje saknat ord inte längre är ett eget litet ärende.
@@ -546,7 +590,10 @@ function estimateMeal(text, portion) {
     if (!orden.length || orden.some(o => täckta.has(o))) continue;
     const träff = (searchFoods(fras, null, null, 1) || [])[0];
     if (!träff) continue;
-    const n = portionNutrition(träff);
+    // Står en mängd i texten vinner den över schablonportionen. Den gäller
+    // bara när EN vara nämnts — "100 g keso och bröd" säger inte hur mycket
+    // bröd, och att lägga 100 g på båda vore att hitta på.
+    const n = portionNutrition(träff, angivnaGram && fraser.length === 1 ? angivnaGram : undefined);
     const nyckel = "slv:" + träff.id;
     if (!seen.has(nyckel)) {
       seen.add(nyckel);
@@ -575,6 +622,10 @@ function estimateMeal(text, portion) {
     kcal: mid, protein: Math.round(p * m), carbs: Math.round(c * m), fat: Math.round(f * m), hits,
     estimateMid: mid, estimateLow: Math.round(mid * (1 - spread)), estimateHigh: Math.round(mid * (1 + spread)),
     confidence, assumptions, estimateReason: hits ? `${hits} igenkänd(a) komponent(er).` : "Ingen igenkänd komponent.", estimationMethod: method,
+    // Vyn behöver veta att mängden stod i texten: då är portionsfrågan
+    // liten/normal/stor både överflödig och vilseledande — den skulle skala om
+    // ett tal användaren redan mätt upp.
+    angivenMängd: angivnaGram && valda.length === 1 ? angivnaGram : null,
   };
 }
 
