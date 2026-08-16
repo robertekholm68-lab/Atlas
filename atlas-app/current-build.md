@@ -99,7 +99,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Livsmedel, kuraterade | 69 |
 | Recept | 276 |
 | Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 922 i 87 filer |
+| Tester (vitest) | 1039 i 100 filer |
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -539,6 +539,19 @@ bygger och publicerar vid varje push till `main`. Pages-källan är satt till
 **GitHub Actions** (inte längre "deploy from a branch"). `file://` gör
 localStorage opålitligt och blockerar service worker.
 
+**Lint i CI sedan 2026-08-11**, med en enda regel: `no-undef`. Fyra gånger på
+tre dagar användes en identifierare utan import (`volt` i App2, `btnText` i
+ProgramSheet, `EXERCISES` i App2, `btnText` i ProgressView). Varken sviten eller
+bygget ser det — en fri identifierare är giltig JavaScript ända till körtid — och
+felet visade sig som en **tom vy** i webbläsaren, först när just den vyn
+öppnades. Linten ligger före bygget: går den inte igenom är bygget meningslöst
+att vänta på. Konfigurationen i `atlas-app/eslint.config.js`, skriptet
+`npm run lint`.
+
+Samma felklass, tre lager: `import-integritet.test.js` ser motoranrop utan
+import, linten ser alla odefinierade identifierare, och `no-undef` fångar även
+det som testet inte känner till.
+
 **PR:en testas FÖRE merge sedan 2026-07-27.** Flödet kördes tidigare bara vid
 push till `main`, alltså mergades varje PR otestad av automatik och rött
 upptäcktes först när det redan låg i main. `pull_request`-utlösaren kör hela
@@ -616,7 +629,7 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TIO stycken, 155 OK-steg** (alla körda 2026-07-27,
+**Askr 2.0:s DOM-skript — TIO stycken, 155 OK-steg** (alla körda 2026-08-11,
 exit 0, inga page errors):
 
 | Skript i `scripts/` | Steg | Täcker |
@@ -637,8 +650,20 @@ slutat fungera helt (0 OK) utan att någon märkte det: matvyns knapp bytte namn
 från "Logga mat" till "Logga måltid" när matakuten byggdes, och skriptet ingick
 inte i de rundor som kördes. Ett skript som inte körs skyddar ingenting.
 
-De körs medvetet inte av test/bygge — de kräver `npm i --no-save
-playwright-core` och en byggd `dist-atlas2/`. Samtliga hittar webbläsaren via
+**De körs numera i CI**, som ett eget jobb (`verifiera-dom` i
+`deploy-pages.yml`), och publiceringen är spärrad tills de är gröna. Tidigare
+kördes de bara när någon kom ihåg det — och de har fångat sådant som varken
+sviten eller bygget ser: passvyn 107 px utanför skärmkanten, och en bild som
+renderades men aldrig laddades (`naturalWidth` 0).
+
+Jobbet är en **matris över de tio skripten**, inte tio steg i rad. Sekventiellt
+tar de 374 s (mätt); skripten binder tio olika portar (8931–8963) och kan därför
+köras samtidigt, vilket ger väggklocka lika med det längsta skriptet (63 s) plus
+uppsättning. `fail-fast: false` — faller ett vill man se de nio andras utfall,
+annars blir felsökningen gissning.
+
+De körs fortfarande inte av `npm test` eller bygget lokalt — de kräver
+`npm i --no-save playwright-core` och en byggd `dist-atlas2/`. Samtliga hittar webbläsaren via
 `chromiumBin()`: `PW_CHROMIUM` först, sedan de raka
 sökvägarna, annars letas revisionskatalogen upp. **Hårdkoda aldrig
 `/opt/pw-browsers/chromium`** — den finns inte i alla containrar, och skripten
@@ -723,10 +748,14 @@ och sport- och cardiologgning.
     taligenkänning. Chrome, Samsung Browser och desktop påverkas inte alls —
     `hasNativeVoice()` är falsk överallt utom i skalet.
 
-  **EJ VERIFIERAD PÅ TELEFON.** JS-sidan körs mot en simulerad Java-sida i
-  testerna, men bara riktig hårdvara visar att `SpeechRecognizer` svarar. Och
-  **den här deployen räcker inte** — JS-sidan gör ingenting utan `AskrNative`,
-  som bara finns i en nybyggd APK. Kräver signeringsnyckeln.
+  **VERIFIERAD PÅ TELEFON OCH I BRUK.** Bryggan byggdes 2026-07-27 och Robert
+  har bekräftat att röstloggningen fungerar i app-skalet. Spåret är därmed
+  stängt: rösten fungerar både i webbläsaren och i skalet, via två olika vägar
+  som möts i samma `parseSetSpeech`.
+
+  Att komma ihåg för nästa APK: **JS-sidan ensam gör ingenting.** `AskrNative`
+  finns bara i skalet, så en webbdeploy ändrar aldrig något för bryggan — den
+  följer med först när en ny APK byggs och installeras.
 
   **Vägen som fungerar redan idag, utan APK:** installera PWA:n från **Samsung
   Browser**. Rösten fungerade där på testtelefonen — men inte i Chrome, tvärtemot
@@ -774,17 +803,26 @@ JDK 21).
   `ic_launcher.png` i `android-app/res/mipmap-*` (`b133ef0`), och
   `android:label` är redan `Askr`. De slår igenom först i en ny APK. En
   installerad app visar alltså fortfarande den gamla ikonen tills dess.
-- **Mikrofonspåret är AVSLUTAT, inte blockerat.** Flyttat till *AVGJORT* ovan
-  2026-07-27: rösten i app-skalet är ett medvetet nej, inte en bugg som väntar
-  på en telefon. Behörighetsdelen löstes och bevisades (`RECORD_AUDIO` begärs i
-  körtid sedan `MainActivity` fick `requestPermissions`), men WebView når ändå
-  aldrig hårdvaran. Det ligger under vår kod.
+- **Mikrofonspåret är LÖST, inte blockerat.** Se *AVGJORT* ovan. Kort: WebView
+  når aldrig mikrofonen, och den nativa `SpeechRecognizer`-bryggan går runt det.
+  Byggd 2026-07-27, **verifierad på telefon, i bruk**. Ingen del av det här
+  väntar längre på något.
+
+  Formuleringen "medvetet nej" stod kvar här i två veckor efter att bryggan
+  byggts och börjat användas. Det är precis den andrabokföring rubriken överst
+  i filen varnar för — samma sak beskriven på två ställen, där det ena slutade
+  stämma. Beskriv nuläget på ETT ställe och länka dit.
 
   **Byggutdata hör inte hemma i repot.** `android-app/build/` är ignorerad sedan
-  ett molnpaket bar in en hel byggkatalog. Värst var en **debugsignerad APK**:
-  Android vägrar installera över en app signerad med den riktiga nyckeln, så den
-  som provar filen tvingas avinstallera och förlorar all loggad träning i
-  skalet.
+  ett molnpaket bar in en hel byggkatalog. Det gäller fortfarande, och handlar om
+  att repot ska bära källa och inte artefakter.
+
+  **Debugsignerade APK:er är däremot arbetsredskapet**, inte ett problem — de
+  används löpande för att prova skalet. Det enda som måste vara känt innan en
+  installeras: Android vägrar installera den över en app signerad med den
+  riktiga nyckeln. Byter man mellan debug och riktig signatur krävs
+  avinstallation, och då försvinner skalets lagring. **Exportera backup först**
+  (Meny → Historik → Datasäkerhet), så kostar bytet ingenting.
 
   Vad som gjorts härifrån och gäller framåt: skalet kompilerar rent
   (`javac --release 17` mot handskrivna API-stubbar, eftersom Android SDK
