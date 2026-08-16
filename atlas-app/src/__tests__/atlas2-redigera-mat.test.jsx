@@ -230,3 +230,43 @@ describe("loggknappen står före listan", () => {
     expect(knapp.compareDocumentPosition(första) & 4).toBeTruthy();
   });
 });
+
+describe("listan är kolumner, inte löpande text", () => {
+  it("mängden står i en egen kolumn", async () => {
+    // "100 g · P 12 g · uppskattat" tvingar ögat att läsa en mening för att
+    // hitta ett tal. Med mängden i egen kolumn kan man skanna listan lodrätt:
+    // namn, mängd, kalorier.
+    const { el } = await rendera();
+    const rad = poster(el)[0];
+    const kolumner = [...rad.children].map(x => x.textContent.trim());
+    expect(kolumner.length).toBeGreaterThanOrEqual(3);
+    expect(kolumner[0]).toBe("Keso");
+    expect(kolumner[1]).toBe("100 g");
+  });
+
+  it("styckvaror visas som antal, inte som gram", async () => {
+    // "2 knäckebröd" räknades om till 22 g för näringen, men listan visade
+    // "22 g" — ett tal användaren aldrig sagt och inte känner igen. Antalet är
+    // det man minns; gramtalet är motorns mellansteg.
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => {
+      r.render(createElement(FoodView, {
+        foodLog: [{ id: "k1", name: "Knäckebröd", antal: 2, antalOrd: "knäckebröd",
+          kcal: 75, protein: 2, carbs: 14, fat: 1, ts: Date.now() }],
+        setFoodLog: () => {}, nutritionTargets: null, onSätta: () => {},
+        profile: {}, setProfile: () => {},
+      }));
+    });
+    const rad = el.querySelector('button[data-post="1"]');
+    expect([...rad.children].map(x => x.textContent.trim())[1]).toBe("2 st");
+  });
+
+  it("proteinet flyttade till detaljvyn", async () => {
+    // På raden konkurrerade det med mängden och gjorde den svår att skanna.
+    const { el } = await rendera();
+    expect(poster(el)[0].textContent).not.toMatch(/P \d+ g/);
+    await act(async () => { poster(el)[0].click(); });
+    expect(el.textContent).toMatch(/P \d+ g/);
+  });
+});

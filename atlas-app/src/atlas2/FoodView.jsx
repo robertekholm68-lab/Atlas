@@ -183,13 +183,23 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                 width: "100%", textAlign: "left", padding: "13px 2px", minHeight: 44,
                 background: "none", border: "none", color: C.text, cursor: "pointer",
               }}>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ fontSize: 14, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name || (f && f.name) || "Måltid"}</span>
-                <span style={{ fontSize: 11.5, color: C.muted, marginTop: 2, display: "block" }}>
-                  {e.grams ? `${e.grams} g · ` : ""}P {p} g
-                  {e.quality === "estimated" ? " · uppskattat" : ""}
-                  {e.quality === "photo" ? " · ur foto" : ""}
-                </span>
+              {/* KOLUMNER, INTE LÖPANDE TEXT.
+                  "100 g · P 12 g · uppskattat" tvingar ögat att läsa en mening
+                  för att hitta ett tal. Med mängden i egen kolumn kan man skanna
+                  listan lodrätt: namn, mängd, kalorier.
+
+                  Mängden visas som den ANGAVS — "2 st" för det man räknade,
+                  "100 g" för det man vägde. Gramtalet bakom styckräkningen är
+                  motorns mellansteg, inte något användaren sagt. */}
+              <span style={{ minWidth: 0, flex: 1, fontSize: 14, overflow: "hidden",
+                textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {e.name || (f && f.name) || "Måltid"}
+              </span>
+              <span style={{
+                fontFamily: MONO, fontSize: 12, color: C.text2, flexShrink: 0,
+                width: 58, textAlign: "right", whiteSpace: "nowrap",
+              }}>
+                {e.antal ? `${e.antal} st` : e.grams ? `${e.grams} g` : ""}
               </span>
               <span style={{ fontFamily: HFONT, fontWeight: 700, fontSize: 15, color: C.lime, flexShrink: 0, marginLeft: 12 }}>
                 {k}<span style={{ fontSize: 11, color: C.muted }}> kcal</span>
@@ -198,6 +208,14 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
 
             {öppen && (
               <div style={{ padding: "0 2px 14px" }}>
+                {/* Protein och tillit flyttade hit från radens undertext. På
+                    raden konkurrerade de med mängden och gjorde den svår att
+                    skanna; här läser man dem när man faktiskt undrar. */}
+                <div style={{ fontFamily: MONO, fontSize: 11.5, color: C.muted, marginBottom: 10 }}>
+                  P {p} g
+                  {e.quality === "estimated" ? " · uppskattat" : ""}
+                  {e.quality === "photo" ? " · ur foto" : ""}
+                </div>
                 {/* NAMNET GÅR ATT RÄTTA.
                     Man loggar "kyckl" i farten, eller får "Fotad måltid" ur
                     fotovyn. Utan ett fält står felstavningen kvar i historiken
@@ -345,8 +363,18 @@ function SnabbLogg({ onLägg }) {
     setEst(estimateMeal(ny, portion));
   };
   const lägg = () => {
-    const post = buildEstimatedEntry(text, estimateMeal(estText || text, portion));
-    if (post) onLägg({ id: nyId("f_"), ...post });
+    const e = estimateMeal(estText || text, portion);
+    const post = buildEstimatedEntry(text, e);
+    if (post) onLägg({
+      id: nyId("f_"), ...post,
+      // MÄNGDEN SPARAS SOM DEN ANGAVS.
+      //
+      // "2 knäckebröd" räknades om till 22 g för näringen, men listan visade
+      // sedan "22 g" — ett tal användaren aldrig sagt och inte känner igen.
+      // Antalet är det man minns; gramtalet är motorns mellansteg.
+      ...(e.angivetAntal ? { antal: e.angivetAntal.antal, antalOrd: e.angivetAntal.ord } : {}),
+      ...(e.angivenMängd && !e.angivetAntal ? { grams: e.angivenMängd } : {}),
+    });
     nollställ();
   };
 
