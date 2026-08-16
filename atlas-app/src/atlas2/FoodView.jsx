@@ -121,7 +121,20 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
         </div>
       )}
 
-      <div style={{ ...label(), margin: "24px 0 4px" }}>Dagens måltider</div>
+      {/* LOGGKNAPPEN STÅR FÖRE LISTAN, INTE EFTER.
+          Efter listan vandrar den nedåt för varje loggad måltid: en dag med
+          sex poster kräver att man scrollar förbi allt man redan gjort för att
+          komma åt det man vill göra. Handlingen ska inte bli svårare att nå ju
+          mer man använt appen.
+
+          Listan är dessutom en historik man LÄSER; knappen är det man KOMMER
+          hit för. Det som ska tryckas står överst. */}
+      <button onClick={onLogga} data-logga-maltid="1"
+        style={{ ...btnPrimary, marginTop: 24 }}>
+        Logga måltid <span style={{ fontSize: 19 }}>+</span>
+      </button>
+
+      <div style={{ ...label(), margin: "22px 0 4px" }}>Dagens måltider</div>
       {dagensLogg.length === 0 ? (
         <div style={{ padding: "26px 16px", textAlign: "center", border: `1px dashed ${C.border}`, borderRadius: 14, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
           Inget loggat idag.
@@ -230,7 +243,6 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
         );
       })}
 
-      <button onClick={onLogga} style={{ ...btnPrimary, marginTop: 22 }}>Logga måltid <span style={{ fontSize: 19 }}>+</span></button>
 
     </div>
   );

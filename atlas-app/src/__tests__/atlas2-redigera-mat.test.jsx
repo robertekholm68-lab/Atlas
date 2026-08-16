@@ -214,3 +214,19 @@ describe("mängden går att skriva, inte bara stega", () => {
     expect(logg().find(x => x.id === "f_1").grams).toBe(5);
   });
 });
+
+describe("loggknappen står före listan", () => {
+  it("knappen renderas ovanför dagens måltider", async () => {
+    // Efter listan vandrar den nedåt för varje loggad måltid: en dag med sex
+    // poster kräver att man scrollar förbi allt man redan gjort för att komma
+    // åt det man vill göra. Handlingen ska inte bli svårare att nå ju mer man
+    // använt appen.
+    const { el } = await rendera();
+    const knapp = el.querySelector('button[data-logga-maltid="1"]');
+    const första = el.querySelector('button[data-post="1"]');
+    expect(knapp).toBeTruthy();
+    expect(första).toBeTruthy();
+    // compareDocumentPosition: 4 = knappen kommer före posten i dokumentet.
+    expect(knapp.compareDocumentPosition(första) & 4).toBeTruthy();
+  });
+});
