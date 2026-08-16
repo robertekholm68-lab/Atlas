@@ -260,6 +260,16 @@ function SnabbLogg({ onLägg }) {
             P {est.protein} g · K {est.carbs} g · F {est.fat} g
           </div>
           <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55, marginTop: 7 }}>{est.assumptions}</div>
+          {/* PORTIONSFRÅGAN GÖMS NÄR MÄNGDEN STÅR I TEXTEN.
+              Skriver man "100 g keso" har man mätt. Att då fråga om
+              liten/normal/stor är att erbjuda sig att skala om ett tal
+              användaren redan vet — och knapparna såg ut som ett obligatoriskt
+              steg innan man fick logga. */}
+          {est.angivenMängd ? (
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 10 }}>
+              Räknat på {est.angivenMängd} g som du angav.
+            </div>
+          ) : (
           <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
             {[["small", "Liten"], ["normal", "Normal"], ["large", "Stor"]].map(([p, l]) => (
               <button key={p} onClick={() => byting(p)} style={{
@@ -269,6 +279,7 @@ function SnabbLogg({ onLägg }) {
               }}>{l}</button>
             ))}
           </div>
+          )}
           <button onClick={lägg} style={{ ...btnPrimary, marginTop: 13 }}>Lägg till — uppskattat <span style={{ fontSize: 18 }}>+</span></button>
         </div>
       )}
