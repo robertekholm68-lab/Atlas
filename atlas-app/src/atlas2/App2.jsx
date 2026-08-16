@@ -338,6 +338,15 @@ export function Atlas2() {
   // av per dag. Kryssrutor, inte alarm — kunskapsbanken säger att det är det
   // dagliga intaget över tid som räknas, inte klockslaget.
   const [suppLog, setSuppLog] = useState([]);
+  // Egna recept. Samma form som bankens, så de fungerar överallt bankens gör.
+  const [egnaRecept, setEgnaRecept] = useState([]);
+  // Sparas vid ändring, som resten av appen — inte via effekt. En effekt skulle
+  // skriva tomma listan över den sparade under hydreringen.
+  const sättEgnaRecept = f => setEgnaRecept(xs => {
+    const ny = typeof f === "function" ? f(xs) : f;
+    save("egnaRecept", ny);
+    return ny;
+  });
   // Pass som legat öppet för länge — visas som fråga, inte som pågående.
   const [övergivet, setÖvergivet] = useState(null);
   // Sätts när användaren valt "Spara det som loggades" — WorkoutView avslutar då
@@ -383,11 +392,11 @@ export function Atlas2() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl] = await Promise.all([
+      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl, egna] = await Promise.all([
         load("mode", null), load("profile", {}), load("sessions", []), load("programs", []),
         load("activeProgramId", null), load("weights", []), load("live", null),
         load("foodLog", []), load("goal", null), load("nutritionTargets", null),
-        load("nudgesDismissed", {}), load("supplementLog", []),
+        load("nudgesDismissed", {}), load("supplementLog", []), load("egnaRecept", []),
       ]);
       if (!alive) return;
       const p = prof || {};
@@ -399,6 +408,7 @@ export function Atlas2() {
       const migr = migrera({ sessions: sess, weights: w, foodLog: fl, goal: g }, idn);
       setMode(m); setProfile(p); setSex(p.sex || null);
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
+      setEgnaRecept(Array.isArray(egna) ? egna : []);
       setWeights(migr.weights); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
 
       // ÖVERGIVET PASS: fråga i stället för att tyst räkna vidare.
@@ -776,6 +786,7 @@ export function Atlas2() {
     );
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
+        egnaRecept={egnaRecept} setEgnaRecept={sättEgnaRecept}
         nutritionTargets={nutritionTargets} onSätta={() => setSheet("kost")}
         profile={profile} setProfile={uppdatera} weights={weights}
         supplements={{ mina: profile.supplements || [], logg: suppLog, onBocka: bockaSupp, onÄndra: ändraSupp }} />
