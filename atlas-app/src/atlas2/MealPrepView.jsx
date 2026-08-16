@@ -18,7 +18,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
-import { generateWeekMenu, shoppingList, filterRecipes, recipeLogEntry, räknaOmDag, alternativFör } from "../engines/recipes.js";
+import { generateWeekMenu, shoppingList, filterRecipes, recipeLogEntry, räknaOmDag, alternativFör, matpreferenser } from "../engines/recipes.js";
 import { load, save } from "./store.js";
 import { receptBild } from "../data/recipeImages.js";
 import { DIETS, DIET_RESTRICTIONS } from "../engines/index.js";
@@ -70,7 +70,7 @@ function Kostval({ diet, restrictions, onDiet, onRestriction }) {
  * @param nutritionTargets  kcal/protein-mål; menyn siktar mot dem
  * @param profile/setProfile  bär diet, restrictions och dietApproach
  */
-export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLägg, bred = false }) {
+export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLägg, bred = false, foodLog = [] }) {
   // MENYN SPARAS. Förut genererades den om varje gång vyn öppnades, med samma
   // frö — samma vecka, men allt eget arbete borta. En meny man bytt rätter i
   // är inte längre generatorns, den är användarens, och den ska överleva att
@@ -100,9 +100,14 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
     return { ...p, restrictions: nu.includes(id) ? nu.filter(x => x !== id) : [...nu, id] };
   });
 
+  // Preferenserna härleds ur vad som faktiskt loggats och bytts — appen frågar
+  // aldrig. En enkät man fyller i en gång åldras illa, och beteendet är ändå
+  // det ärligare svaret.
+  const pref = useMemo(() => matpreferenser({ foodLog, byten }), [foodLog, byten]);
+
   const rå = useMemo(
-    () => generateWeekMenu({ targets: nutritionTargets, diet, restrictions, dietApproach, seed: frö }),
-    [nutritionTargets, diet, restrictions.join(","), dietApproach, frö]
+    () => generateWeekMenu({ targets: nutritionTargets, diet, restrictions, dietApproach, seed: frö, preferenser: pref }),
+    [nutritionTargets, diet, restrictions.join(","), dietApproach, frö, pref]
   );
 
   // Bytena läggs ovanpå den genererade menyn, och dagen räknas om med samma
@@ -159,7 +164,18 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ ...label(), color: C.muted }}>{antalRecept} recept passar din kost</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ ...label(), color: C.muted }}>{antalRecept} recept passar din kost</div>
+          {/* ÄRLIGHET OM VAD SOM STYR VECKAN. Utan raden vet man inte om menyn
+              tagit hänsyn till ens vanor eller inte — och skillnaden är stor nog
+              att man borde få veta. Under fem signaler säger den det rakt ut i
+              stället för att låtsas veta mer än den gör. */}
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+            {pref.tillräckligt
+              ? `Anpassad efter ${pref.antalSignaler} rätter du ätit`
+              : "Ingen anpassning än — logga fler måltider"}
+          </div>
+        </div>
         <button onClick={() => setVisaKost(v => !v)} aria-expanded={visaKost} style={{
           background: "none", border: "none", cursor: "pointer", padding: "6px 2px", minHeight: 44,
           fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted,

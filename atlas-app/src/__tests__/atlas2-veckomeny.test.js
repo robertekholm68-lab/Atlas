@@ -7,7 +7,7 @@
 // En meny man bytt rätter i är inte längre generatorns, den är användarens.
 
 import { describe, it, expect } from "vitest";
-import { generateWeekMenu, räknaOmDag, alternativFör, recipeMacros } from "../engines/recipes.js";
+import { generateWeekMenu, räknaOmDag, alternativFör, recipeMacros, matpreferenser } from "../engines/recipes.js";
 import { RECIPES } from "../data/recipes.js";
 
 const MÅL = { kcal: 2000, protein: 130 };
@@ -76,5 +76,69 @@ describe("dagen räknas om efter ett byte", () => {
     const m = generateWeekMenu({ targets: MÅL });
     const t = räknaOmDag(m.days[0].meals, MÅL.kcal).totals;
     for (const k of ["kcal", "protein", "carbs", "fat"]) expect(t[k], k).toBeGreaterThan(0);
+  });
+});
+
+describe("preferenser härleds ur beteende, inte ur en enkät", () => {
+  const loggat = (ids, gånger = 3) => {
+    const nu = Date.now(), log = [];
+    ids.forEach(id => { for (let n = 0; n < gånger; n++) log.push({ recipeId: id, ts: nu - n * 864e5 }); });
+    return log;
+  };
+  const frukostar = RECIPES.filter(r => r.meal === "breakfast").slice(0, 6).map(r => r.id);
+
+  it("under fem signaler påverkar ingenting", () => {
+    // Ett tunt underlag ska inte styra en hel vecka. Samma hållning som
+    // dataConfidence: hellre ingen anpassning än en byggd på tre datapunkter.
+    const p = matpreferenser({ foodLog: loggat(frukostar.slice(0, 3)) });
+    expect(p.tillräckligt).toBe(false);
+  });
+
+  it("fem loggade rätter räcker", () => {
+    expect(matpreferenser({ foodLog: loggat(frukostar.slice(0, 5)) }).tillräckligt).toBe(true);
+  });
+
+  it("byten räknas som en halv loggning", () => {
+    // Ett byte kräver ett tryck; en loggning kräver att man lagat och ätit.
+    const p = matpreferenser({ foodLog: [], byten: { "0:lunch": "r_tuna_pasta" } });
+    expect(p.gillar.r_tuna_pasta).toBe(0.5);
+  });
+
+  it("gamla loggningar faller ur fönstret", () => {
+    const gammalt = [{ recipeId: frukostar[0], ts: Date.now() - 200 * 864e5 }];
+    expect(matpreferenser({ foodLog: gammalt }).antalSignaler).toBe(0);
+  });
+});
+
+describe("preferenserna dämpar, de styr inte", () => {
+  const pref = () => {
+    const nu = Date.now(), log = [];
+    RECIPES.filter(r => r.meal === "breakfast").slice(0, 5)
+      .forEach(r => { for (let n = 0; n < 4; n++) log.push({ recipeId: r.id, ts: nu - n * 864e5 }); });
+    return matpreferenser({ foodLog: log });
+  };
+
+  it("favoriter blir vanligare i veckan", () => {
+    const p = pref();
+    const fav = new Set(Object.keys(p.gillar));
+    const utan = generateWeekMenu({ targets: MÅL }).days.map(d => d.meals[0].recipe.id);
+    const med = generateWeekMenu({ targets: MÅL, preferenser: p }).days.map(d => d.meals[0].recipe.id);
+    expect(med.filter(x => fav.has(x)).length).toBeGreaterThan(utan.filter(x => fav.has(x)).length);
+  });
+
+  it("variationen håller — veckan kollapsar inte till samma rätt", () => {
+    // Utan taket på avdraget skulle menyn bli de fem mest loggade rätterna,
+    // och variationsspärren vore verkningslös. En meny som bara föreslår det
+    // man redan äter är ingen meny.
+    const med = generateWeekMenu({ targets: MÅL, preferenser: pref() }).days.map(d => d.meals[0].recipe.id);
+    expect(new Set(med).size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("kcal-målet väger fortfarande tyngst", () => {
+    // Taket (60 poäng) är mindre än vad ett kcal-fel på 60 kcal kostar.
+    const utan = generateWeekMenu({ targets: MÅL });
+    const med = generateWeekMenu({ targets: MÅL, preferenser: pref() });
+    const fel = m => Math.abs(m.days[0].totals.kcal - MÅL.kcal);
+    expect(fel(med)).toBeLessThan(fel(utan) + 250);
   });
 });

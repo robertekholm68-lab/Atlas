@@ -409,7 +409,7 @@ const lägesknapp = på => ({
   fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
 });
 
-function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred }) {
+function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foodLog = [] }) {
   const [sök, setSök] = useState("");
   const [läge, setLäge] = useState("lista");
   // Receptlistan respekterar samma kostval som veckomenyn. Utan det skulle en
@@ -431,7 +431,7 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred }) {
         <button style={{ ...lägesknapp(true) }}>Veckomeny</button>
       </div>
       <MealPrepView nutritionTargets={nutritionTargets} profile={profile}
-        setProfile={setProfile} onLägg={onLägg} bred={bred} />
+        setProfile={setProfile} onLägg={onLägg} bred={bred} foodLog={foodLog} />
     </div>
   );
 
@@ -507,7 +507,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
-          profile={profile} setProfile={setProfile} bred={layout.desktop} />
+          profile={profile} setProfile={setProfile} bred={layout.desktop} foodLog={foodLog} />
       )}
       {/* Matakuten ligger som flik och inte som ark: skyddsräcket ber en
           registrera valet direkt, och då ska loggen vara ett tryck bort. */}
