@@ -52,8 +52,9 @@ describe("vyn", () => {
 
   it("steglängden är 5 gram, inte 10", () => {
     // Tio gram kan inte träffa en portion på 25 g — bara 20 eller 30.
-    expect(src).toMatch(/setGram\(g => Math\.max\(5, g - 5\)\)/);
-    expect(src).toMatch(/setGram\(g => g \+ 5\)/);
+    // Number() runt g sedan fältet blev skrivbart: "" + 5 ger strängen "5".
+    expect(src).toMatch(/setGram\(g => Math\.max\(5, \(Number\(g\) \|\| 0\) - 5\)\)/);
+    expect(src).toMatch(/setGram\(g => \(Number\(g\) \|\| 0\) \+ 5\)/);
   });
 
   it("snabbval finns för portion, förpackning och 100 g", () => {

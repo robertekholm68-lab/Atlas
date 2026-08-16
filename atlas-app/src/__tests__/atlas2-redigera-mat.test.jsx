@@ -152,3 +152,65 @@ describe("namnet går att rätta", () => {
     expect(logg().find(x => x.id === "f_2").name).toBe("Lunch på jobbet");
   });
 });
+
+describe("mängden går att skriva, inte bara stega", () => {
+  const skriv = async (el, fält, värde) => {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(fält, värde);
+      fält.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+
+  it("fältet visar nuvarande mängd", async () => {
+    // Från 100 till 250 g är trettio tryck på plusknappen. Knapparna är rätt
+    // för finjustering, fältet för att byta storleksordning.
+    const { el } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    expect(el.querySelector('input[data-gram="1"]').value).toBe("100");
+  });
+
+  it("skriven mängd räknar om näringen", async () => {
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    await skriv(el, el.querySelector('input[data-gram="1"]'), "250");
+    const p = logg().find(x => x.id === "f_1");
+    expect(p.grams).toBe(250);
+    // Keso 98 kcal/100 g → 245.
+    expect(p.kcal).toBe(245);
+  });
+
+  it("tomt fält tillåts under skrivandet och ger inte NaN", async () => {
+    // Raderar man 100 för att skriva 250 passerar fältet genom tomt. Att då
+    // tvinga tillbaka en etta gör det omöjligt att skriva, och utan Number()
+    // blir summan NaN — ett fel som ser ut som en krasch men bara är ett
+    // halvskrivet tal.
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    await skriv(el, el.querySelector('input[data-gram="1"]'), "");
+    expect(logg().find(x => x.id === "f_1").kcal).toBe(0);
+    expect(el.textContent).not.toMatch(/NaN/);
+  });
+
+  it("bokstäver ignoreras", async () => {
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    await skriv(el, el.querySelector('input[data-gram="1"]'), "12a3b");
+    expect(logg().find(x => x.id === "f_1").grams).toBe(123);
+  });
+
+  it("orimliga tal kapas", async () => {
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    await skriv(el, el.querySelector('input[data-gram="1"]'), "99999");
+    expect(logg().find(x => x.id === "f_1").grams).toBeLessThanOrEqual(5000);
+  });
+
+  it("stegknapparna fungerar efter ett tomt fält", async () => {
+    // Utan Number() i stegfunktionen ger "" + 5 strängen "5" — eller NaN.
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    await skriv(el, el.querySelector('input[data-gram="1"]'), "");
+    await act(async () => { el.querySelector('[aria-label="Öka mängd"]').click(); });
+    expect(logg().find(x => x.id === "f_1").grams).toBe(5);
+  });
+});
