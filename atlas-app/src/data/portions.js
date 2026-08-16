@@ -97,3 +97,43 @@ export function portionNutrition(food, gram) {
   const k = v => Math.round(((v || 0) * g) / 100);
   return { grams: g, kcal: k(food.kcal), p: k(food.protein), c: k(food.carbs), f: k(food.fat) };
 }
+
+/**
+ * STYCKVIKTER — vad en av något väger.
+ *
+ * "2 knäckebröd" är en mängd, men appen kunde bara läsa gram och gav därför
+ * samma svar som "knäckebröd". Antalet ignorerades helt.
+ *
+ * Vikterna är vardagliga schabloner, inte exakta: ett knäckebröd väger 10-14 g
+ * beroende på sort. Det är tillräckligt nära för en logg och betydligt närmare
+ * än att räkna på en portion.
+ *
+ * BARA SAKER MAN RÄKNAR I STYCK. "2 ris" betyder inget, så ris står inte här.
+ * Listan ska växa när någon rapporterar att en vara saknas — inte fyllas med
+ * gissningar i förväg.
+ */
+export const STYCKVIKT = {
+  knäckebröd: 11, skorpa: 10, brödskiva: 35, skiva: 35, limpskiva: 40,
+  rostat: 30, frukostmacka: 35, macka: 70, smörgås: 70,
+  ägg: 58, äggula: 18, äggvita: 33,
+  banan: 120, äpple: 130, päron: 140, apelsin: 150, clementin: 70,
+  kiwi: 75, persika: 150, plommon: 55, aprikos: 35,
+  tomat: 90, "körsbärstomat": 15, gurka: 300, morot: 70, paprika: 150,
+  potatis: 90, lök: 110, vitlöksklyfta: 4, avokado: 170,
+  kavring: 30, tortilla: 45, pitabröd: 60, hamburgerbröd: 70,
+  korv: 50, falukorvskiva: 25, köttbulle: 15, kycklingfilé: 150,
+  ostskiva: 15, skinkskiva: 12, salamiskiva: 5,
+  näve: 30, kaka: 15, kex: 8, rice: 9,
+};
+
+/** Vad ett stycke väger, eller null när varan inte räknas i styck. */
+export function styckvikt(namn) {
+  if (!namn) return null;
+  const n = String(namn).toLowerCase().trim();
+  if (STYCKVIKT[n]) return STYCKVIKT[n];
+  // Sammansatta ord: "rågknäckebröd" ska hitta "knäckebröd".
+  for (const [k, v] of Object.entries(STYCKVIKT)) {
+    if (n.endsWith(k) || n.startsWith(k)) return v;
+  }
+  return null;
+}
