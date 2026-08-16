@@ -274,6 +274,63 @@ export function matpreferenser({ foodLog = [], byten = {}, dagar = 90 } = {}) {
   };
 }
 
+/**
+ * MÅLTIDSTYP HÄRLEDS UR KLOCKSLAGET — den frågas aldrig.
+ *
+ * Varje loggpost bär redan en tidstämpel, så appen vet när man åt; den visade
+ * det bara aldrig. Att i stället lägga till ett valsteg vid loggningen hade
+ * kostat ett tryck varje gång, och matloggning är redan det som oftast hoppas
+ * över. Ett extra steg där gör mer skada än grupperingen gör nytta.
+ *
+ * GRÄNSERNA ÄR SCHABLONER, inte sanningar. Den som jobbar natt äter middag
+ * klockan fyra på morgonen, och då är etiketten fel. Därför går den att ändra
+ * på posten — men man behöver aldrig sätta den.
+ *
+ * Samma fyra typer som recepten använder, så en loggad rätt och ett recept talar
+ * samma språk.
+ */
+export function måltidAvTid(ts) {
+  const h = new Date(ts).getHours();
+  if (h < 10) return "breakfast";
+  if (h < 14) return "lunch";
+  if (h < 17) return "snack";
+  return "dinner";
+}
+
+export const MÅLTID_SV = {
+  breakfast: "Frukost", lunch: "Lunch", snack: "Mellanmål", dinner: "Middag",
+};
+
+/** Ordningen de visas i — kronologisk, inte alfabetisk. */
+export const MÅLTID_ORDNING = ["breakfast", "lunch", "snack", "dinner"];
+
+/**
+ * Grupperar loggposter per måltid och summerar varje grupp.
+ *
+ * Postens egen `meal` vinner över klockslaget: har någon rättat en middag som
+ * åts klockan fyra ska rättelsen stå kvar. Tomma grupper utelämnas — en rubrik
+ * utan innehåll är brus.
+ */
+export function grupperaMåltider(poster, näringFör) {
+  const grupper = {};
+  for (const e of poster || []) {
+    if (!e) continue;
+    const typ = e.meal || måltidAvTid(e.ts);
+    (grupper[typ] = grupper[typ] || []).push(e);
+  }
+  return MÅLTID_ORDNING.filter(t => grupper[t] && grupper[t].length).map(typ => {
+    const rader = grupper[typ];
+    const summa = rader.reduce((a, e) => {
+      const n = näringFör ? näringFör(e) : e;
+      return {
+        kcal: a.kcal + (Number(n.kcal) || 0),
+        protein: a.protein + (Number(n.protein) || 0),
+      };
+    }, { kcal: 0, protein: 0 });
+    return { typ, namn: MÅLTID_SV[typ], rader, kcal: Math.round(summa.kcal), protein: Math.round(summa.protein) };
+  });
+}
+
 // Inköpslista: summerar ingredienserna över menyn, grupperat per varukategori.
 export function shoppingList(menu) {
   const acc = {};
