@@ -16,9 +16,10 @@
 // dagar i rad, och shoppingList summerar ingredienserna med portionsskalningen.
 // Fröet gör menyn reproducerbar — samma frö ger samma vecka.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
-import { generateWeekMenu, shoppingList, filterRecipes, recipeLogEntry } from "../engines/recipes.js";
+import { generateWeekMenu, shoppingList, filterRecipes, recipeLogEntry, räknaOmDag, alternativFör } from "../engines/recipes.js";
+import { load, save } from "./store.js";
 import { receptBild } from "../data/recipeImages.js";
 import { DIETS, DIET_RESTRICTIONS } from "../engines/index.js";
 
@@ -70,7 +71,21 @@ function Kostval({ diet, restrictions, onDiet, onRestriction }) {
  * @param profile/setProfile  bär diet, restrictions och dietApproach
  */
 export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLägg, bred = false }) {
+  // MENYN SPARAS. Förut genererades den om varje gång vyn öppnades, med samma
+  // frö — samma vecka, men allt eget arbete borta. En meny man bytt rätter i
+  // är inte längre generatorns, den är användarens, och den ska överleva att
+  // man går till en annan flik.
+  // load() är ASYNKRON — den returnerar ett Promise. Använd som initialvärde i
+  // useState blev tillståndet ett Promise i stället för data, och bytena såg ut
+  // att sparas (de LÅG i localStorage) men applicerades aldrig efter omladdning.
+  // Hydreringen sker därför i en effekt, som resten av appen gör.
   const [frö, setFrö] = useState(1);
+  // Byten per dag och måltid: { "0:lunch": receptId }. Sparas separat från
+  // menyn eftersom menyn räknas om när kostval eller mål ändras — bytena ska
+  // överleva det, så länge rätten fortfarande passar kosten.
+  const [byten, setByten] = useState({});
+  const [hydrerad, setHydrerad] = useState(false);
+  const [byter, setByter] = useState(null);   // "0:lunch" medan man väljer
   const [öppen, setÖppen] = useState(0);
   const [visaKost, setVisaKost] = useState(false);
   const [visaInköp, setVisaInköp] = useState(false);
@@ -85,10 +100,58 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
     return { ...p, restrictions: nu.includes(id) ? nu.filter(x => x !== id) : [...nu, id] };
   });
 
-  const meny = useMemo(
+  const rå = useMemo(
     () => generateWeekMenu({ targets: nutritionTargets, diet, restrictions, dietApproach, seed: frö }),
     [nutritionTargets, diet, restrictions.join(","), dietApproach, frö]
   );
+
+  // Bytena läggs ovanpå den genererade menyn, och dagen räknas om med samma
+  // skalning som generatorn använder. Ett byte som pekar på en rätt som inte
+  // längre finns i poolen (kostvalet ändrades) ignoreras tyst — alternativet
+  // vore att visa en rätt användaren sagt att hen inte äter.
+  const meny = useMemo(() => {
+    if (rå.hasData === false || !Object.keys(byten).length) return rå;
+    const pool = filterRecipes({ diet, restrictions, dietApproach });
+    const days = rå.days.map((d, i) => {
+      let ändrad = false;
+      const meals = d.meals.map(m => {
+        const id = byten[`${i}:${m.meal}`];
+        if (!id || id === m.recipe.id) return m;
+        const r = pool.find(x => x.id === id);
+        if (!r) return m;
+        ändrad = true;
+        return { ...m, recipe: r };
+      });
+      if (!ändrad) return d;
+      return { ...d, ...räknaOmDag(meals, nutritionTargets && nutritionTargets.kcal) };
+    });
+    return { ...rå, days };
+  }, [rå, byten, diet, restrictions.join(","), dietApproach, nutritionTargets]);
+
+  useEffect(() => {
+    let lever = true;
+    Promise.all([load("menyFrö", 1), load("menyByten", {})]).then(([f, b]) => {
+      if (!lever) return;
+      setFrö(typeof f === "number" ? f : 1);
+      setByten(b && typeof b === "object" ? b : {});
+      setHydrerad(true);
+    });
+    return () => { lever = false; };
+  }, []);
+
+  const nyMeny = () => {
+    // Ny vecka betyder ny vecka. Att behålla bytena vore att blanda två
+    // menyer — och de pekar på dagar och måltider som fått nytt innehåll.
+    const f = Math.floor(Math.random() * 1e6);
+    setFrö(f); save("menyFrö", f);
+    setByten({}); save("menyByten", {});
+  };
+
+  const välj = (dagIdx, mealId, receptId) => {
+    const nya = { ...byten, [`${dagIdx}:${mealId}`]: receptId };
+    setByten(nya); save("menyByten", nya);
+    setByter(null);
+  };
   const inköp = useMemo(() => (meny.hasData === false ? [] : shoppingList(meny)), [meny]);
   const antalRecept = useMemo(() => filterRecipes({ diet, restrictions, dietApproach }).length, [diet, restrictions.join(","), dietApproach]);
 
@@ -139,7 +202,7 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
                   }}>
                     <span style={{ fontFamily: HFONT, fontSize: 13, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase" }}>{DAGAR[i] || `Dag ${i + 1}`}</span>
                     <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted, whiteSpace: "nowrap" }}>
-                      {kcal} kcal · {prot} g P
+                      {kcal} kcal · P {prot} g · K {Math.round(d.totals.carbs)} g · F {Math.round(d.totals.fat)} g
                       {/* Portionsskalningen har tak på ±40 %. Slår dagen i taket
                           möter den inte målet, och det ska stå — inte döljas. */}
                       {(d.scale <= 0.7 || d.scale >= 1.4) && <span style={{ color: C.recovering }}> · når inte målet</span>}
@@ -163,6 +226,15 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
                           {m.servings && m.servings !== 1 ? ` · ${m.servings}× portion` : ""}
                         </div>
                       </div>
+                      {/* BYT-KNAPPEN FÖRE LOGGA. Man byter en rätt man inte
+                          vill äta; man loggar en man ätit. Det första är ett
+                          val, det andra ett kvitto — och valet kommer först. */}
+                      <button onClick={() => setByter(byter === `${i}:${m.meal}` ? null : `${i}:${m.meal}`)}
+                        data-byt="1" aria-expanded={byter === `${i}:${m.meal}`}
+                        aria-label={`Byt ${m.mealLabel.toLowerCase()}`} style={{
+                          padding: "0 12px", minHeight: 44, borderRadius: 999, flexShrink: 0,
+                          border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontSize: 12, cursor: "pointer",
+                        }}>Byt</button>
                       {onLägg && (
                         <button onClick={() => onLägg(recipeLogEntry(m.recipe, m.servings || 1))} aria-label={`Logga ${m.recipe.name}`} style={{
                           padding: "0 14px", minHeight: 44, borderRadius: 999, flexShrink: 0,
@@ -171,13 +243,52 @@ export function MealPrepView({ nutritionTargets, profile = {}, setProfile, onLä
                       )}
                     </div>
                   ))}
+
+                  {/* ALTERNATIVEN, rangordnade efter hur nära de ligger
+                      måltidens andel av dagsmålet — samma poängsättning som
+                      generatorn använder. Byter man till en rätt med annan
+                      energi skalas hela dagen om, så kcal-målet håller. */}
+                  {öppna && byter && byter.startsWith(`${i}:`) && (() => {
+                    const mealId = byter.split(":")[1];
+                    const nu = d.meals.find(x => x.meal === mealId);
+                    const alt = alternativFör({
+                      mealId, nuvarandeId: nu && nu.recipe.id,
+                      targets: nutritionTargets, diet, restrictions, dietApproach,
+                    });
+                    return (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.hairline}` }}>
+                        <div style={{ ...label(), color: C.muted, marginBottom: 8 }}>
+                          Byt {(nu ? nu.mealLabel : "").toLowerCase()} — {alt.length} alternativ
+                        </div>
+                        {alt.map(a => (
+                          <button key={a.recipe.id} onClick={() => välj(i, mealId, a.recipe.id)} data-alt="1"
+                            style={{
+                              display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                              padding: "9px 11px", marginBottom: 6, borderRadius: 12, minHeight: 44,
+                              border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer",
+                            }}>
+                            {receptBild(a.recipe) && (
+                              <img src={receptBild(a.recipe)} alt="" loading="lazy"
+                                style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                            )}
+                            <span style={{ minWidth: 0, flex: 1 }}>
+                              <span style={{ fontSize: 13, display: "block" }}>{a.recipe.name}</span>
+                              <span style={{ fontFamily: MONO, fontSize: 10.5, color: C.muted, display: "block", marginTop: 2 }}>
+                                {a.macros.kcal} kcal · P {a.macros.protein} g
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <button onClick={() => setFrö(f => f + 1)} style={btnGhost}>Ny vecka</button>
+            <button onClick={nyMeny} data-nyvecka="1" style={btnGhost}>Ny vecka</button>
             <button onClick={() => setVisaInköp(v => !v)} aria-expanded={visaInköp} style={btnPrimary}>
               {visaInköp ? "Dölj inköpslista" : "Inköpslista"}
             </button>
