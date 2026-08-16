@@ -64,6 +64,22 @@ jobs:
         working-directory: atlas-app
         run: node scripts/kontrollera-testskydd.mjs
 
+      - name: Lint (no-undef)
+        # ENDA REGELN ÄR no-undef, och den finns av ett konkret skäl: fyra gånger
+        # på tre dagar användes en identifierare utan import (volt i App2,
+        # btnText i ProgramSheet, EXERCISES i App2, btnText i ProgressView).
+        #
+        # Varken sviten eller bygget ser det. En fri identifierare är giltig
+        # JavaScript ända till körtid, så Rollup buntar utan att knota och
+        # testerna monterar inte varje vy. Felet visade sig som en TOM VY i
+        # webbläsaren, först när just den vyn öppnades.
+        #
+        # Körs före bygget: går den inte igenom är bygget meningslöst att vänta
+        # på. Och den körs HÄR i stället för när någon råkar minnas
+        # `npm run lint` — ett skydd som beror på att någon kommer ihåg är
+        # inget skydd.
+        run: npm run lint
+
       - name: Kör tester (rött stoppar publiceringen)
         # p5-realmode är känt instabil i full svit men grön isolerat (se
         # CLAUDE.md). En omkörning krävs så att den flakigheten inte blockerar
@@ -152,8 +168,85 @@ jobs:
         with:
           path: _site
 
+  # ── DOM-VERIFIERING ────────────────────────────────────────────────────
+  #
+  # De tio skripten mäter layout, sidscroll och funktion i en RIKTIG webbläsare.
+  # De har fångat sådant som varken sviten eller bygget ser: passvyn låg 107 px
+  # utanför skärmkanten på 375 px, och en bild renderades men laddades aldrig
+  # (naturalWidth 0). Båda hade gått rakt igenom en grön svit.
+  #
+  # EGET JOBB, INTE FLER STEG I `build`. Sekventiellt tar de 374 s (mätt), och
+  # det hade lagts rakt på varje publicering. Skripten binder tio OLIKA portar
+  # (8931–8963) och kan därför köras parallellt — en matris ger väggklocka lika
+  # med det längsta skriptet (63 s) plus uppsättning, i stället för summan.
+  #
+  # fail-fast: false — faller ett skript vill vi se de nio andras utfall också.
+  # Ett halvt facit gör felsökningen till gissning.
+  verifiera-dom:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: atlas-app
+    strategy:
+      fail-fast: false
+      matrix:
+        skript:
+          - verify-atlas2.mjs
+          - verify-atlas2-backup.mjs
+          - verify-atlas2-layout.mjs
+          - verify-atlas2-matakut.mjs
+          - verify-atlas2-mealprep.mjs
+          - verify-atlas2-pass.mjs
+          - verify-atlas2-passredigering.mjs
+          - verify-atlas2-readiness.mjs
+          - verify-atlas2-sport.mjs
+          - verify-atlas2-tillskott.mjs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: atlas-app/package-lock.json
+
+      - name: Installera beroenden
+        run: npm ci
+
+      - name: playwright-core
+        # Medvetet --no-save: skripten är verktyg, inte en del av appen, och
+        # playwright hör inte hemma i det som byggs. Samma rad står överst i
+        # varje skript.
+        run: npm i --no-save playwright-core
+
+      - name: Bygg Askr 2.0
+        # Alla tio kör mot dist-atlas2 över http. file:// gör localStorage
+        # opålitligt och blockerar service workern.
+        run: npx vite build --config vite.atlas2.config.js
+
+      - name: Peka ut webbläsaren
+        # Skripten letar via chromiumBin(): PW_CHROMIUM först, sedan raka
+        # sökvägar. GitHubs ubuntu-avbild har Chrome förinstallerad, så ingen
+        # nedladdning behövs — men om avbilden ändras ska det falla HÄR med ett
+        # begripligt fel, inte inne i ett skript som "hittar ingen Chromium".
+        run: |
+          test -x /usr/bin/google-chrome || {
+            echo "FEL: /usr/bin/google-chrome saknas i körarens avbild."
+            echo "Åtgärd: byt till 'npx --yes playwright install chromium' och"
+            echo "sätt PW_CHROMIUM till den nedladdade binären."
+            exit 1
+          }
+          /usr/bin/google-chrome --version
+
+      - name: ${{ matrix.skript }}
+        env:
+          PW_CHROMIUM: /usr/bin/google-chrome
+        run: node scripts/${{ matrix.skript }}
+
   deploy:
-    needs: build
+    # Publiceringen väntar på BÅDA. Ett grönt bygge med en trasig vy är precis
+    # det de tio skripten finns för att stoppa.
+    needs: [build, verifiera-dom]
     # SPÄRREN. Utan den hade en PR publicerat sin egen kod till den adress
     # Android-skalet pekar på.
     if: github.event_name != 'pull_request'
