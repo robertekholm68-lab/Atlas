@@ -33,6 +33,19 @@ const FOODS = [
   { id: "whey", name: "Proteinpulver (vassle)", group: "Protein", kcal: 400, protein: 80, carbs: 8, fat: 6 },
   { id: "quark", name: "Kvarg 0,2%", group: "Mejeri", kcal: 60, protein: 11, carbs: 4, fat: 0.2 },
   { id: "keso", name: "Keso", group: "Mejeri", kcal: 98, protein: 12, carbs: 3, fat: 3.5 },
+  // GENERISKA BASVAROR.
+  //
+  // Ord man säger utan att specificera sort: "olja", "mjöl", "kött". Databasen
+  // hade bara sammansatta namn — "Olivolja", "Amarant mjöl", "Nöt kött rökt" —
+  // så en sökning på "olja" gav "Tomat torkad m. olja". Fel vara, och tyst.
+  //
+  // Värdena är schabloner för den vanligaste varianten. Alla matoljor ligger på
+  // 884 kcal, så där är schablonen exakt; för mjöl och kött är den ett medel
+  // och den som vill ha rätt sort söker på den i stället.
+  { id: "olja_gen", name: "Olja matolja", group: "Fett", kcal: 884, protein: 0, carbs: 0, fat: 100 },
+  { id: "mjol_gen", name: "Mjöl vetemjöl", group: "Spannmål", kcal: 343, protein: 10, carbs: 72, fat: 1.2 },
+  { id: "kott_gen", name: "Kött blandfärs", group: "Kött", kcal: 200, protein: 18, carbs: 0, fat: 14 },
+  { id: "kryddor_gen", name: "Kryddor torkade", group: "Övrigt", kcal: 250, protein: 10, carbs: 45, fat: 5 },
   { id: "greek_yog", name: "Grekisk yoghurt", group: "Mejeri", kcal: 97, protein: 9, carbs: 4, fat: 4 },
   { id: "milk", name: "Mjölk 1,5%", group: "Mejeri", kcal: 47, protein: 3.4, carbs: 4.9, fat: 1.5 },
   { id: "cheddar", name: "Cheddarost", group: "Mejeri", kcal: 402, protein: 25, carbs: 1.3, fat: 33 },

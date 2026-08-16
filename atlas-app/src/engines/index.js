@@ -399,8 +399,36 @@ function scoreFood(qf, food, freq) {
   return s;
 }
 
+/**
+ * Mängdord som aldrig är en del av livsmedlets namn.
+ *
+ * "100 gram keso" gav NOLL träffar: scoreFood fick hela frasen och matchade den
+ * mot "Keso", där varken siffran eller ordet "gram" finns. Varje sökning med en
+ * mängd i föll alltså igenom — det märktes inte i matloggen bara för att
+ * estimateMeal har en kurerad lista som räddar de vanligaste orden, men allt
+ * utanför den listan blev osynligt.
+ */
+const MÄNGDORD = new Set([
+  "gram", "g", "kilo", "kg", "deciliter", "dl", "centiliter", "cl", "milliliter", "ml",
+  "liter", "l", "msk", "tsk", "matsked", "tesked", "krm", "kryddmått",
+  "styck", "st", "portion", "portioner", "skiva", "skivor", "bit", "bitar",
+  "en", "ett", "två", "tre", "fyra", "fem", "sex", "sju", "åtta", "nio", "tio",
+  "halv", "halvt", "kvarts", "ca", "cirka", "och", "med", "samt",
+]);
+
+/** Plockar bort siffror och mängdord ur en sökfras. Tom sträng om inget blir kvar. */
+function rensaSökfras(q) {
+  const ord = String(q || "").toLowerCase()
+    .split(/[^a-zà-ÿ0-9]+/i)
+    .filter(o => o && !/^\d+([.,]\d+)?$/.test(o) && !MÄNGDORD.has(o));
+  return ord.join(" ");
+}
+
 function searchFoods(q, group, history, limit = 50) {
-  const qf = foldStr(q); if (!qf) return null;
+  // Rensa först; faller allt bort är frasen bara en mängd utan livsmedel och
+  // originalet får försöka i stället för att ge noll träffar.
+  const rensad = rensaSökfras(q);
+  const qf = foldStr(rensad || q); if (!qf) return null;
   const freq = {}; (history || []).forEach(e => { if (e.foodId) freq[e.foodId] = (freq[e.foodId] || 0) + 1; });
   const res = [];
   for (const f of FOOD_INDEX) { if (group && group !== "Alla" && f.group !== group) continue; const s = scoreFood(qf, f, freq); if (s > 0) res.push([s, f]); }
