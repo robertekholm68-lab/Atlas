@@ -524,12 +524,21 @@ function antalUrText(text) {
 
 function gramUrText(text) {
   const t = (text || "").toLowerCase().replace(",", ".");
-  // g, gram, ml och dl. Talet får stå före eller efter livsmedlet.
-  const m = t.match(/(\d+(?:\.\d+)?)\s*(gram|g|ml|dl|cl)\b/);
+  // ENHETERNA SKRIVS UT NÄR MAN TALAR. Röstinmatning ger "2 deciliter
+  // mellanmjölk", inte "2 dl" — och eftersom rösten är den snabbaste vägen in i
+  // matloggen är det just den formen som måste fungera. Förkortningarna
+  // fångades men inte orden, så allt man pratade in tappade sin mängd och föll
+  // tillbaka på en schablonportion.
+  //
+  // Längsta enheten först i alternationen: annars matchar "dl" mot början av
+  // "deciliter" och ordgränsen faller på fel ställe.
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(deciliter|centiliter|milliliter|gram|kilo|kg|dl|cl|ml|g)\b/);
   if (!m) return null;
   let g = parseFloat(m[1]);
-  if (m[2] === "dl") g *= 100;
-  else if (m[2] === "cl") g *= 10;
+  const enhet = m[2];
+  if (enhet === "dl" || enhet === "deciliter") g *= 100;
+  else if (enhet === "cl" || enhet === "centiliter") g *= 10;
+  else if (enhet === "kg" || enhet === "kilo") g *= 1000;
   // ml räknas som gram: för dryck ligger densiteten nära 1, och näringsdatan
   // anges per 100 g även för flytande varor.
   if (!(g > 0) || g > 3000) return null;

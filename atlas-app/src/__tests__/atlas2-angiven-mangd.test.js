@@ -142,3 +142,29 @@ describe("produktvalet ersätter portionsfrågan", () => {
     if (pv) expect(pv.alternativ.length).toBeLessThanOrEqual(4);
   });
 });
+
+describe("utskrivna enheter — det man säger, inte det man förkortar", () => {
+  it("deciliter fungerar som dl", () => {
+    // Röstinmatning ger "2 deciliter mellanmjölk", inte "2 dl". Rösten är den
+    // snabbaste vägen in i matloggen, så det är just den formen som måste
+    // fungera — annars tappade allt man pratade in sin mängd.
+    expect(estimateMeal("2 deciliter mellanmjölk").angivenMängd).toBe(200);
+    expect(estimateMeal("2 dl mellanmjölk").angivenMängd).toBe(200);
+  });
+
+  it("centiliter och milliliter", () => {
+    expect(estimateMeal("5 centiliter grädde").angivenMängd).toBe(50);
+    expect(estimateMeal("50 milliliter mjölk").angivenMängd).toBe(50);
+  });
+
+  it("gram och kilo", () => {
+    expect(estimateMeal("100 gram keso").angivenMängd).toBe(100);
+    expect(estimateMeal("1 kilo potatis").angivenMängd).toBe(1000);
+  });
+
+  it("längsta enheten matchas först", () => {
+    // Utan ordningen i alternationen matchar "dl" mot början av "deciliter"
+    // och ordgränsen faller på fel ställe.
+    expect(estimateMeal("3 deciliter mjölk").angivenMängd).toBe(300);
+  });
+});
