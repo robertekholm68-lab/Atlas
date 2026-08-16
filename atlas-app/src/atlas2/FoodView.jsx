@@ -74,7 +74,7 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onTaBort }) {
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onTaBort }) {
   const [redigerar, setRedigerar] = useState(null);
 
   const stegKnapp = {
@@ -85,6 +85,7 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onTa
   // Mängden ändras i femgramssteg, som i streckkoden och fotovyn — samma
   // finhet överallt man justerar mat.
   const ändraGram = (id, delta) => onÄndra && onÄndra(id, delta);
+  const ändraNamn = (id, namn) => onÄndraNamn && onÄndraNamn(id, namn);
   const taBort = id => { setRedigerar(null); onTaBort && onTaBort(id); };
 
   // Samma summering (dagensNutrition → computeNutrition) som coachen läser — en
@@ -159,6 +160,25 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onTa
 
             {öppen && (
               <div style={{ padding: "0 2px 14px" }}>
+                {/* NAMNET GÅR ATT RÄTTA.
+                    Man loggar "kyckl" i farten, eller får "Fotad måltid" ur
+                    fotovyn. Utan ett fält står felstavningen kvar i historiken
+                    för alltid — och historiken är det man bläddrar i när man
+                    försöker minnas vad man åt.
+
+                    Näringen rörs inte. Namnet är en etikett; att låta det styra
+                    kalorierna vore att gissa att en omdöpt post också fick nytt
+                    innehåll. */}
+                <input value={e.name || ""} aria-label="Namn på måltiden"
+                  onChange={ev => ändraNamn(e.id, ev.target.value)}
+                  placeholder="Vad var det?"
+                  data-namn="1"
+                  style={{
+                    width: "100%", padding: "10px 12px", borderRadius: 10, minHeight: 44,
+                    marginBottom: 12, fontSize: 13.5,
+                    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                  }} />
+
                 {/* MÄNGD GÅR ATT ÄNDRA BARA NÄR POSTEN BÄR ETT LIVSMEDEL.
                     En post från snabbloggen eller ett foto har en summa, inte
                     ett gramtal att skala — att erbjuda en gramknapp där hade
@@ -626,6 +646,11 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
 
   const taBortPost = id => setFoodLog(l => l.filter(e => e.id !== id));
 
+  // Namnet är en etikett och rör inte näringen. Att låta en omdöpning räkna om
+  // kalorierna vore att gissa att posten också fick nytt innehåll — och den som
+  // rättar "kyckl" till "kyckling" har inte ätit något annat.
+  const ändraNamnPost = (id, namn) => setFoodLog(l => l.map(e => e.id === id ? { ...e, name: namn } : e));
+
   return (
     <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Mat</div>
@@ -643,7 +668,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
 
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
         onLogga={() => setFlik("logga")} onSätta={onSätta}
-        onÄndra={ändraPost} onTaBort={taBortPost} />}
+        onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onTaBort={taBortPost} />}
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
