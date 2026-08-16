@@ -270,3 +270,30 @@ describe("listan är kolumner, inte löpande text", () => {
     expect(el.textContent).toMatch(/P \d+ g/);
   });
 });
+
+describe("tilliten syns på raden", () => {
+  it("en uppskattad post märks med tilde i mängdkolumnen", async () => {
+    // Orden "uppskattat" och "ur foto" flyttades till detaljvyn för att
+    // kolumnen skulle gå att skanna — men då försvann all markering av att
+    // talet är osäkert, och DOM-verifieringen fångade det.
+    //
+    // ~ betyder ungefär och kostar inte en rad.
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => {
+      r.render(createElement(FoodView, {
+        foodLog: [{ id: "u1", name: "Kyckling med ris", kcal: 620, protein: 48,
+          carbs: 70, fat: 8, ts: Date.now(), quality: "estimated" }],
+        setFoodLog: () => {}, nutritionTargets: null, onSätta: () => {},
+        profile: {}, setProfile: () => {},
+      }));
+    });
+    expect(el.querySelector('button[data-post="1"]').textContent).toMatch(/~/);
+  });
+
+  it("en vägd post har ingen tilde", async () => {
+    // Keso 100 g är mätt, inte uppskattat — då vore tecknet vilseledande.
+    const { el } = await rendera();
+    expect(poster(el)[0].textContent).not.toMatch(/~/);
+  });
+});
