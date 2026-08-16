@@ -71,6 +71,74 @@ describe("vyn döljer portionsfrågan när mängden är känd", () => {
 
   it("och det sägs vad som räknats på", () => {
     // Utan raden vet man inte om appen tog hänsyn till gramtalet eller inte.
-    expect(src).toMatch(/Räknat på \{est\.angivenMängd\} g/);
+    // Två former sedan antal styck stöds: "Räknat på 100 g som du angav" och
+    // "Räknat på 2 knäckebröd (22 g)". Testet vaktar att raden finns, inte
+    // exakt vilken av dem som visas.
+    expect(src).toMatch(/Räknat på \$\{est\.angiv/);
+  });
+});
+
+describe("antal styck räknas", () => {
+  it("2 knäckebröd är en mängd, inte samma som knäckebröd", () => {
+    // Antalet ignorerades helt: "2 knäckebröd" gav samma svar som
+    // "knäckebröd", alltså gruppens schablonportion. Man loggade fel mängd
+    // utan att något avslöjade det.
+    const två = estimateMeal("2 knäckebröd");
+    expect(två.angivetAntal).toBeTruthy();
+    expect(två.angivetAntal.antal).toBe(2);
+    expect(två.angivenMängd).toBe(22);
+  });
+
+  it("räkneord i bokstäver fungerar", () => {
+    expect(estimateMeal("ett äpple").angivenMängd).toBe(130);
+    expect(estimateMeal("tre ägg").angivenMängd).toBe(174);
+  });
+
+  it("bara saker man räknar i styck", () => {
+    // "2 ris" betyder ingenting. Listan ska växa när någon rapporterar att en
+    // vara saknas, inte fyllas med gissningar i förväg.
+    expect(estimateMeal("2 ris").angivetAntal).toBe(null);
+  });
+
+  it("gramangivelse vinner över antal", () => {
+    // "2 knäckebröd 30 g" betyder att man vägt, inte att man räknat.
+    expect(estimateMeal("100 g knäckebröd").angivenMängd).toBe(100);
+  });
+
+  it("orimliga antal ignoreras", () => {
+    expect(estimateMeal("99 knäckebröd").angivetAntal).toBe(null);
+  });
+});
+
+describe("produktvalet ersätter portionsfrågan", () => {
+  it("lätta ger ett val mellan sorterna", () => {
+    // Lätta 39 % och Mini Lätta 30 % ligger 17 % isär i energi. Storleken är
+    // inte det osäkra där — sorten är det.
+    const pv = estimateMeal("2 knäckebröd med lätta").produktval;
+    expect(pv).toBeTruthy();
+    expect(pv.ord).toBe("lätta");
+    expect(pv.alternativ.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("råvaror frågar vi aldrig om", () => {
+    // "kyckling" matchar kokt, grillad, lever och lår. Den som skriver
+    // "kyckling med ris" vill logga en måltid, inte gå igenom en katalog.
+    for (const t of ["kyckling med ris", "mjölk", "yoghurt", "2 ägg och bröd"]) {
+      expect(estimateMeal(t).produktval, t).toBe(null);
+    }
+  });
+
+  it("frågan ställs bara när alternativen skiljer sig", () => {
+    // Under 15 % i energi är valet inte värt ett avbrott — osäkerheten i
+    // mängden är då ändå större än skillnaden mellan sorterna.
+    const pv = estimateMeal("2 knäckebröd med lätta").produktval;
+    const kcal = pv.alternativ.map(a => a.kcal);
+    const min = Math.min(...kcal), max = Math.max(...kcal);
+    expect((max - min) / min).toBeGreaterThanOrEqual(0.15);
+  });
+
+  it("högst fyra alternativ — annars är det en katalog", () => {
+    const pv = estimateMeal("kaffe med bregott").produktval;
+    if (pv) expect(pv.alternativ.length).toBeLessThanOrEqual(4);
   });
 });

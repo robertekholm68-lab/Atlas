@@ -254,6 +254,7 @@ function SnabbLogg({ onLägg }) {
   const [lyssnar, setLyssnar] = useState(false);
   const [nivå, setNivå] = useState(0);
   const [röstNote, setRöstNote] = useState(null);
+  const [valdProdukt, setValdProdukt] = useState(null);
   const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
   const stöd = useMemo(() => voiceSupport(), []);
@@ -262,7 +263,7 @@ function SnabbLogg({ onLägg }) {
   // är värre än ingen mikrofon.
   useEffect(() => () => { if (stoppa.current) stoppa.current(); }, []);
 
-  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); };
+  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); };
 
   const uppskatta = () => {
     if (!text.trim()) return;
@@ -275,6 +276,17 @@ function SnabbLogg({ onLägg }) {
     setEstText(t); setEst(estimateMeal(t, portion)); setFråga(null);
   };
   const byting = p => { setPortion(p); setEst(estimateMeal(estText || text, p)); };
+
+  // Valt produkt: texten skrivs om med produktens fulla namn, så uppskattningen
+  // görs om mot rätt vara. Ordet ersätts i stället för att läggas till —
+  // "lätta lättmargarin 39%" hade matchat två gånger.
+  const väljProdukt = a => {
+    setValdProdukt(a);
+    const bas = estText || text;
+    const ny = bas.replace(new RegExp(est.produktval.ord, "i"), a.name);
+    setEstText(ny);
+    setEst(estimateMeal(ny, portion));
+  };
   const lägg = () => {
     const post = buildEstimatedEntry(text, estimateMeal(estText || text, portion));
     if (post) onLägg({ id: nyId("f_"), ...post });
@@ -365,9 +377,41 @@ function SnabbLogg({ onLägg }) {
               liten/normal/stor är att erbjuda sig att skala om ett tal
               användaren redan vet — och knapparna såg ut som ett obligatoriskt
               steg innan man fick logga. */}
-          {est.angivenMängd ? (
+          {/* PRODUKTVALET KOMMER FÖRE PORTIONSFRÅGAN.
+              Skriver man "2 knäckebröd med lätta" är storleken inte det osäkra
+              — sorten är det. Lätta 39 % och Mini Lätta 30 % ligger 17 % isär i
+              energi, och det är en större skillnad än liten/normal/stor gör.
+
+              Frågan ställs bara när alternativen faktiskt skiljer sig, och
+              aldrig om råvaror: den som skriver "kyckling" menar kyckling och
+              vill inte gå igenom en produktkatalog. */}
+          {est.produktval ? (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ ...label(), color: C.muted, marginBottom: 7 }}>
+                Vilken {est.produktval.ord}?
+              </div>
+              {est.produktval.alternativ.map(a => (
+                <button key={a.id} onClick={() => väljProdukt(a)} data-produkt="1"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                    width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 6,
+                    borderRadius: 12, minHeight: 44, cursor: "pointer",
+                    border: `1px solid ${valdProdukt && valdProdukt.id === a.id ? C.lime : C.border}`,
+                    background: valdProdukt && valdProdukt.id === a.id ? volt(.08) : C.card2,
+                    color: C.text,
+                  }}>
+                  <span style={{ fontSize: 12.5, minWidth: 0 }}>{a.name}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted, flexShrink: 0 }}>
+                    {a.kcal} kcal/100 g
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : est.angivenMängd ? (
             <div style={{ fontSize: 11.5, color: C.muted, marginTop: 10 }}>
-              Räknat på {est.angivenMängd} g som du angav.
+              {est.angivetAntal
+                ? `Räknat på ${est.angivetAntal.antal} ${est.angivetAntal.ord} (${est.angivenMängd} g).`
+                : `Räknat på ${est.angivenMängd} g som du angav.`}
             </div>
           ) : (
           <div style={{ display: "flex", gap: 7, marginTop: 11 }}>

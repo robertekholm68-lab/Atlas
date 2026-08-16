@@ -2,6 +2,7 @@
 import { ADAPTIVE_EXERCISES, MODE_WEIGHTS } from "../data/coach.js";
 import { BODYWEIGHT, EXERCISES, HIIT_MULT, HIIT_MUSCLE_MULT, MAIN_LIFTS, STRENGTH_STD } from "../data/exercises.js";
 import { FOOD_DB, FOOD_INDEX, FOOD_KB, FOOD_SYN, NUTRITION_GOALS, PORTIONS } from "../data/foods.js";
+import { styckvikt } from "../data/portions.js";
 import { portionNutrition } from "../data/portions.js";
 import { ACT_RANK, BODY_ZONES, GROUP_SOURCES, GROUP_SV, MUSCLES, SLUG2ID, VOLUME_LANDMARKS } from "../data/muscles.js";
 import { H, T, now } from "../data/tokens.js";
@@ -499,6 +500,28 @@ function mealDecision(text) {
  * Returnerar null när ingen mängd står i texten, och då gäller schablonen som
  * förut.
  */
+/**
+ * Läser ut ett ANTAL ur fritexten: "2 knäckebröd", "3 ägg", "ett äpple".
+ *
+ * Skiljer sig från gramUrText genom att talet står FÖRE varan utan enhet. Utan
+ * den här tolkningen gav "2 knäckebröd" samma svar som "knäckebröd" — antalet
+ * ignorerades helt, och man loggade hälften av vad man ätit.
+ *
+ * Returnerar { antal, gram } när varan går att räkna i styck, annars null.
+ */
+function antalUrText(text) {
+  const t = (text || "").toLowerCase().trim();
+  // Talet först, sedan ordet. "2 knäckebröd" men inte "knäckebröd 2".
+  const m = t.match(/^(\d+|en|ett|två|tre|fyra|fem|sex)\s+([a-zà-ÿ]+)/i);
+  if (!m) return null;
+  const ORD = { en: 1, ett: 1, två: 2, tre: 3, fyra: 4, fem: 5, sex: 6 };
+  const antal = ORD[m[1]] != null ? ORD[m[1]] : parseInt(m[1], 10);
+  if (!(antal > 0) || antal > 50) return null;
+  const vikt = styckvikt(m[2]);
+  if (!vikt) return null;
+  return { antal, gram: antal * vikt, ord: m[2] };
+}
+
 function gramUrText(text) {
   const t = (text || "").toLowerCase().replace(",", ".");
   // g, gram, ml och dl. Talet får stå före eller efter livsmedlet.
@@ -513,9 +536,56 @@ function gramUrText(text) {
   return Math.round(g);
 }
 
+/**
+ * Hittar ord i texten som matchar FLERA konkreta produkter i databasen.
+ *
+ * "Lätta" finns som lättmargarin 39 % och Mini Lätta 30 % — 345 respektive 295
+ * kcal per 100 g. Appen valde tyst den första och frågade i stället om
+ * liten/normal/stor, vilket är fel fråga: storleken är inte det osäkra, sorten
+ * är det.
+ *
+ * FRÅGAN STÄLLS BARA NÄR SVARET SPELAR ROLL, och det är den svåra avvägningen.
+ * En app som frågar om allt är värre än en som gissar: "kyckling" matchar kokt,
+ * grillad, lever och lår, men den som skrev "kyckling med ris" vill logga en
+ * måltid — inte gå igenom en produktkatalog.
+ *
+ * Tre villkor måste hållas samtidigt:
+ *   · alternativen ska skilja sig minst 15 % i energi — Lätta 39 % och Mini
+ *     Lätta 30 % ligger på 345 respektive 295 kcal, alltså 17 % isär, och det
+ *     är precis den sortens skillnad frågan finns till för
+ *   · ordet ska vara ett EGENNAMN i produkternas namn, inte en råvara — "lätta"
+ *     står i "typ Lätta", medan "kyckling" är själva råvaran
+ *   · högst fyra alternativ, annars är det en katalog och inte en fråga
+ */
+function produktvalUrText(text) {
+  const t = (text || "").toLowerCase();
+  // Råvaror frågar vi aldrig om. De har många varianter i databasen men den som
+  // skriver "kyckling" menar kyckling, inte en specifik tillagning.
+  const RÅVAROR = new Set([
+    "kyckling", "mjölk", "bröd", "ost", "kött", "fisk", "lax", "ris", "pasta",
+    "potatis", "yoghurt", "fil", "korv", "skinka", "ägg", "smör", "olja",
+    "kvarg", "keso", "havregryn", "banan", "äpple", "gröt", "sallad", "soppa",
+  ]);
+  const ord = t.split(/[^a-zà-ÿ0-9]+/i).filter(w => w && w.length >= 4 && !RÅVAROR.has(w));
+  for (const o of ord) {
+    const träffar = (searchFoods(o, null, null, 6) || [])
+      .filter(f => (f.name || "").toLowerCase().includes(o));
+    if (träffar.length < 2 || träffar.length > 4) continue;
+    const kcal = träffar.map(f => f.kcal || 0);
+    const min = Math.min(...kcal), max = Math.max(...kcal);
+    if (!min || (max - min) / min < 0.15) continue;
+    return { ord: o, alternativ: träffar };
+  }
+  return null;
+}
+
 function estimateMeal(text, portion) {
   let t = (text || "").toLowerCase(); let pf = portion;
   const angivnaGram = gramUrText(text);
+  // Antal styck räknas om till gram. Gramangivelse vinner om båda finns —
+  // "2 knäckebröd 30 g" betyder att man vägt, inte att man räknat.
+  const styck = angivnaGram ? null : antalUrText(text);
+  const mängd = angivnaGram || (styck && styck.gram) || null;
   if (/^__(small|normal|large)$/.test(t.trim())) { pf = { __small: "small", __normal: "normal", __large: "large" }[t.trim()]; t = ""; }
   let kcal = 0, p = 0, c = 0, f = 0, hits = 0;
 
@@ -573,12 +643,12 @@ function estimateMeal(text, portion) {
   //
   // Skalningen görs bara när EN komponent nämnts. "100 g keso och bröd" säger
   // inte hur mycket bröd, och att lägga 100 g på båda vore att hitta på.
-  if (angivnaGram && valda.length === 1 && valda[0].slv == null) {
+  if (mängd && valda.length === 1 && valda[0].slv == null) {
     const bas = FOOD_INDEX.find(x => (valda[0].k || []).some(kw => x.name.toLowerCase().startsWith(kw)));
     if (bas) {
-      const k = angivnaGram / 100;
+      const k = mängd / 100;
       valda[0] = { ...valda[0], kcal: Math.round((bas.kcal || 0) * k), p: Math.round((bas.protein || 0) * k),
-        c: Math.round((bas.carbs || 0) * k), f: Math.round((bas.fat || 0) * k), angivet: angivnaGram };
+        c: Math.round((bas.carbs || 0) * k), f: Math.round((bas.fat || 0) * k), angivet: mängd };
     }
   }
 
@@ -593,7 +663,7 @@ function estimateMeal(text, portion) {
     // Står en mängd i texten vinner den över schablonportionen. Den gäller
     // bara när EN vara nämnts — "100 g keso och bröd" säger inte hur mycket
     // bröd, och att lägga 100 g på båda vore att hitta på.
-    const n = portionNutrition(träff, angivnaGram && fraser.length === 1 ? angivnaGram : undefined);
+    const n = portionNutrition(träff, mängd && fraser.length === 1 ? mängd : undefined);
     const nyckel = "slv:" + träff.id;
     if (!seen.has(nyckel)) {
       seen.add(nyckel);
@@ -625,7 +695,13 @@ function estimateMeal(text, portion) {
     // Vyn behöver veta att mängden stod i texten: då är portionsfrågan
     // liten/normal/stor både överflödig och vilseledande — den skulle skala om
     // ett tal användaren redan mätt upp.
-    angivenMängd: angivnaGram && valda.length === 1 ? angivnaGram : null,
+    angivenMängd: mängd && valda.length === 1 ? mängd : null,
+    // Vyn kan säga "2 knäckebröd (22 g)" i stället för bara gramtalet — det är
+    // vad användaren skrev, och det är lättare att känna igen som rätt.
+    angivetAntal: styck && valda.length === 1 ? styck : null,
+    // Ord som matchar flera olika produkter. Vyn frågar vilken i stället för
+    // att fråga om portionsstorlek — sorten är det osäkra, inte storleken.
+    produktval: produktvalUrText(text),
   };
 }
 
