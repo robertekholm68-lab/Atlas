@@ -11,6 +11,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { RescueView } from "./RescueView.jsx";
 import { MealPrepView } from "./MealPrepView.jsx";
+import { CustomRecipe } from "./CustomRecipe.jsx";
 import { SupplementsPanel } from "./SupplementsPanel.jsx";
 import { filterRecipes } from "../engines/recipes.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
@@ -409,20 +410,42 @@ const lägesknapp = på => ({
   fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
 });
 
-function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foodLog = [] }) {
+function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foodLog = [], egnaRecept = [], setEgnaRecept }) {
   const [sök, setSök] = useState("");
   const [läge, setLäge] = useState("lista");
   // Receptlistan respekterar samma kostval som veckomenyn. Utan det skulle en
   // vegan få en vegansk vecka men en allätande sökträfflista — samma app som
   // säger två olika saker om vad hen äter.
+  // EGNA RECEPT FILTRERAS INTE PÅ KOST.
+  //
+  // filterRecipes bedömer bankens recept utifrån taggade ingredienser. Ett eget
+  // recept har inga sådana taggar och skulle falla bort ur varje filtrerad lista
+  // — vilket vore fel: den som lagt in rätten vet själv vad den innehåller, och
+  // att gömma användarens egen mat bakom en gissning om kost är övertramp.
+  //
   const passande = useMemo(
-    () => filterRecipes({ diet: profile.diet || "omnivore", restrictions: profile.restrictions || [], dietApproach: profile.dietApproach || null }),
-    [profile.diet, (profile.restrictions || []).join(","), profile.dietApproach]
+    () => [
+      // Egna recept först — man letar efter det man själv lagt in.
+      ...(egnaRecept || []),
+      ...filterRecipes({ diet: profile.diet || "omnivore", restrictions: profile.restrictions || [], dietApproach: profile.dietApproach || null }),
+    ],
+    [egnaRecept, profile.diet, (profile.restrictions || []).join(","), profile.dietApproach]
   );
   const lista = useMemo(() => {
     const q = sök.trim().toLowerCase();
     return (q ? passande.filter(r => (r.name || "").toLowerCase().includes(q)) : passande).slice(0, 40);
   }, [sök, passande]);
+
+  if (läge === "eget") return (
+    <CustomRecipe
+      onClose={() => setLäge("lista")}
+      onSpara={r => {
+        // Sparas som vilket recept som helst — samma form som bankens, så det
+        // fungerar i veckomenyn, inköpslistan och preferensberäkningen.
+        setEgnaRecept(xs => [...(xs || []).filter(x => x.id !== r.id), r]);
+        setLäge("lista");
+      }} />
+  );
 
   if (läge === "vecka") return (
     <div>
@@ -440,6 +463,10 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foo
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         <button style={{ ...lägesknapp(true) }}>Alla recept</button>
         <button onClick={() => setLäge("vecka")} style={{ ...lägesknapp(false) }}>Veckomeny</button>
+        {setEgnaRecept && (
+          <button onClick={() => setLäge("eget")} data-nyttrecept="1"
+            style={{ ...lägesknapp(false), marginLeft: "auto" }}>+ Eget</button>
+        )}
       </div>
       <input value={sök} onChange={e => setSök(e.target.value)} placeholder="Sök recept…"
         style={{ width: "100%", background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", fontSize: 15, boxSizing: "border-box", marginBottom: 14 }} />
@@ -481,7 +508,7 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foo
 
 /* ── VYN ── */
 
-export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [], supplements }) {
+export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [], supplements, egnaRecept = [], setEgnaRecept }) {
   const [flik, setFlik] = useState("oversikt");
   const layout = useLayout();
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
@@ -507,7 +534,8 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
-          profile={profile} setProfile={setProfile} bred={layout.desktop} foodLog={foodLog} />
+          profile={profile} setProfile={setProfile} bred={layout.desktop} foodLog={foodLog}
+          egnaRecept={egnaRecept} setEgnaRecept={setEgnaRecept} />
       )}
       {/* Matakuten ligger som flik och inte som ark: skyddsräcket ber en
           registrera valet direkt, och då ska loggen vara ett tryck bort. */}
