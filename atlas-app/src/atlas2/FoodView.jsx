@@ -17,6 +17,7 @@ import { filterRecipes } from "../engines/recipes.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
 import { searchFoods } from "../engines/index.js";
 import { Streckkod } from "./Streckkod.jsx";
+import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
@@ -279,6 +280,7 @@ function SnabbLogg({ onLägg }) {
 
 function Logga({ onLägg, foodLog }) {
   const [skannar, setSkannar] = useState(false);
+  const [fotar, setFotar] = useState(false);
   const [sök, setSök] = useState("");
   const [vald, setVald] = useState(null);
   const [gram, setGram] = useState(100);
@@ -332,6 +334,10 @@ function Logga({ onLägg, foodLog }) {
   // ark ovanpå — kameran ska inte kunna bli kvar bakom något annat.
   if (skannar) return <Streckkod onLägg={p => { onLägg(p); setSkannar(false); }} onStäng={() => setSkannar(false)} />;
 
+  // Samma skäl som för skanningen: fotovyn ersätter loggvyn i stället för att
+  // ligga i ett ark, så kameran aldrig blir kvar bakom något annat.
+  if (fotar) return <FotoMaltid onLägg={p => { onLägg(p); setFotar(false); }} onClose={() => setFotar(false)} />;
+
   return (
     <div>
       <SnabbLogg onLägg={onLägg} />
@@ -343,6 +349,15 @@ function Logga({ onLägg, foodLog }) {
         fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
       }}>
         <span aria-hidden style={{ fontSize: 15 }}>▥</span> Skanna streckkod
+      </button>
+
+      <button onClick={() => setFotar(true)} data-fotoknapp="1" style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+        width: "100%", marginBottom: 12, padding: "12px 14px", borderRadius: 12, minHeight: 44,
+        border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer",
+        fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
+      }}>
+        <span aria-hidden style={{ fontSize: 15 }}>◉</span> Fota måltiden
       </button>
 
       <input value={sök} onChange={e => setSök(e.target.value)} placeholder="Sök livsmedel…"
