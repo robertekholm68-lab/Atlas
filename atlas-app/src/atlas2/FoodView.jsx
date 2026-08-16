@@ -19,7 +19,7 @@ import { searchFoods } from "../engines/index.js";
 import { Streckkod } from "./Streckkod.jsx";
 import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
-import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
+import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
 import { receptBild } from "../data/recipeImages.js";
@@ -74,7 +74,19 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onTaBort }) {
+  const [redigerar, setRedigerar] = useState(null);
+
+  const stegKnapp = {
+    width: 40, height: 40, borderRadius: 999, flexShrink: 0, fontSize: 17, cursor: "pointer",
+    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+  };
+
+  // Mängden ändras i femgramssteg, som i streckkoden och fotovyn — samma
+  // finhet överallt man justerar mat.
+  const ändraGram = (id, delta) => onÄndra && onÄndra(id, delta);
+  const taBort = id => { setRedigerar(null); onTaBort && onTaBort(id); };
+
   // Samma summering (dagensNutrition → computeNutrition) som coachen läser — en
   // sanning, inte två.
   const t = totaler;
@@ -112,20 +124,73 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta }) {
         <div style={{ padding: "26px 16px", textAlign: "center", border: `1px dashed ${C.border}`, borderRadius: 14, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
           Inget loggat idag.
         </div>
-      ) : dagensLogg.map((e, i) => {
+      ) : dagensLogg.map((e) => {
         const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
         const k = f ? Math.round(f.kcal * e.grams / 100) : Math.round(e.kcal || 0);
         const p = f ? Math.round(f.protein * e.grams / 100) : Math.round(e.protein || 0);
+        const öppen = redigerar === e.id;
         return (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "13px 2px", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name || (f && f.name) || "Måltid"}</div>
-              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
-                {e.grams ? `${e.grams} g · ` : ""}P {p} g
-                {e.quality === "estimated" ? " · uppskattat" : ""}
+          // NYCKELN ÄR POSTENS ID, INTE INDEX.
+          //
+          // Med key={i} återanvänder React fel rad när en post tas bort mitt i
+          // listan: den utfällda redigeringen skulle följa med till nästa post.
+          // Buggen var latent så länge inget gick att ta bort — nu gör det det.
+          <div key={e.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+            <button onClick={() => setRedigerar(öppen ? null : e.id)}
+              data-post="1" aria-expanded={öppen}
+              aria-label={`${e.name || (f && f.name) || "Måltid"}, ${k} kcal — ändra`}
+              style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                width: "100%", textAlign: "left", padding: "13px 2px", minHeight: 44,
+                background: "none", border: "none", color: C.text, cursor: "pointer",
+              }}>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ fontSize: 14, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name || (f && f.name) || "Måltid"}</span>
+                <span style={{ fontSize: 11.5, color: C.muted, marginTop: 2, display: "block" }}>
+                  {e.grams ? `${e.grams} g · ` : ""}P {p} g
+                  {e.quality === "estimated" ? " · uppskattat" : ""}
+                  {e.quality === "photo" ? " · ur foto" : ""}
+                </span>
+              </span>
+              <span style={{ fontFamily: HFONT, fontWeight: 700, fontSize: 15, color: C.lime, flexShrink: 0, marginLeft: 12 }}>
+                {k}<span style={{ fontSize: 11, color: C.muted }}> kcal</span>
+              </span>
+            </button>
+
+            {öppen && (
+              <div style={{ padding: "0 2px 14px" }}>
+                {/* MÄNGD GÅR ATT ÄNDRA BARA NÄR POSTEN BÄR ETT LIVSMEDEL.
+                    En post från snabbloggen eller ett foto har en summa, inte
+                    ett gramtal att skala — att erbjuda en gramknapp där hade
+                    varit en kontroll som inte gör något. */}
+                {f ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button onClick={() => ändraGram(e.id, -5)} aria-label="Minska mängd"
+                      style={stegKnapp}>−</button>
+                    <span style={{ fontFamily: MONO, fontSize: 14, minWidth: 58, textAlign: "center" }}>{e.grams} g</span>
+                    <button onClick={() => ändraGram(e.id, 5)} aria-label="Öka mängd"
+                      style={stegKnapp}>+</button>
+                    <span style={{ fontFamily: MONO, fontSize: 11.5, color: C.muted, marginLeft: "auto" }}>
+                      {Math.round(f.kcal * e.grams / 100)} kcal
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55 }}>
+                    Posten har en färdig summa och ingen mängd att skala. Ta bort
+                    den och logga om ifall siffran blev fel.
+                  </div>
+                )}
+
+                <button onClick={() => taBort(e.id)} data-tabort="1"
+                  style={{
+                    width: "100%", marginTop: 12, padding: "11px 0", minHeight: 44, borderRadius: 999,
+                    border: `1px solid ${C.border}`, background: "transparent",
+                    color: C.recovering, fontSize: 12.5, cursor: "pointer",
+                  }}>
+                  Ta bort
+                </button>
               </div>
-            </div>
-            <div style={{ fontFamily: HFONT, fontWeight: 700, fontSize: 15, color: C.lime, flexShrink: 0, marginLeft: 12 }}>{k}<span style={{ fontSize: 11, color: C.muted }}> kcal</span></div>
+            )}
           </div>
         );
       })}
@@ -541,6 +606,26 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   const totaler = dagensNutrition(foodLog);
   const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
 
+  // ÄNDRING OCH BORTTAGNING AV LOGGAD MAT.
+  //
+  // Man skriver fel mängd eller loggar fel sak, och utan de här två fanns
+  // ingen väg tillbaka — dagens summa var fel resten av dygnet, och allt som
+  // läser den (coachen, readiness-modifieraren, näringsmålen) räknade på det.
+  const ändraPost = (id, delta) => setFoodLog(l => l.map(e => {
+    if (e.id !== id || !e.grams) return e;
+    const grams = Math.max(5, e.grams + delta);
+    // Näringen räknas om ur livsmedlet, inte skalas ur den gamla summan.
+    // Skalning av ett redan avrundat tal driver iväg efter några ändringar.
+    const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
+    if (!f) return { ...e, grams };
+    const k = grams / 100;
+    return { ...e, grams,
+      kcal: Math.round((f.kcal || 0) * k), protein: Math.round((f.protein || 0) * k),
+      carbs: Math.round((f.carbs || 0) * k), fat: Math.round((f.fat || 0) * k) };
+  }));
+
+  const taBortPost = id => setFoodLog(l => l.filter(e => e.id !== id));
+
   return (
     <div style={{ padding: "16px 18px 72px" }}>
       <div style={{ textAlign: "center", ...hdr(20) }}>Mat</div>
@@ -556,7 +641,9 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
         ))}
       </div>
 
-      {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets} onLogga={() => setFlik("logga")} onSätta={onSätta} />}
+      {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
+        onLogga={() => setFlik("logga")} onSätta={onSätta}
+        onÄndra={ändraPost} onTaBort={taBortPost} />}
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
