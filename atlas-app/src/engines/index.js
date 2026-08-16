@@ -417,11 +417,38 @@ async function lookupBarcode(code) {
     name: p.product_name_sv || p.product_name || "Okänd produkt",
     brand: (p.brands || "").split(",")[0].trim(),
     serving: p.serving_size || "",
+    // Förpackningens storlek — "250 g", "1 l". Hämtades redan från API:et men
+    // returnerades aldrig; utan den kan man inte logga en hel förpackning.
+    quantity: p.quantity || "",
     kcal: Math.round(n["energy-kcal_100g"] || (n["energy_100g"] ? n["energy_100g"] / 4.184 : 0)),
     protein: Math.round((n.proteins_100g || 0) * 10) / 10,
     carbs: Math.round((n.carbohydrates_100g || 0) * 10) / 10,
     fat: Math.round((n.fat_100g || 0) * 10) / 10,
   };
+}
+
+/**
+ * Tolkar Open Food Facts serving_size till gram.
+ *
+ * Fältet är fritext skriven av den som lagt in varan: "30 g", "1 portion (25g)",
+ * "2 dl (200 ml)", "1 skiva". Alla former går inte att tolka, och då ska
+ * funktionen säga det i stället för att gissa — en portion vi hittat på ger fel
+ * kalorital i loggen, vilket är värre än att inte erbjuda portionsknappen alls.
+ *
+ * ML BEHANDLAS SOM GRAM. För dryck och de flesta flytande livsmedel ligger
+ * densiteten nära 1, och OFF anger näringen per 100 g även för dem. Att avstå
+ * hade gjort portionsknappen oanvändbar för allt drickbart.
+ */
+function tolkaPortion(serving) {
+  if (!serving || typeof serving !== "string") return null;
+  const t = serving.toLowerCase().replace(",", ".");
+  // Sista talet följt av g eller ml vinner: "1 portion (25 g)" ska ge 25, inte 1.
+  const träffar = [...t.matchAll(/(\d+(?:\.\d+)?)\s*(g|gram|ml)\b/g)];
+  if (!träffar.length) return null;
+  const g = parseFloat(träffar[träffar.length - 1][1]);
+  // Orimliga värden tyder på feltolkning, inte på en stor portion.
+  if (!(g > 0) || g > 2000) return null;
+  return Math.round(g);
 }
 
 function goalProgress(g) {
@@ -1736,4 +1763,4 @@ function recoveryColor(score) {
   return `rgb(${r},${g},${b})`;
 }
 
-export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, formatVolume, formatBuildTime, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
+export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, tolkaPortion, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, formatVolume, formatBuildTime, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
