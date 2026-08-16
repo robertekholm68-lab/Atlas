@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card } from "./design.js";
 import { save } from "./store.js";
-import { workoutExercises } from "../engines/programs.js";
+import { workoutExercises, alternativesFor } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
 import { useLayout } from "./layout.js";
@@ -174,6 +174,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const [vikt, setVikt] = useState(it ? it.vikt : null);
   const [reps, setReps] = useState(it ? it.reps : 8);
   const [vila, setVila] = useState(0);
+  const [byter, setByter] = useState(false);
   const timer = useRef(null);
   // Röstinmatning: samma motor och samma grundregel som mobilen — rösten
   // FÖRESLÅR, den sparar aldrig själv. En felhörd åtta som blir åttio skulle
@@ -247,6 +248,36 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     setVila(it.vila);
   };
 
+  // Alternativ ur samma muskelgrupp. alternativesFor har funnits i motorn sedan
+  // programbygget men aldrig anropats från 2.0 — logiken fanns, vägen dit inte.
+  const alternativ = useMemo(
+    () => (it ? alternativesFor(it.exId, null, 8) : []),
+    [it && it.exId]
+  );
+
+  /**
+   * Byter övning i det PÅGÅENDE passet.
+   *
+   * Set och reps följer med: den som skulle köra 3x8 sittande rodd ska köra
+   * 3x8 hantelrodd, inte plötsligt något annat. Vikten nollställs däremot —
+   * 70 kg i en maskin är inte 70 kg med hantlar, och att behålla talet vore
+   * att föreslå en belastning appen inte har underlag för.
+   *
+   * Bytet gäller bara det här passet. Programmet är en mall man återkommer
+   * till, och att ändra den för att maskinen var upptagen en gång vore fel.
+   */
+  const bytTill = ex => {
+    setLive(l => ({
+      ...l,
+      items: l.items.map((x, i) => i !== l.idx ? x : {
+        ...x, exId: ex.id, namn: ex.name,
+        // Loggade set är tomma här — knappen visas bara innan första setet.
+        loggade: [], senaste: null, förslag: null,
+      }),
+    }));
+    setByter(false);
+  };
+
   const avsluta = () => {
     const sets = [];
     live.items.forEach(x => x.loggade.forEach(l => sets.push({ exerciseId: x.exId, weight: l.vikt, reps: l.reps, ts: l.ts })));
@@ -304,7 +335,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
         ))}
       </div>
 
-      <div style={{ ...card, marginTop: 14, display: "flex", padding: "13px 4px" }}>
+      <div style={{ ...card, marginTop: 8, display: "flex", padding: "13px 4px" }}>
         {[["Passtid", passtid(passMin).tal, passtid(passMin).enhet],
           ["Set klara", `${klaraSet}`, `av ${totaltSet}`],
           ["Övning", `${live.idx + 1}`, `av ${live.items.length}`]].map(([l, v, e], i) => (
@@ -316,14 +347,65 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
         ))}
       </div>
 
-      <div style={{ textAlign: "center", marginTop: 22 }}>
+      {/* MARGINALERNA BANTADES för att rymma bytesknappen utan scroll.
+          22 -> 12 här, 14 -> 8 på statkortet ovan. Luft är billigare än scroll
+          i den enda vy man använder med en skivstång i händerna — layoutvakten
+          mäter iPhone SE (568 px), och där räknas varje pixel. */}
+      <div style={{ textAlign: "center", marginTop: 12 }}>
         <div style={hdr(29)}>{it.namn}</div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
-          Set {Math.min(klara + 1, it.set)} av {it.set}
-          {it.repMin && it.repMax ? ` · ${it.repMin}–${it.repMax} reps` : ""}
+        {/* KNAPPEN DELAR RAD MED SETRÄKNAREN.
+            En egen rad kostade 56 px och layoutvakten mätte scroll på SE
+            (568 px). Passvyn är den enda vy som MÅSTE rymmas utan scroll — man
+            håller i en skivstång och kan inte leta. Setraden har redan sin
+            höjd, så knappen blir gratis där. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: C.muted }}>
+            Set {Math.min(klara + 1, it.set)} av {it.set}
+            {it.repMin && it.repMax ? ` · ${it.repMin}–${it.repMax} reps` : ""}
+          </span>
+          {!klara && (
+            <button onClick={() => setByter(b => !b)} data-byt-ovning="1"
+              aria-expanded={byter}
+              style={{
+                background: "none", border: `1px solid ${C.border}`, borderRadius: 999,
+                color: C.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer", minHeight: 32,
+              }}>Byt</button>
+          )}
         </div>
         {it.förslag && <div style={{ fontSize: 12, color: C.lime, marginTop: 5 }}>{it.förslag}</div>}
+
+        {/* BYT ÖVNING. Maskinen är upptagen, eller axeln gör ont på just den
+            rörelsen. Utan ett byte är valet att hoppa över övningen helt —
+            och ett överhoppat pass är sämre än ett justerat.
+
+            Knappen göms när set redan loggats: byter man då försvinner det
+            man gjort, eller så blandas två övningars set i samma post. Att
+            avsluta övningen och lägga till en ny är rätt väg där. */}
       </div>
+
+      {byter && (
+        <div style={{ ...card, padding: 14, marginTop: 4 }}>
+          <div style={{ ...label(), color: C.muted, marginBottom: 8 }}>
+            Samma muskelgrupp
+          </div>
+          {alternativ.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
+              Inga alternativ för den här övningen i banken.
+            </div>
+          ) : alternativ.map(a => (
+            <button key={a.id} onClick={() => bytTill(a)} data-alternativ="1"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                width: "100%", textAlign: "left", padding: "11px 13px", marginBottom: 7,
+                borderRadius: 12, minHeight: 44, cursor: "pointer",
+                border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+              }}>
+              <span style={{ fontSize: 13, minWidth: 0 }}>{a.name}</span>
+              <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{a.equipment}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {vila > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 20 }}>
