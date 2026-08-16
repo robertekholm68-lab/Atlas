@@ -48,7 +48,7 @@
     "last": 117
   },
   "predictions": [],
-  "foodIndexLen": 2675,
+  "foodIndexLen": 2679,
   "muscleCount": 21,
   "_not_search_abbore": "ÄNDRAD 2026-07-27, avsiktligt. Sökningen rankar nu ner råvaror: registret har både 'Abborre rå' och 'Abborre kokt m. salt', och den råa vann på kortare namn. I en matlogg har man nästan alltid ätit maten tillagad. Fixturen speglar det nya, korrekta beteendet — parity-testet behåller sitt värde för allt annat."
 }

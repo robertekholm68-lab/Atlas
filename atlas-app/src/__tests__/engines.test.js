@@ -26,6 +26,10 @@ describe("Askr-motorerna matchar originalprototypen", () => {
   it("estimateMeal", () => { const e = estimateMeal("köttbullar potatis gräddsås", "normal"); expect({ kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, hits: e.hits }).toEqual(ref.estimate); });
   it("liftTrend", () => expect(liftTrend(S2, "bench_press")).toEqual(ref.liftTrend_bench));
   it("buildPredictions", () => expect(buildPredictions(S2).map(p => ({ lab: p.lab, target: p.target, range: p.range }))).toEqual(ref.predictions));
+  // 2675 -> 2679: fyra GENERISKA basvaror tillagda (olja, mjöl, kött, kryddor).
+  // Databasen hade bara sammansatta namn, så en sökning på "olja" gav "Tomat
+  // torkad m. olja" — fel vara, och tyst. Vakten fångade ökningen, vilket är
+  // precis vad den ska göra: varje ändring i livsmedelsdatan ska vara medveten.
   it("FOOD_INDEX längd (Livsmedelsverket inbakad)", () => expect(FOOD_INDEX.length).toBe(ref.foodIndexLen));
   it("MUSCLES antal", () => expect(Object.keys(MUSCLES).length).toBe(ref.muscleCount));
 });
