@@ -189,15 +189,32 @@ export function FotoMaltid({ onLägg, onClose }) {
 
               {p.matchad && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
-                  <button onClick={() => setPoster(xs => xs.map((y, n) => n === i ? { ...y, gram: Math.max(5, y.gram - 5) } : y))}
+                  <button onClick={() => setPoster(xs => xs.map((y, n) => n === i ? { ...y, gram: Math.max(5, (Number(y.gram) || 0) - 5) } : y))}
                     aria-label={`Minska ${p.namn}`}
                     style={{ ...rad, width: 38, height: 38, cursor: "pointer", color: C.text, fontSize: 16, flexShrink: 0 }}>−</button>
-                  <span style={{ fontFamily: MONO, fontSize: 14, minWidth: 52, textAlign: "center" }}>{p.gram} g</span>
-                  <button onClick={() => setPoster(xs => xs.map((y, n) => n === i ? { ...y, gram: y.gram + 5 } : y))}
+                  {/* Skrivbart, som i matloggen och streckkoden. Modellens
+                      uppskattning är ofta rätt storleksordning men fel tal —
+                      då vill man skriva 180, inte trycka plus sexton gånger. */}
+                  <span style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                    <input value={p.gram} inputMode="numeric" data-gram="1"
+                      aria-label={`Mängd ${p.namn} i gram`}
+                      onChange={ev => {
+                        const r = ev.target.value.replace(/\D/g, "").slice(0, 4);
+                        const g = r === "" ? "" : Math.min(5000, Number(r));
+                        setPoster(xs => xs.map((y, n) => n === i ? { ...y, gram: g } : y));
+                      }}
+                      style={{
+                        fontFamily: MONO, fontSize: 14, width: 50, textAlign: "center",
+                        padding: "7px 4px", borderRadius: 8, minHeight: 38,
+                        border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                      }} />
+                    <span style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>g</span>
+                  </span>
+                  <button onClick={() => setPoster(xs => xs.map((y, n) => n === i ? { ...y, gram: (Number(y.gram) || 0) + 5 } : y))}
                     aria-label={`Öka ${p.namn}`}
                     style={{ ...rad, width: 38, height: 38, cursor: "pointer", color: C.text, fontSize: 16, flexShrink: 0 }}>+</button>
                   <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted, marginLeft: "auto" }}>
-                    {Math.round((p.food.kcal || 0) * p.gram / 100)} kcal
+                    {Math.round((p.food.kcal || 0) * (Number(p.gram) || 0) / 100)} kcal
                   </span>
                 </div>
               )}

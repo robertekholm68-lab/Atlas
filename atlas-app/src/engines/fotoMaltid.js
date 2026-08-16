@@ -93,7 +93,10 @@ export function matchaLivsmedel(livsmedel) {
 export function fotoNäring(poster) {
   const med = (poster || []).filter(p => p.matchad && p.food);
   const summa = med.reduce((a, p) => {
-    const k = p.gram / 100;
+    // Gramfältet är skrivbart och passerar genom tomt när man raderar för att
+    // skriva ett nytt tal. Utan Number() blir summan NaN och visas som "NaN
+    // kcal" — ett fel som ser ut som en krasch men bara är ett halvskrivet tal.
+    const k = (Number(p.gram) || 0) / 100;
     return {
       kcal: a.kcal + (p.food.kcal || 0) * k,
       protein: a.protein + (p.food.protein || 0) * k,

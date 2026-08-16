@@ -230,13 +230,28 @@ export function Streckkod({ onLägg, onStäng }) {
                 man kan bara träffa 20 eller 30. Fem gram gör varje rimlig
                 portionsstorlek nåbar utan att fördubbla antalet tryck för de
                 stora mängderna, där man ändå använder snabbvalen. */}
-            <button onClick={() => setGram(g => Math.max(5, g - 5))} aria-label="Minska mängd"
+            <button onClick={() => setGram(g => Math.max(5, (Number(g) || 0) - 5))} aria-label="Minska mängd"
               style={{ ...btnGhost, width: 52, padding: 0 }}>−</button>
-            <div style={{ flex: 1, textAlign: "center" }}>
-              <span style={hdr(24)}>{gram}</span>
-              <span style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}> g</span>
+            {/* Talet är skrivbart. Från 100 till 250 g är trettio tryck på
+                plusknappen; knapparna är rätt för finjustering, fältet för att
+                byta storleksordning. */}
+            <div style={{ flex: 1, display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
+              <input value={gram} inputMode="numeric" data-gram="1" aria-label="Mängd i gram"
+                onChange={e => {
+                  const r = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  // Tomt tillåts under skrivandet: raderar man 100 för att
+                  // skriva 250 passerar fältet genom tomt, och att tvinga
+                  // tillbaka en etta gör det omöjligt att skriva.
+                  setGram(r === "" ? "" : Math.min(5000, Number(r)));
+                }}
+                style={{
+                  ...hdr(24), width: 92, textAlign: "center", padding: "6px 4px",
+                  borderRadius: 10, minHeight: 44,
+                  border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                }} />
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>g</span>
             </div>
-            <button onClick={() => setGram(g => g + 5)} aria-label="Öka mängd"
+            <button onClick={() => setGram(g => (Number(g) || 0) + 5)} aria-label="Öka mängd"
               style={{ ...btnGhost, width: 52, padding: 0 }}>+</button>
           </div>
 

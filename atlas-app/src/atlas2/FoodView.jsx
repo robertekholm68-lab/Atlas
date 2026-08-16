@@ -74,7 +74,7 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onTaBort }) {
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onTaBort }) {
   const [redigerar, setRedigerar] = useState(null);
 
   const stegKnapp = {
@@ -86,6 +86,7 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
   // finhet överallt man justerar mat.
   const ändraGram = (id, delta) => onÄndra && onÄndra(id, delta);
   const ändraNamn = (id, namn) => onÄndraNamn && onÄndraNamn(id, namn);
+  const sättGram = (id, värde) => onSättGram && onSättGram(id, värde);
   const taBort = id => { setRedigerar(null); onTaBort && onTaBort(id); };
 
   // Samma summering (dagensNutrition → computeNutrition) som coachen läser — en
@@ -127,8 +128,8 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
         </div>
       ) : dagensLogg.map((e) => {
         const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
-        const k = f ? Math.round(f.kcal * e.grams / 100) : Math.round(e.kcal || 0);
-        const p = f ? Math.round(f.protein * e.grams / 100) : Math.round(e.protein || 0);
+        const k = f ? Math.round(f.kcal * (Number(e.grams) || 0) / 100) : Math.round(e.kcal || 0);
+        const p = f ? Math.round(f.protein * (Number(e.grams) || 0) / 100) : Math.round(e.protein || 0);
         const öppen = redigerar === e.id;
         return (
           // NYCKELN ÄR POSTENS ID, INTE INDEX.
@@ -187,11 +188,25 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <button onClick={() => ändraGram(e.id, -5)} aria-label="Minska mängd"
                       style={stegKnapp}>−</button>
-                    <span style={{ fontFamily: MONO, fontSize: 14, minWidth: 58, textAlign: "center" }}>{e.grams} g</span>
+                    {/* TALET ÄR ETT FÄLT, INTE EN ETIKETT.
+                        Från 100 till 250 g är trettio tryck på plusknappen.
+                        Knapparna är rätt för finjustering, fältet för att byta
+                        storleksordning — båda behövs. */}
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                      <input value={e.grams} inputMode="numeric" data-gram="1"
+                        aria-label="Mängd i gram"
+                        onChange={ev => sättGram(e.id, ev.target.value)}
+                        style={{
+                          fontFamily: MONO, fontSize: 14, width: 52, textAlign: "center",
+                          padding: "8px 4px", borderRadius: 8, minHeight: 40,
+                          border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                        }} />
+                      <span style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>g</span>
+                    </span>
                     <button onClick={() => ändraGram(e.id, 5)} aria-label="Öka mängd"
                       style={stegKnapp}>+</button>
                     <span style={{ fontFamily: MONO, fontSize: 11.5, color: C.muted, marginLeft: "auto" }}>
-                      {Math.round(f.kcal * e.grams / 100)} kcal
+                      {Math.round(f.kcal * (Number(e.grams) || 0) / 100)} kcal
                     </span>
                   </div>
                 ) : (
@@ -632,8 +647,11 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   // ingen väg tillbaka — dagens summa var fel resten av dygnet, och allt som
   // läser den (coachen, readiness-modifieraren, näringsmålen) räknade på det.
   const ändraPost = (id, delta) => setFoodLog(l => l.map(e => {
-    if (e.id !== id || !e.grams) return e;
-    const grams = Math.max(5, e.grams + delta);
+    // Poster utan gramtal (fotade, uppskattade) har inget att stega. Ett TOMT
+    // fält är däremot en post mitt i en inskrivning — den ska gå att stega från,
+    // och utan Number() ger "" + 5 strängen "5" i stället för talet 5.
+    if (e.id !== id || e.grams == null || e.foodId == null) return e;
+    const grams = Math.max(5, (Number(e.grams) || 0) + delta);
     // Näringen räknas om ur livsmedlet, inte skalas ur den gamla summan.
     // Skalning av ett redan avrundat tal driver iväg efter några ändringar.
     const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
@@ -650,6 +668,26 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   // kalorierna vore att gissa att posten också fick nytt innehåll — och den som
   // rättar "kyckl" till "kyckling" har inte ätit något annat.
   const ändraNamnPost = (id, namn) => setFoodLog(l => l.map(e => e.id === id ? { ...e, name: namn } : e));
+
+  /**
+   * Sätter mängden till ett skrivet tal i stället för att stega.
+   *
+   * TOMT FÄLT TILLÅTS UNDER SKRIVANDET. Raderar man 100 för att skriva 250
+   * passerar fältet genom tomt, och att då tvinga tillbaka en etta gör det
+   * omöjligt att skriva. Näringen räknas på 0 så länge, och första siffran
+   * rättar summan.
+   */
+  const sättGramPost = (id, värde) => setFoodLog(l => l.map(e => {
+    if (e.id !== id) return e;
+    const rensat = String(värde).replace(/\D/g, "").slice(0, 4);
+    const grams = rensat === "" ? "" : Math.min(5000, Number(rensat));
+    const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
+    if (!f) return { ...e, grams };
+    const k = (Number(grams) || 0) / 100;
+    return { ...e, grams,
+      kcal: Math.round((f.kcal || 0) * k), protein: Math.round((f.protein || 0) * k),
+      carbs: Math.round((f.carbs || 0) * k), fat: Math.round((f.fat || 0) * k) };
+  }));
 
   return (
     <div style={{ padding: "16px 18px 72px" }}>
@@ -668,7 +706,8 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
 
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
         onLogga={() => setFlik("logga")} onSätta={onSätta}
-        onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onTaBort={taBortPost} />}
+        onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onSättGram={sättGramPost}
+        onTaBort={taBortPost} />}
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
