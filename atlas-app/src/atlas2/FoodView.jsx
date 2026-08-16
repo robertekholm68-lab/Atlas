@@ -20,6 +20,7 @@ import { useLayout } from "./layout.js";
 import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
+import { receptBild } from "../data/recipeImages.js";
 import { dagensNutrition, nyId } from "./store.js";
 import { mealDecision, estimateMeal } from "../engines/index.js";
 import { createDictation, voiceSupport } from "../engines/voice.js";
@@ -452,6 +453,14 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred }) {
         const n = receptNäring(r);
         return (
         <div key={r.id} style={{ display: "flex", gap: 12, alignItems: "center", padding: "11px 2px", borderBottom: `1px solid ${C.border}` }}>
+          {/* MINIATYR, INTE STORT KORT. Listan är till för att hitta en rätt
+              man redan tänkt på; bilden hjälper igenkänningen utan att göra
+              varje rad tre gånger så hög. Saknas bilden lämnas ingen ruta —
+              en tom platshållare drar mer uppmärksamhet än den förtjänar. */}
+          {receptBild(r) && (
+            <img src={receptBild(r)} alt="" loading="lazy"
+              style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+          )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14 }}>{r.name}</div>
             <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
