@@ -798,6 +798,25 @@ export function Atlas2() {
   return (
     <div className="askr-app" style={{
       minHeight: FULL_HÖJD, background: C.bg, color: C.text, fontFamily: BFONT,
+      // TEXTVIKT PÅ MÖRK BAKGRUND.
+      //
+      // Grundvikten var 400 och sattes ingenstans — knapparna deklarerade 600
+      // men de 367 småtexterna ärvde webbläsarens normalvikt. Vid 11-12 px på
+      // svart blir 400 märkbart tunt: ljus text på mörk botten uppfattas alltid
+      // tunnare än tvärtom, eftersom ljuset "äter" in i kanterna.
+      //
+      // 500 (Medium), inte 450: Inter laddas i fasta vikter och 450 finns inte
+      // bland dem — webbläsaren faller då tillbaka på 400 och ändringen gör
+      // ingenting alls. Det upptäcktes genom att jämföra skärmbilder före och
+      // efter: de var pixelidentiska.
+      //
+      // 500 mot knapparnas 600 lämnar hierarkin intakt.
+      fontWeight: 500,
+      // Utan detta renderar Safari och Chrome ljus text på mörk botten med
+      // extra fetma som varierar mellan webbläsare — antialiased ger samma
+      // tunnhet överallt, och då kan vikten ovan göra jobbet konsekvent.
+      WebkitFontSmoothing: "antialiased",
+      MozOsxFontSmoothing: "grayscale",
       // Telefonkolumnen gäller bara i mobilläget. På desktop bär Shell ytan.
       maxWidth: desktop ? "none" : MOBIL_MAX, margin: "0 auto",
     }}>
