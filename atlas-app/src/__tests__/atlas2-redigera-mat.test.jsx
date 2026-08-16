@@ -99,3 +99,56 @@ describe("posten går att ta bort", () => {
     expect(logg()[0].id).toBe("f_1");
   });
 });
+
+describe("namnet går att rätta", () => {
+  it("fältet visar postens nuvarande namn", async () => {
+    // Man loggar "kyckl" i farten, eller får "Fotad måltid" ur fotovyn. Utan
+    // ett fält står felstavningen kvar i historiken för alltid — och historiken
+    // är det man bläddrar i när man försöker minnas vad man åt.
+    const { el } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    expect(el.querySelector('input[data-namn="1"]').value).toBe("Keso");
+  });
+
+  it("ändringen sparas i loggen", async () => {
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    const f = el.querySelector('input[data-namn="1"]');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(f, "Kyckling med ris");
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(logg().find(x => x.id === "f_1").name).toBe("Kyckling med ris");
+  });
+
+  it("näringen rörs inte av en omdöpning", async () => {
+    // Namnet är en etikett. Att låta det räkna om kalorierna vore att gissa att
+    // posten också fick nytt innehåll — den som rättar "kyckl" till "kyckling"
+    // har inte ätit något annat.
+    const { el, logg } = await rendera();
+    const före = logg().find(x => x.id === "f_1");
+    await act(async () => { poster(el)[0].click(); });
+    const f = el.querySelector('input[data-namn="1"]');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(f, "Något helt annat");
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const efter = logg().find(x => x.id === "f_1");
+    for (const k of ["kcal", "protein", "carbs", "fat", "grams", "foodId"]) {
+      expect(efter[k], k).toBe(före[k]);
+    }
+  });
+
+  it("även en post utan livsmedel går att döpa om", async () => {
+    // En fotad post heter "Fotad måltid" tills någon säger vad det var.
+    const { el, logg } = await rendera();
+    await act(async () => { poster(el)[1].click(); });
+    const f = el.querySelector('input[data-namn="1"]');
+    expect(f).toBeTruthy();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(f, "Lunch på jobbet");
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(logg().find(x => x.id === "f_2").name).toBe("Lunch på jobbet");
+  });
+});
