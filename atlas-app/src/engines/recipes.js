@@ -157,6 +157,62 @@ export function generateWeekMenu({ targets, diet, restrictions, dietApproach, da
   return { days: out, hasData: true, poolSize: pool.length };
 }
 
+/**
+ * Räknar om en dag efter att en rätt bytts.
+ *
+ * SAMMA SKALNING SOM generateWeekMenu. Dagen skalas mot kcal-målet med samma
+ * tak (±40 %) och samma avrundning till 0,05. Utan det skulle en bytt rätt ge
+ * andra portioner än en genererad, och två vägar till samma tal glider isär.
+ */
+export function räknaOmDag(meals, kcalTarget) {
+  const bas = meals.map(x => ({ ...x, macros: recipeMacros(x.recipe) }));
+  const raw = bas.reduce((a, x) => ({
+    kcal: a.kcal + x.macros.kcal, protein: a.protein + x.macros.protein,
+    carbs: a.carbs + x.macros.carbs, fat: a.fat + x.macros.fat,
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  let scale = 1;
+  if (kcalTarget && raw.kcal > 0) scale = Math.round(Math.max(0.7, Math.min(1.4, kcalTarget / raw.kcal)) * 20) / 20;
+  const scaled = bas.map(x => ({
+    ...x, servings: scale,
+    macros: {
+      kcal: Math.round(x.macros.kcal * scale), protein: Math.round(x.macros.protein * scale),
+      carbs: Math.round(x.macros.carbs * scale), fat: Math.round(x.macros.fat * scale),
+    },
+  }));
+  const totals = scaled.reduce((a, x) => ({
+    kcal: a.kcal + x.macros.kcal, protein: a.protein + x.macros.protein,
+    carbs: a.carbs + x.macros.carbs, fat: a.fat + x.macros.fat,
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  return { meals: scaled, totals, scale };
+}
+
+/**
+ * Alternativ till en måltid, rangordnade efter hur nära de ligger måltidens
+ * andel av dagsmålet. Samma SHARE och samma poängsättning som generatorn.
+ *
+ * Den nuvarande rätten utesluts — den står redan där, och att visa den som ett
+ * "alternativ" vore att erbjuda ett byte till samma sak.
+ */
+export function alternativFör({ mealId, nuvarandeId, targets, diet, restrictions, dietApproach, max = 12 } = {}) {
+  const pool = filterRecipes({ diet, restrictions, dietApproach }).filter(r => r.meal === mealId);
+  const kcalTarget = (targets && targets.kcal) || null;
+  const proteinTarget = (targets && targets.protein) || null;
+  const SHARE = { breakfast: 0.25, lunch: 0.32, dinner: 0.33, snack: 0.10 };
+  const want = kcalTarget ? kcalTarget * (SHARE[mealId] || 0.25) : null;
+
+  return pool
+    .filter(r => r.id !== nuvarandeId)
+    .map(r => {
+      const mac = recipeMacros(r);
+      if (!want) return { recipe: r, macros: mac, score: 0 };
+      let score = Math.abs(mac.kcal - want);
+      if (proteinTarget) score -= Math.min(mac.protein, proteinTarget * (SHARE[mealId] || 0.25) * 1.5) * 1.2;
+      return { recipe: r, macros: mac, score };
+    })
+    .sort((a, b) => a.score - b.score)
+    .slice(0, max);
+}
+
 // Inköpslista: summerar ingredienserna över menyn, grupperat per varukategori.
 export function shoppingList(menu) {
   const acc = {};
