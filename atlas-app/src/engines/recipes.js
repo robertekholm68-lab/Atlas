@@ -94,7 +94,7 @@ function rng(seed) {
 
 // Veckomeny som siktar mot användarens kcal/protein-mål. Väljer per måltid det recept
 // som för dagen närmast målet, utan att upprepa samma rätt två dagar i rad.
-export function generateWeekMenu({ targets, diet, restrictions, dietApproach, days = 7, seed = 1 } = {}) {
+export function generateWeekMenu({ targets, diet, restrictions, dietApproach, days = 7, seed = 1, preferenser = null } = {}) {
   const pool = filterRecipes({ diet, restrictions, dietApproach });
   const byMeal = {};
   MEALS.forEach(m => { byMeal[m.id] = pool.filter(r => r.meal === m.id); });
@@ -106,6 +106,7 @@ export function generateWeekMenu({ targets, diet, restrictions, dietApproach, da
   // Ungefärlig fördelning av dagens energi över måltiderna.
   const SHARE = { breakfast: 0.25, lunch: 0.32, dinner: 0.33, snack: 0.10 };
   const rand = rng(seed);
+  const pref = preferenser && preferenser.tillräckligt ? preferenser : null;
   // Hur många av de senast använda rätterna som spärras per måltid. Tidigare
   // spärrades bara gårdagens, och eftersom poängsättningen premierar kcal-träff
   // så hårt landade veckan på 13–15 unika rätter av 28 måltider — frukosten
@@ -132,6 +133,19 @@ export function generateWeekMenu({ targets, diet, restrictions, dietApproach, da
           const mac = recipeMacros(r);
           let score = Math.abs(mac.kcal - want);
           if (proteinTarget) score -= Math.min(mac.protein, proteinTarget * SHARE[m.id] * 1.5) * 1.2; // premiera protein
+          // PREFERENSER DÄMPAR, DE STYR INTE.
+          //
+          // En rätt man ätit ofta får ett avdrag, men taket är 60 poäng — mindre
+          // än vad ett kcal-fel på 60 kcal kostar. Alltså kan en favorit aldrig
+          // tränga undan en rätt som passar dagsmålet väsentligt bättre.
+          //
+          // Utan taket skulle veckan kollapsa till de fem rätter man loggat
+          // flest gånger, och variationsspärren nedan vore verkningslös. En
+          // meny som bara föreslår det man redan äter är ingen meny.
+          if (pref && pref.tillräckligt) {
+            const n = pref.gillar[r.id] || 0;
+            if (n > 0) score -= Math.min(60, n * 18);
+          }
           return { r, score: score + rand() * 40 };                      // lite variation
         }).sort((a, b) => a.score - b.score);
         pick = scored[0].r;
@@ -211,6 +225,53 @@ export function alternativFör({ mealId, nuvarandeId, targets, diet, restriction
     })
     .sort((a, b) => a.score - b.score)
     .slice(0, max);
+}
+
+/**
+ * MATPREFERENSER, HÄRLEDDA UR BETEENDE.
+ *
+ * Appen frågar aldrig "vilka rätter gillar du" — en enkät man fyller i en gång
+ * åldras illa, och de flesta orkar inte. I stället läses två signaler som redan
+ * finns:
+ *
+ *   LOGGAT   Ett recept man loggat har man ätit. Upprepade loggningar av samma
+ *            rätt är den starkaste signalen appen har.
+ *   BYTT     Ett recept man bytt BORT ur veckomenyn har man aktivt valt att
+ *            inte äta. Svagare än en loggning, men entydig.
+ *
+ * VIKTNING. Loggat väger tyngre än bortvalt, eftersom en loggning kräver att man
+ * lagat och ätit rätten medan ett byte bara kräver ett tryck. Och en rätt kan
+ * bytas bort en vecka och lagas nästa — då ska loggningen vinna.
+ *
+ * INGEN GISSNING OM SMAK. Funktionen säger vad som hänt, inte varför. Att en
+ * rätt bytts bort tre gånger betyder inte att användaren ogillar broccoli; det
+ * betyder att just den rätten valts bort, och det är allt vi vet.
+ */
+export function matpreferenser({ foodLog = [], byten = {}, dagar = 90 } = {}) {
+  const från = Date.now() - dagar * 864e5;
+  const gillar = {}, ogillar = {};
+
+  for (const p of foodLog) {
+    if (!p || !p.recipeId || !(p.ts >= från)) continue;
+    gillar[p.recipeId] = (gillar[p.recipeId] || 0) + 1;
+  }
+  // Bytena bär { "0:lunch": receptId } — alltså det man bytte TILL. Det är också
+  // en positiv signal, men svagare än en loggning: man har valt rätten, inte ätit
+  // den. Att räkna den som en halv loggning gör att ett byte inte kan väga över
+  // en rätt man faktiskt lagat.
+  for (const id of Object.values(byten)) {
+    if (!id) continue;
+    gillar[id] = (gillar[id] || 0) + 0.5;
+  }
+
+  return {
+    gillar,
+    ogillar,
+    antalSignaler: Object.keys(gillar).length + Object.keys(ogillar).length,
+    // Hur mycket vi faktiskt vet. Under fem signaler är underlaget för tunt för
+    // att påverka en hel vecka — då ska generatorn köra som vanligt.
+    tillräckligt: Object.keys(gillar).length >= 5,
+  };
 }
 
 // Inköpslista: summerar ingredienserna över menyn, grupperat per varukategori.
