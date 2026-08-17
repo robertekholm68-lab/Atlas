@@ -113,38 +113,11 @@ describe("vyn visar AI som alternativ, inte ersättning", () => {
 
   it('"vet inte" visas för användaren', () => {
     expect(src).toMatch(/aiLäge === "vet-inte"/);
-    expect(src).toMatch(/kan vara låg för restaurangmat/);
+    // Texten är radbruten i källan — matcha en fras som inte korsar raden.
+    expect(src).toMatch(/databasens råvaror och kan vara/);
   });
 });
 
-describe("okänd mat går till AI, inte till storleksfrågan", () => {
-  const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
-
-  it("kind=unknown frågar modellen", () => {
-    // "dubbel orginalmål på max" gav kind=unknown — ingen komponent kändes
-    // igen — och appen svarade "Ungefär hur stor måltid?". Men storleken är
-    // inte det okända där; RÄTTEN är det. Att fråga liten/normal/stor om något
-    // appen inte vet vad det är ger ett tal ur tomma luften.
-    const fn = src.slice(src.indexOf("const uppskatta"), src.indexOf("const uppskatta") + 1400);
-    expect(fn).toMatch(/frågaAI\(text, \{ q: d\.q/);
-  });
-
-  it("storleksfrågan står kvar som fallback", () => {
-    // Vet inte AI:n heller är portionsskalningen det bästa som återstår.
-    expect(src).toMatch(/setStorleksfråga/);
-    expect(src).toMatch(/if \(fallback\) \{ setFråga\(fallback\)/);
-  });
-
-  it("fallbacken skickas som argument, inte läses ur state", () => {
-    // frågaAI startas i samma render som setStorleksfråga anropas, så
-    // stängningen ser fortfarande det GAMLA värdet (null) — och fallbacken
-    // tystnade. Ett stängningsfel som inte syns i koden men fångades av
-    // webbläsarkontrollen.
-    const fn = src.slice(src.indexOf("const frågaAI"), src.indexOf("const frågaAI") + 1600);
-    expect(fn).toMatch(/async \(fråga, fallback\)/);
-    expect(fn).not.toMatch(/if \(storleksfråga\)/);
-  });
-});
 
 describe("måltidstyper går aldrig till modellen", () => {
   it('"lunch" och "middag" ger storleksfrågan', () => {
@@ -165,5 +138,73 @@ describe("måltidstyper går aldrig till modellen", () => {
   it("en måltidstyp MED innehåll frågar ändå", () => {
     // "lunch på max" säger både när och var.
     expect(behöverAI("lunch på max", null)).toBe(true);
+  });
+});
+
+describe("tvetydiga fraser ger en meny, inte en gissning", () => {
+  it("flera alternativ tolkas", () => {
+    // "max hamburgare" kan vara Original på 449 kcal eller Dubbel Classic på
+    // 840 — nästan dubbelt. Att låta modellen välja åt användaren vore att
+    // logga en gissning som ser ut som ett svar.
+    const t = tolkaMatsvar('{"alternativ":[{"namn":"Max Original","kcal":449,"protein":22,"carbs":39,"fat":22,"gram":200},{"namn":"Max Dubbel","kcal":760,"protein":46,"carbs":44,"fat":44}],"fråga":"Vilken burgare?","säkerhet":"hög"}');
+    expect(t.ok).toBe(true);
+    expect(t.flera).toBe(true);
+    expect(t.alternativ.length).toBe(2);
+    expect(t.fråga).toMatch(/vilken/i);
+  });
+
+  it("ett enskilt svar har inte flera-flaggan", () => {
+    expect(tolkaMatsvar(SVAR).flera).toBeFalsy();
+  });
+
+  it("orimliga alternativ filtreras bort ur listan", () => {
+    const t = tolkaMatsvar('{"alternativ":[{"namn":"Rimlig","kcal":500},{"namn":"Orimlig","kcal":9000}]}');
+    expect(t.alternativ.length).toBe(1);
+    expect(t.alternativ[0].namn).toBe("Rimlig");
+  });
+
+  it("högst sex alternativ — annars är det en katalog", () => {
+    const många = Array.from({ length: 12 }, (_, i) => ({ namn: `R${i}`, kcal: 400 + i }));
+    expect(tolkaMatsvar(JSON.stringify({ alternativ: många })).alternativ.length).toBeLessThanOrEqual(6);
+  });
+
+  it("en lista utan giltiga poster faller till fel-form", () => {
+    expect(tolkaMatsvar('{"alternativ":[{"namn":"X"}]}').ok).toBe(false);
+  });
+
+  it("prompten säger vad som är tvetydigt", () => {
+    expect(MAT_SYSTEM).toMatch(/max hamburgare.*TVETYDIGT/is);
+    expect(MAT_SYSTEM).toMatch(/Gissa inte; lista dem/i);
+  });
+});
+
+describe("ingen klickar fram AI:n", () => {
+  const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+
+  it("storleksrutorna är borta", () => {
+    // liten/normal/stor var det bästa som fanns innan AI:n. Nu är de ett
+    // gissningssteg som kostar ett tryck och ger ett sämre svar: "ungefär hur
+    // stor måltid?" om något appen inte vet vad det är ger ett tal ur tomma
+    // luften — och det talet hamnar i dagens summa som om det vore mätt.
+    expect(src).not.toMatch(/\["small", "Liten"\]/);
+    expect(src).not.toMatch(/storleksfråga/);
+  });
+
+  it("okänd mat frågar modellen direkt", () => {
+    const fn = src.slice(src.indexOf("const uppskatta"), src.indexOf("const uppskatta") + 1800);
+    expect(fn).toMatch(/frågaAI\(text\)/);
+  });
+
+  it("även måltidsord går till modellen", () => {
+    // Den får svara att den inte vet, och det är ärligare än att skala en
+    // gissad genomsnittsmåltid.
+    const fn = src.slice(src.indexOf("const uppskatta"), src.indexOf("const uppskatta") + 1400);
+    expect(fn).not.toMatch(/if \(!behöverAI\(text, null\)\)/);
+  });
+
+  it("när modellen inte vet sägs vad man kan göra", () => {
+    // Ett konstaterande utan väg vidare är en återvändsgränd.
+    expect(src).toMatch(/skriv mängden/i);
+    expect(src).toMatch(/aiLäge === "vet-inte" \|\| aiLäge === "fel"/);
   });
 });

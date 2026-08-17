@@ -76,7 +76,7 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onTaBort }) {
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onSkala, onSättKcal, onTaBort }) {
   const [redigerar, setRedigerar] = useState(null);
 
   const stegKnapp = {
@@ -89,6 +89,8 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
   const ändraGram = (id, delta) => onÄndra && onÄndra(id, delta);
   const ändraNamn = (id, namn) => onÄndraNamn && onÄndraNamn(id, namn);
   const sättGram = (id, värde) => onSättGram && onSättGram(id, värde);
+  const skalaPost = (id, andel) => onSkala && onSkala(id, andel);
+  const sättKcal = (id, värde) => onSättKcal && onSättKcal(id, värde);
   const sättMåltid = (id, typ) => onSättMåltid && onSättMåltid(id, typ);
   const taBort = id => { setRedigerar(null); onTaBort && onTaBort(id); };
 
@@ -273,9 +275,35 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                     </span>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55 }}>
-                    Posten har en färdig summa och ingen mängd att skala. Ta bort
-                    den och logga om ifall siffran blev fel.
+                  /* EN FÄRDIG SUMMA GÅR OCKSÅ ATT JUSTERA.
+                     En AI-post eller uppskattning bär inget livsmedel att räkna
+                     ur, men kalorierna är det man vill rätta: åt man halva
+                     burgaren ska 760 bli 380. Tidigare stod det bara "ta bort
+                     och logga om", vilket är fel svar på "jag åt lite mindre".
+
+                     Makrona skalas i samma förhållande. Att låta kcal ändras
+                     ensamt hade gjort posten inkonsekvent — 380 kcal med 46 g
+                     protein finns inte. */
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 11.5, color: C.muted, width: 34 }}>kcal</span>
+                      <button onClick={() => skalaPost(e.id, -0.1)} aria-label="Minska mängd"
+                        style={stegKnapp}>−</button>
+                      <input value={Math.round(e.kcal || 0)} inputMode="numeric" data-kcal="1"
+                        aria-label="Kalorier"
+                        onChange={ev => sättKcal(e.id, ev.target.value)}
+                        style={{
+                          fontFamily: MONO, fontSize: 14, width: 62, textAlign: "center",
+                          padding: "8px 4px", borderRadius: 8, minHeight: 40,
+                          border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                        }} />
+                      <button onClick={() => skalaPost(e.id, 0.1)} aria-label="Öka mängd"
+                        style={stegKnapp}>+</button>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>
+                      Ändras kalorierna skalas protein, kolhydrater och fett i samma
+                      förhållande.
+                    </div>
                   </div>
                 )}
 
@@ -341,8 +369,6 @@ function SnabbLogg({ onLägg }) {
   const [aiLäge, setAiLäge] = useState(null);      // frågar | klar | vet-inte | fel
   const [aiSvar, setAiSvar] = useState(null);
   const [aiNotering, setAiNotering] = useState("");
-  // Sparad storleksfråga: visas först om AI:n inte kunde svara.
-  const [storleksfråga, setStorleksfråga] = useState(null);
   const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
   const stöd = useMemo(() => voiceSupport(), []);
@@ -351,7 +377,7 @@ function SnabbLogg({ onLägg }) {
   // är värre än ingen mikrofon.
   useEffect(() => () => { if (stoppa.current) stoppa.current(); }, []);
 
-  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); setAiSvar(null); setAiLäge(null); setAiNotering(""); setStorleksfråga(null); };
+  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); setAiSvar(null); setAiLäge(null); setAiNotering(""); };
 
   /**
    * Frågar Claude när databasen inte räcker.
@@ -363,11 +389,7 @@ function SnabbLogg({ onLägg }) {
    * Svaret ersätter aldrig en databasträff — det används bara när behöverAI
    * säger att träffen inte duger.
    */
-  // FALLBACKEN SKICKAS SOM ARGUMENT, inte läses ur state. frågaAI startas i
-  // samma render som setStorleksfråga anropas, så stängningen ser fortfarande
-  // det GAMLA värdet (null) — och fallbacken tystnade. Ett klassiskt
-  // stängningsfel som inte syns i koden men fångades av kontrollen.
-  const frågaAI = async (fråga, fallback) => {
+  const frågaAI = async (fråga) => {
     setAiLäge("frågar");
     try {
       const r = await fetch("https://askr-coach.vercel.app/api/coach", {
@@ -383,9 +405,7 @@ function SnabbLogg({ onLägg }) {
         setAiSvar(null);
         setAiLäge(t.skäl === "vet-inte" ? "vet-inte" : "fel");
         setAiNotering(t.notering || "");
-        // AI:n visste inte. Då är storleksfrågan det bästa som återstår —
         // den ger åtminstone en portionsskalning att utgå från.
-        if (fallback) { setFråga(fallback); setStorleksfråga(null); }
         return;
       }
       setAiSvar(t);
@@ -394,7 +414,6 @@ function SnabbLogg({ onLägg }) {
       setAiSvar(null);
       setAiLäge("fel");
       setAiNotering("");
-      if (fallback) { setFråga(fallback); setStorleksfråga(null); }
     }
   };
 
@@ -420,13 +439,17 @@ function SnabbLogg({ onLägg }) {
     // menyer, färdigrätter, det man beställer och inte lagar.
     //
     // Storleksfrågan står kvar som fallback när AI:n inte vet heller.
-    // "lunch" är en måltidstyp, inte en rätt — där är storleksfrågan rätt
-    // fråga, och modellen skulle bara hitta på en genomsnittsmåltid.
-    if (!behöverAI(text, null)) { setFråga({ q: d.q, opts: d.opts }); return; }
-
+    // INGEN KLICKAR FRAM AI:N. Hittar databasen inte maten frågas modellen
+    // direkt. Storleksrutorna liten/normal/stor var det bästa som fanns innan
+    // AI:n, och är nu ett gissningssteg som kostar ett tryck och ger ett sämre
+    // svar: "ungefär hur stor måltid?" om något appen inte vet vad det är ger
+    // ett tal ur tomma luften — och det talet hamnar i dagens summa som om det
+    // vore mätt.
+    //
+    // Även måltidsord som "lunch" går hit. Modellen får svara att den inte vet,
+    // och det är ärligare än att skala en gissad genomsnittsmåltid.
     setEstText(text); setEst(estimateMeal(text, portion)); setFråga(null);
-    setStorleksfråga({ q: d.q, opts: d.opts });
-    frågaAI(text, { q: d.q, opts: d.opts });
+    frågaAI(text);
   };
   const välj = val => {
     const t = /^__/.test(val) ? val : text + " " + val;
@@ -453,7 +476,10 @@ function SnabbLogg({ onLägg }) {
       id: nyId("f_"), name: a.namn,
       kcal: a.kcal, protein: a.protein, carbs: a.carbs, fat: a.fat,
       ...(a.gram ? { grams: a.gram } : {}),
-      ts: Date.now(), quality: "ai", source: "ai", säkerhet: a.säkerhet,
+      // Ett menyalternativ bär ingen egen säkerhet — den gäller hela svaret,
+      // alltså modellens tillit till kedjans näringsvärden.
+      ts: Date.now(), quality: "ai", source: "ai",
+      säkerhet: a.säkerhet || (aiSvar && aiSvar.säkerhet) || "medel",
     });
     nollställ();
   };
@@ -594,17 +620,7 @@ function SnabbLogg({ onLägg }) {
                 ? `Räknat på ${est.angivetAntal.antal} ${est.angivetAntal.ord} (${est.angivenMängd} g).`
                 : `Räknat på ${est.angivenMängd} g som du angav.`}
             </div>
-          ) : (
-          <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
-            {[["small", "Liten"], ["normal", "Normal"], ["large", "Stor"]].map(([p, l]) => (
-              <button key={p} onClick={() => byting(p)} style={{
-                flex: 1, padding: "10px 0", minHeight: 44, borderRadius: 999, cursor: "pointer", fontSize: 12.5,
-                border: `1px solid ${portion === p ? C.lime : C.border}`,
-                background: "transparent", color: portion === p ? C.lime : C.muted,
-              }}>{l}</button>
-            ))}
-          </div>
-          )}
+          ) : null}
           {/* AI-SVARET ÄR ETT ALTERNATIV, INTE EN ERSÄTTNING.
               Databasens tal står kvar ovanför. Den som skrev "hamburgare från
               max" ser båda: 620 kcal ur råvarutabellen och 540 ur Claudes
@@ -618,7 +634,38 @@ function SnabbLogg({ onLägg }) {
             </div>
           )}
 
-          {aiLäge === "klar" && aiSvar && (
+          {/* MENYN NÄR FRASEN ÄR TVETYDIG.
+              "max hamburgare" kan vara Original på 449 kcal eller Dubbel
+              Classic på 840 — nästan dubbelt. Att låta modellen välja åt
+              användaren vore att logga en gissning som ser ut som ett svar.
+
+              Korten är valbara, inte informativa: ett tryck loggar. Ett extra
+              bekräftelsesteg för något man redan pekat på är ett steg för
+              mycket i en logg man gör flera gånger om dagen. */}
+          {aiLäge === "klar" && aiSvar && aiSvar.flera && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ ...label(C.lime), marginBottom: 8 }}>{aiSvar.fråga}</div>
+              {aiSvar.alternativ.map(a => (
+                <button key={a.namn} onClick={() => läggAI(a)} data-ai-alt="1"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                    width: "100%", textAlign: "left", padding: "12px 14px", marginBottom: 7,
+                    borderRadius: 12, minHeight: 44, cursor: "pointer",
+                    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                  }}>
+                  <span style={{ fontSize: 13, minWidth: 0 }}>{a.namn}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11.5, color: C.muted, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    ~{a.kcal} kcal · P {a.protein}
+                  </span>
+                </button>
+              ))}
+              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
+                Ingen passar? Skriv rätten närmare — till exempel "dubbel original på max".
+              </div>
+            </div>
+          )}
+
+          {aiLäge === "klar" && aiSvar && !aiSvar.flera && (
             <button onClick={() => läggAI(aiSvar)} data-ai-svar="1"
               style={{
                 width: "100%", textAlign: "left", marginTop: 14, padding: "14px 15px",
@@ -640,11 +687,16 @@ function SnabbLogg({ onLägg }) {
             </button>
           )}
 
-          {aiLäge === "vet-inte" && (
+          {/* NÄR MODELLEN INTE VET säger vyn vad man kan göra, i stället för
+              att bara konstatera. Storleksrutorna satt här förut. */}
+          {(aiLäge === "vet-inte" || aiLäge === "fel") && (
             <div style={{ ...card, padding: 13, marginTop: 14, fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
-              Coachen känner inte igen rätten
-              {aiNotering ? `: ${aiNotering}` : "."} Uppskattningen ovan bygger på
-              databasens råvaror och kan vara låg för restaurangmat.
+              {aiLäge === "fel"
+                ? "Kunde inte nå coachen. "
+                : `Coachen känner inte igen rätten${aiNotering ? `: ${aiNotering}` : "."} `}
+              Talet ovan bygger på databasens råvaror och kan vara lågt för
+              restaurangmat — skriv mängden ("200 g kyckling") eller rätten
+              närmare, så räknar Askr om.
             </div>
           )}
 
@@ -942,6 +994,35 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   const sättMåltidPost = (id, typ) => setFoodLog(l => l.map(e => e.id === id ? { ...e, meal: typ } : e));
 
   /**
+   * Skalar en post utan livsmedel med en andel: -0,1 tar bort tio procent.
+   *
+   * ALLA MAKRON FÖLJER MED. Att låta kcal ändras ensamt hade gjort posten
+   * inkonsekvent — 380 kcal med 46 g protein finns inte som mat.
+   */
+  const skalaPost = (id, andel) => setFoodLog(l => l.map(e => {
+    if (e.id !== id || e.foodId) return e;
+    const f = Math.max(0.1, 1 + andel);
+    const r = v => Math.round((Number(v) || 0) * f);
+    return { ...e, kcal: r(e.kcal), protein: r(e.protein), carbs: r(e.carbs), fat: r(e.fat),
+      ...(e.grams ? { grams: r(e.grams) } : {}) };
+  }));
+
+  /** Sätter kalorierna direkt och skalar makrona i samma förhållande. */
+  const sättKcalPost = (id, värde) => setFoodLog(l => l.map(e => {
+    if (e.id !== id || e.foodId) return e;
+    const rensat = String(värde).replace(/\D/g, "").slice(0, 5);
+    const nyKcal = rensat === "" ? 0 : Number(rensat);
+    const gammal = Number(e.kcal) || 0;
+    // Utan en tidigare summa finns inget förhållande att skala efter; då sätts
+    // bara kalorierna och makrona lämnas som de är.
+    if (!gammal) return { ...e, kcal: nyKcal };
+    const f = nyKcal / gammal;
+    const r = v => Math.round((Number(v) || 0) * f);
+    return { ...e, kcal: nyKcal, protein: r(e.protein), carbs: r(e.carbs), fat: r(e.fat),
+      ...(e.grams ? { grams: r(e.grams) } : {}) };
+  }));
+
+  /**
    * Sätter mängden till ett skrivet tal i stället för att stega.
    *
    * TOMT FÄLT TILLÅTS UNDER SKRIVANDET. Raderar man 100 för att skriva 250
@@ -979,7 +1060,8 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
         onLogga={() => setFlik("logga")} onSätta={onSätta}
         onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onSättGram={sättGramPost}
-        onSättMåltid={sättMåltidPost} onTaBort={taBortPost} />}
+        onSättMåltid={sättMåltidPost} onSkala={skalaPost} onSättKcal={sättKcalPost}
+        onTaBort={taBortPost} />}
       {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}

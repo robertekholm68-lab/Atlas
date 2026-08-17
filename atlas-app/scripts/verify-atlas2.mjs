@@ -116,7 +116,15 @@ await page.evaluate(() => {
 });
 await klickText("Uppskatta måltiden");
 await page.waitForTimeout(300);
-await kolla("snabblogg: vag beskrivning ger följdfråga", finnsText("hur stor måltid"));
+// Storleksfrågan liten/normal/stor är borttagen: den var det bästa som fanns
+// innan AI:n, och blev sedan ett gissningssteg som kostade ett tryck och gav ett
+// sämre svar. En vag beskrivning går nu till modellen, som får svara att den
+// inte vet — ärligare än att skala en gissad genomsnittsmåltid.
+//
+// Kontrollen kräver att vyn SÄGER NÅGOT om osäkerheten, inte att den frågar.
+await kolla("snabblogg: vag beskrivning ger uppskattning med osäkerhet",
+  finnsText("troligen") || finnsText("känner inte igen") || finnsText("Frågar coachen"));
+await kolla("snabblogg: storleksrutorna är borta", !(await finnsText("hur stor måltid")));
 
 // Coachen
 await klickText("Coach");

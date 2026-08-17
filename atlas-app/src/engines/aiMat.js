@@ -21,8 +21,18 @@ export const MAT_SYSTEM = `Du uppskattar näringsinnehåll åt en svensk tränin
 
 Användaren beskriver något du inte hittar i Livsmedelsverkets databas — oftast restaurangmat, snabbmatskedjor eller färdigrätter.
 
-SVARA ENDAST MED JSON, inget annat — ingen inledning, inga kodstaket:
-{"namn":"Max Original Cheeseburgare","kcal":540,"protein":28,"carbs":40,"fat":28,"gram":230,"säkerhet":"hög","notering":"kort mening"}
+SVARA ENDAST MED JSON, inget annat — ingen inledning, inga kodstaket.
+
+ÄR BESKRIVNINGEN ENTYDIG — en bestämd rätt du kan sätta siffror på — svara med EN rätt:
+{"namn":"Max Dubbel Original","kcal":760,"protein":46,"carbs":44,"fat":44,"gram":310,"säkerhet":"hög","notering":"kort mening"}
+
+ÄR DEN TVETYDIG — användaren har sagt vilken kedja men inte vilken rätt, eller nämnt en kategori som finns i flera varianter — svara med ALTERNATIV i stället för att gissa:
+{"alternativ":[{"namn":"Max Original","kcal":450,"protein":22,"carbs":39,"fat":22,"gram":200},{"namn":"Max Dubbel Original","kcal":760,"protein":46,"carbs":44,"fat":44,"gram":310}],"fråga":"Vilken burgare?","säkerhet":"hög"}
+
+"max hamburgare" är TVETYDIGT — Max har många burgare och de skiljer sig med hundratals kalorier. Gissa inte; lista dem.
+"dubbel original på max" är ENTYDIGT — svara med en rätt.
+
+Ge 3-6 alternativ, de vanligaste först. Varje alternativ ska vara något som står på menyn och som användaren känner igen.
 
 REGLER:
 
@@ -48,6 +58,33 @@ export function tolkaMatsvar(text) {
   let d;
   try { d = JSON.parse(rensad.slice(start, slut + 1)); }
   catch (e) { return { ok: false, skäl: "trasig-json" }; }
+
+  // FLERA ALTERNATIV: modellen har sagt att frasen är tvetydig.
+  //
+  // "max hamburgare" kan vara Original på 449 kcal eller Dubbel Classic på 840
+  // — nästan dubbelt. Att låta modellen välja åt användaren vore att logga en
+  // gissning som ser ut som ett svar, och skillnaden är för stor för det.
+  if (d && Array.isArray(d.alternativ) && d.alternativ.length) {
+    const alt = d.alternativ
+      .filter(a => a && a.namn && Number.isFinite(Number(a.kcal)))
+      .map(a => ({
+        namn: String(a.namn).trim().slice(0, 80),
+        kcal: Math.round(Number(a.kcal)),
+        protein: Math.round(Number(a.protein) || 0),
+        carbs: Math.round(Number(a.carbs) || 0),
+        fat: Math.round(Number(a.fat) || 0),
+        gram: Number.isFinite(Number(a.gram)) ? Math.round(Number(a.gram)) : null,
+      }))
+      // Samma orimlighetsgräns som för ett enskilt svar.
+      .filter(a => a.kcal > 0 && a.kcal <= 3000)
+      .slice(0, 6);
+    if (!alt.length) return { ok: false, skäl: "fel-form" };
+    return {
+      ok: true, flera: true, alternativ: alt,
+      fråga: String(d.fråga || "Vilken menade du?").trim().slice(0, 60),
+      säkerhet: ["hög", "medel", "låg"].includes(d.säkerhet) ? d.säkerhet : "medel",
+    };
+  }
 
   // Modellen fick uttryckligen säga att den inte vet, och det är ett giltigt
   // svar — inte ett fel att dölja.
