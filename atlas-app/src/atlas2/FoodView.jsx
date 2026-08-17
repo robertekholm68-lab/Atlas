@@ -23,6 +23,7 @@ import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCe
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
 import { grupperaMåltider, måltidAvTid, MÅLTID_SV, MÅLTID_ORDNING } from "../engines/recipes.js";
+import { MAT_SYSTEM, tolkaMatsvar, behöverAI } from "../engines/aiMat.js";
 import { receptBild } from "../data/recipeImages.js";
 import { dagensNutrition, nyId } from "./store.js";
 import { mealDecision, estimateMeal } from "../engines/index.js";
@@ -337,6 +338,9 @@ function SnabbLogg({ onLägg }) {
   const [nivå, setNivå] = useState(0);
   const [röstNote, setRöstNote] = useState(null);
   const [valdProdukt, setValdProdukt] = useState(null);
+  const [aiLäge, setAiLäge] = useState(null);      // frågar | klar | vet-inte | fel
+  const [aiSvar, setAiSvar] = useState(null);
+  const [aiNotering, setAiNotering] = useState("");
   const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
   const stöd = useMemo(() => voiceSupport(), []);
@@ -345,12 +349,54 @@ function SnabbLogg({ onLägg }) {
   // är värre än ingen mikrofon.
   useEffect(() => () => { if (stoppa.current) stoppa.current(); }, []);
 
-  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); };
+  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); setAiSvar(null); setAiLäge(null); setAiNotering(""); };
+
+  /**
+   * Frågar Claude när databasen inte räcker.
+   *
+   * Livsmedelsverket har råvaror: "hamburgare" är köttbiten på 200 kcal, inte
+   * en Max-burgare på 540. Sökningen hittade något som HETTE rätt och var fel
+   * med en faktor tre, utan att något avslöjade det.
+   *
+   * Svaret ersätter aldrig en databasträff — det används bara när behöverAI
+   * säger att träffen inte duger.
+   */
+  const frågaAI = async (fråga, fallback) => {
+    setAiLäge("frågar");
+    try {
+      const r = await fetch("https://askr-coach.vercel.app/api/coach", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ system: MAT_SYSTEM, meddelande: fråga }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.fel || "kunde inte fråga");
+      const t = tolkaMatsvar(d.text);
+      if (!t.ok) {
+        // "Vet inte" är ett giltigt svar, inte ett fel att dölja. Databasens
+        // uppskattning står kvar och användaren får veta varför.
+        setAiSvar(null);
+        setAiLäge(t.skäl === "vet-inte" ? "vet-inte" : "fel");
+        setAiNotering(t.notering || "");
+        return;
+      }
+      setAiSvar(t);
+      setAiLäge("klar");
+    } catch (e) {
+      setAiSvar(null);
+      setAiLäge("fel");
+      setAiNotering("");
+    }
+  };
 
   const uppskatta = () => {
     if (!text.trim()) return;
+    setAiSvar(null); setAiLäge(null); setAiNotering("");
     const d = mealDecision(text);
-    if (d.kind === "described") { setEstText(text); setEst(estimateMeal(text, portion)); setFråga(null); }
+    if (d.kind === "described") {
+      const e = estimateMeal(text, portion);
+      setEstText(text); setEst(e); setFråga(null);
+      if (behöverAI(text, e)) frågaAI(text, e);
+    }
     else setFråga({ q: d.q, opts: d.opts });
   };
   const välj = val => {
@@ -369,6 +415,20 @@ function SnabbLogg({ onLägg }) {
     setEstText(ny);
     setEst(estimateMeal(ny, portion));
   };
+  /**
+   * Loggar AI-svaret. Märks med quality "ai" hela vägen, så dataConfidence kan
+   * skilja det från en vägd portion och från databasens egen uppskattning.
+   */
+  const läggAI = a => {
+    onLägg({
+      id: nyId("f_"), name: a.namn,
+      kcal: a.kcal, protein: a.protein, carbs: a.carbs, fat: a.fat,
+      ...(a.gram ? { grams: a.gram } : {}),
+      ts: Date.now(), quality: "ai", source: "ai", säkerhet: a.säkerhet,
+    });
+    nollställ();
+  };
+
   const lägg = () => {
     const e = estimateMeal(estText || text, portion);
     const post = buildEstimatedEntry(text, e);
@@ -516,6 +576,49 @@ function SnabbLogg({ onLägg }) {
             ))}
           </div>
           )}
+          {/* AI-SVARET ÄR ETT ALTERNATIV, INTE EN ERSÄTTNING.
+              Databasens tal står kvar ovanför. Den som skrev "hamburgare från
+              max" ser båda: 620 kcal ur råvarutabellen och 540 ur Claudes
+              kunskap om kedjans meny — och väljer själv.
+
+              Att byta ut talet tyst hade gjort appen omöjlig att lita på: man
+              skulle inte veta om siffran var mätt eller minnd. */}
+          {aiLäge === "frågar" && (
+            <div style={{ ...label(C.lime), marginTop: 14, textAlign: "center" }}>
+              Frågar coachen om rätten…
+            </div>
+          )}
+
+          {aiLäge === "klar" && aiSvar && (
+            <button onClick={() => läggAI(aiSvar)} data-ai-svar="1"
+              style={{
+                width: "100%", textAlign: "left", marginTop: 14, padding: "14px 15px",
+                borderRadius: 14, minHeight: 44, cursor: "pointer",
+                border: `1px solid ${C.lime}`, background: volt(.07), color: C.text,
+              }}>
+              <div style={{ ...label(C.lime), marginBottom: 7 }}>Coachen känner igen rätten</div>
+              <div style={{ ...hdr(15), marginBottom: 4 }}>{aiSvar.namn}</div>
+              <div style={{ fontFamily: MONO, fontSize: 13, color: C.text2 }}>
+                ~{aiSvar.kcal} kcal · P {aiSvar.protein} g · K {aiSvar.carbs} g · F {aiSvar.fat} g
+              </div>
+              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>
+                {aiSvar.gram ? `Ca ${aiSvar.gram} g. ` : ""}
+                {aiSvar.säkerhet === "hög" ? "Bygger på kedjans egna näringsvärden."
+                  : aiSvar.säkerhet === "medel" ? "Rätten känns igen, men inte exakt vilken variant."
+                  : "Uppskattat ur liknande rätter — osäkert."}
+                {aiSvar.notering ? ` ${aiSvar.notering}` : ""}
+              </div>
+            </button>
+          )}
+
+          {aiLäge === "vet-inte" && (
+            <div style={{ ...card, padding: 13, marginTop: 14, fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
+              Coachen känner inte igen rätten
+              {aiNotering ? `: ${aiNotering}` : "."} Uppskattningen ovan bygger på
+              databasens råvaror och kan vara låg för restaurangmat.
+            </div>
+          )}
+
           <button onClick={lägg} style={{ ...btnPrimary, marginTop: 13 }}>Lägg till — uppskattat <span style={{ fontSize: 18 }}>+</span></button>
         </div>
       )}
