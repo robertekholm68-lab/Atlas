@@ -81,12 +81,17 @@ describe("mängden går att ändra", () => {
     expect(logg().find(x => x.id === "f_1").grams).toBeGreaterThanOrEqual(5);
   });
 
-  it("en post utan livsmedel erbjuder ingen gramknapp", async () => {
-    // En fotad eller uppskattad post har en färdig summa, inte ett gramtal att
-    // skala. En knapp som inte gör något är värre än ingen knapp.
+  it("en post utan livsmedel får ett kcal-fält i stället för gram", async () => {
+    // Först stod det bara "ta bort och logga om" här. Det var fel svar på "jag
+    // åt lite mindre" — en fotad eller AI-hämtad post har en färdig summa, men
+    // summan är precis det man vill rätta.
+    //
+    // Gramfältet hör inte hit: posten bär inget livsmedel att räkna ur. Men
+    // kalorierna går att sätta, och makrona följer med.
     const { el } = await rendera();
     await act(async () => { poster(el)[1].click(); });
-    expect(el.textContent).toMatch(/färdig summa/i);
+    expect(el.querySelector('input[data-kcal="1"]')).toBeTruthy();
+    expect(el.querySelector('input[data-gram="1"]')).toBeFalsy();
   });
 });
 
@@ -295,5 +300,59 @@ describe("tilliten syns på raden", () => {
     // Keso 100 g är mätt, inte uppskattat — då vore tecknet vilseledande.
     const { el } = await rendera();
     expect(poster(el)[0].textContent).not.toMatch(/~/);
+  });
+});
+
+describe("poster utan livsmedel går också att justera", () => {
+  const aiPost = () => [{ id: "a1", name: "Max Dubbel Original", kcal: 760,
+    protein: 46, carbs: 44, fat: 44, grams: 310, ts: Date.now(), quality: "ai" }];
+
+  const renderaAI = async () => {
+    let logg = aiPost();
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    const rita = async () => {
+      await act(async () => {
+        r.render(createElement(FoodView, {
+          foodLog: logg,
+          setFoodLog: f => { logg = typeof f === "function" ? f(logg) : f; rita(); },
+          nutritionTargets: null, onSätta: () => {}, profile: {}, setProfile: () => {},
+        }));
+      });
+    };
+    await rita();
+    return { el, logg: () => logg };
+  };
+
+  it("en AI-post har ett kcal-fält", async () => {
+    // Tidigare stod det bara "ta bort och logga om", vilket är fel svar på
+    // "jag åt lite mindre".
+    const { el } = await renderaAI();
+    await act(async () => { el.querySelector('button[data-post="1"]').click(); });
+    expect(el.querySelector('input[data-kcal="1"]')).toBeTruthy();
+  });
+
+  it("makrona skalas i samma förhållande som kalorierna", async () => {
+    // 380 kcal med 46 g protein finns inte som mat. Att låta kcal ändras
+    // ensamt hade gjort posten inkonsekvent.
+    const { el, logg } = await renderaAI();
+    await act(async () => { el.querySelector('button[data-post="1"]').click(); });
+    const f = el.querySelector('input[data-kcal="1"]');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(f, "380");
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const p = logg()[0];
+    expect(p.kcal).toBe(380);
+    expect(p.protein).toBe(23);
+    expect(p.carbs).toBe(22);
+    expect(p.fat).toBe(22);
+  });
+
+  it("stegknappen ändrar tio procent", async () => {
+    const { el, logg } = await renderaAI();
+    await act(async () => { el.querySelector('button[data-post="1"]').click(); });
+    await act(async () => { el.querySelector('[aria-label="Minska mängd"]').click(); });
+    expect(logg()[0].kcal).toBe(684);
   });
 });
