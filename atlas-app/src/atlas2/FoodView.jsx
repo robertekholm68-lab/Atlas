@@ -341,6 +341,8 @@ function SnabbLogg({ onLägg }) {
   const [aiLäge, setAiLäge] = useState(null);      // frågar | klar | vet-inte | fel
   const [aiSvar, setAiSvar] = useState(null);
   const [aiNotering, setAiNotering] = useState("");
+  // Sparad storleksfråga: visas först om AI:n inte kunde svara.
+  const [storleksfråga, setStorleksfråga] = useState(null);
   const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
   const stöd = useMemo(() => voiceSupport(), []);
@@ -349,7 +351,7 @@ function SnabbLogg({ onLägg }) {
   // är värre än ingen mikrofon.
   useEffect(() => () => { if (stoppa.current) stoppa.current(); }, []);
 
-  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); setAiSvar(null); setAiLäge(null); setAiNotering(""); };
+  const nollställ = () => { setText(""); setEst(null); setFråga(null); setEstText(""); setPortion("normal"); setValdProdukt(null); setAiSvar(null); setAiLäge(null); setAiNotering(""); setStorleksfråga(null); };
 
   /**
    * Frågar Claude när databasen inte räcker.
@@ -361,6 +363,10 @@ function SnabbLogg({ onLägg }) {
    * Svaret ersätter aldrig en databasträff — det används bara när behöverAI
    * säger att träffen inte duger.
    */
+  // FALLBACKEN SKICKAS SOM ARGUMENT, inte läses ur state. frågaAI startas i
+  // samma render som setStorleksfråga anropas, så stängningen ser fortfarande
+  // det GAMLA värdet (null) — och fallbacken tystnade. Ett klassiskt
+  // stängningsfel som inte syns i koden men fångades av kontrollen.
   const frågaAI = async (fråga, fallback) => {
     setAiLäge("frågar");
     try {
@@ -377,6 +383,9 @@ function SnabbLogg({ onLägg }) {
         setAiSvar(null);
         setAiLäge(t.skäl === "vet-inte" ? "vet-inte" : "fel");
         setAiNotering(t.notering || "");
+        // AI:n visste inte. Då är storleksfrågan det bästa som återstår —
+        // den ger åtminstone en portionsskalning att utgå från.
+        if (fallback) { setFråga(fallback); setStorleksfråga(null); }
         return;
       }
       setAiSvar(t);
@@ -385,6 +394,7 @@ function SnabbLogg({ onLägg }) {
       setAiSvar(null);
       setAiLäge("fel");
       setAiNotering("");
+      if (fallback) { setFråga(fallback); setStorleksfråga(null); }
     }
   };
 
@@ -396,8 +406,27 @@ function SnabbLogg({ onLägg }) {
       const e = estimateMeal(text, portion);
       setEstText(text); setEst(e); setFråga(null);
       if (behöverAI(text, e)) frågaAI(text, e);
+      return;
     }
-    else setFråga({ q: d.q, opts: d.opts });
+
+    // OKÄND MAT GÅR TILL AI:N, INTE TILL STORLEKSFRÅGAN.
+    //
+    // "dubbel orginalmål på max" gav kind=unknown — ingen komponent kändes
+    // igen — och appen svarade med "Ungefär hur stor måltid?". Men storleken
+    // är inte det okända där; RÄTTEN är det. Att fråga liten/normal/stor om
+    // något appen inte vet vad det är ger ett tal ur tomma luften.
+    //
+    // Och det är precis de här fraserna som Claude klarar bäst: kedjornas
+    // menyer, färdigrätter, det man beställer och inte lagar.
+    //
+    // Storleksfrågan står kvar som fallback när AI:n inte vet heller.
+    // "lunch" är en måltidstyp, inte en rätt — där är storleksfrågan rätt
+    // fråga, och modellen skulle bara hitta på en genomsnittsmåltid.
+    if (!behöverAI(text, null)) { setFråga({ q: d.q, opts: d.opts }); return; }
+
+    setEstText(text); setEst(estimateMeal(text, portion)); setFråga(null);
+    setStorleksfråga({ q: d.q, opts: d.opts });
+    frågaAI(text, { q: d.q, opts: d.opts });
   };
   const välj = val => {
     const t = /^__/.test(val) ? val : text + " " + val;
