@@ -100,7 +100,34 @@ const RESTAURANGORD = [
   "wrap", "sub", "meny", "combo", "milkshake", "nuggets", "pommes",
 ];
 
+/**
+ * Ord som är MÅLTIDSTYPER, inte rätter.
+ *
+ * "lunch" och "middag" beskriver när man åt, inte vad. Där är storleksfrågan
+ * rätt fråga — modellen kan omöjligt veta vad någon annans lunch bestod av,
+ * och skulle bara hitta på en genomsnittsmåltid.
+ *
+ * Skiljer sig från "dubbel orginalmål på max", som ÄR en rätt, bara en som
+ * databasen inte känner.
+ */
+const MÅLTIDSORD = new Set([
+  "frukost", "lunch", "middag", "mellanmål", "kvällsmat", "fika", "brunch",
+  "mat", "måltid", "snacks", "efterrätt", "dessert",
+]);
+
+/** Är texten bara en måltidstyp, utan något som säger vad det var? */
+export function ärBaraMåltidstyp(text) {
+  const ord = String(text || "").toLowerCase()
+    .split(/[^a-zà-ÿ0-9]+/i).filter(Boolean);
+  if (!ord.length || ord.length > 3) return false;
+  return ord.every(o => MÅLTIDSORD.has(o) || ["en", "ett", "på", "idag", "igår"].includes(o));
+}
+
 export function behöverAI(text, estimat) {
+  // En måltidstyp utan rätt går aldrig till modellen — den skulle hitta på en
+  // genomsnittsmåltid, och det är precis vad storleksfrågan gör bättre och
+  // ärligare.
+  if (ärBaraMåltidstyp(text)) return false;
   const t = (text || "").toLowerCase();
   if (KEDJOR.some(k => t.includes(k))) return true;
   if (!estimat) return true;

@@ -116,3 +116,54 @@ describe("vyn visar AI som alternativ, inte ersättning", () => {
     expect(src).toMatch(/kan vara låg för restaurangmat/);
   });
 });
+
+describe("okänd mat går till AI, inte till storleksfrågan", () => {
+  const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+
+  it("kind=unknown frågar modellen", () => {
+    // "dubbel orginalmål på max" gav kind=unknown — ingen komponent kändes
+    // igen — och appen svarade "Ungefär hur stor måltid?". Men storleken är
+    // inte det okända där; RÄTTEN är det. Att fråga liten/normal/stor om något
+    // appen inte vet vad det är ger ett tal ur tomma luften.
+    const fn = src.slice(src.indexOf("const uppskatta"), src.indexOf("const uppskatta") + 1400);
+    expect(fn).toMatch(/frågaAI\(text, \{ q: d\.q/);
+  });
+
+  it("storleksfrågan står kvar som fallback", () => {
+    // Vet inte AI:n heller är portionsskalningen det bästa som återstår.
+    expect(src).toMatch(/setStorleksfråga/);
+    expect(src).toMatch(/if \(fallback\) \{ setFråga\(fallback\)/);
+  });
+
+  it("fallbacken skickas som argument, inte läses ur state", () => {
+    // frågaAI startas i samma render som setStorleksfråga anropas, så
+    // stängningen ser fortfarande det GAMLA värdet (null) — och fallbacken
+    // tystnade. Ett stängningsfel som inte syns i koden men fångades av
+    // webbläsarkontrollen.
+    const fn = src.slice(src.indexOf("const frågaAI"), src.indexOf("const frågaAI") + 1600);
+    expect(fn).toMatch(/async \(fråga, fallback\)/);
+    expect(fn).not.toMatch(/if \(storleksfråga\)/);
+  });
+});
+
+describe("måltidstyper går aldrig till modellen", () => {
+  it('"lunch" och "middag" ger storleksfrågan', () => {
+    // De beskriver NÄR man åt, inte VAD. Modellen kan omöjligt veta vad någon
+    // annans lunch bestod av och skulle bara hitta på en genomsnittsmåltid —
+    // det gör storleksfrågan bättre och ärligare.
+    for (const t of ["lunch", "middag", "en frukost", "fika"]) {
+      expect(behöverAI(t, null), t).toBe(false);
+    }
+  });
+
+  it("men en okänd RÄTT frågar", () => {
+    // Skillnaden mot "dubbel orginalmål på max", som ÄR en rätt — bara en som
+    // databasen inte känner.
+    expect(behöverAI("dubbel orginalmål på max", null)).toBe(true);
+  });
+
+  it("en måltidstyp MED innehåll frågar ändå", () => {
+    // "lunch på max" säger både när och var.
+    expect(behöverAI("lunch på max", null)).toBe(true);
+  });
+});
