@@ -173,3 +173,36 @@ export function verificationAge(lastVerified) {
   const days = Math.floor((Date.now() - new Date(lastVerified).getTime()) / 86400000);
   return { days, stale: days > 180 };
 }
+
+/**
+ * TOLKAR EN SKANNAD KOD MOT EN MASKINMODELL.
+ *
+ * Fyra former stöds, prövade i ordning:
+ *
+ *   1. ID DIREKT — koden ÄR ett modell-id ("mdl_technogym_..."). Det är fallet
+ *      när gymmet eller Askr själv satt lapparna; exakt träff.
+ *   2. URL MED ID — en tillverkares QR pekar ofta till en produktsida med
+ *      modellkoden i sökvägen eller frågesträngen.
+ *   3. FRITEXT SOM MATCHAR TILLVERKARE + MODELL — "Technogym Selection Pro
+ *      Chest Press" står literally på många maskiners egna QR-etiketter.
+ *   4. INGEN TRÄFF — koden är okänd. Det är ett giltigt utfall, inte ett fel:
+ *      QR-koder på gymutrustning kan peka mot instruktionsvideor, garantisidor
+ *      eller helt andra saker som Askr aldrig kan känna igen.
+ */
+export function matchaMaskinkod(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+
+  if (modelById[t]) return resolveModel(t);
+
+  const idIUrl = t.match(/\/([a-z0-9_-]*mdl_[a-z0-9_-]+)/i) || t.match(/[?&](?:id|model)=([a-z0-9_-]+)/i);
+  if (idIUrl && modelById[idIUrl[1]]) return resolveModel(idIUrl[1]);
+
+  const tf = t.toLowerCase();
+  const träff = MACHINE_MODELS.find(m =>
+    tf.includes(m.manufacturer.toLowerCase()) && tf.includes(m.model.toLowerCase())
+  );
+  if (träff) return resolveModel(träff);
+
+  return null;
+}

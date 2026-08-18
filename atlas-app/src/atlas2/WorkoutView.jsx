@@ -248,6 +248,32 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     setVila(it.vila);
   };
 
+  /**
+   * AVSLUTA ÖVNINGEN, INTE HELA PASSET.
+   *
+   * "Avsluta i förtid" avslutade allt — hela passet, alla kvarvarande
+   * övningar. Men skälet att hoppa över en övning är ofta lokalt: bänken är
+   * upptagen, axeln säger ifrån på just den rörelsen, eller man hann helt
+   * enkelt inte med alla set. Resten av passet ska köras.
+   *
+   * Loggade set sparas — övningen kastas inte, den bara markeras klar med det
+   * den hann bli. Ett pass med tre av fem set på en övning är fortfarande ett
+   * pass, inte ett misslyckande.
+   *
+   * Hoppar till NÄSTA OAVSLUTADE övning, inte bara idx+1. Ett program där
+   * övning 3 redan avslutats (via ett tidigare hopp) ska inte visa den igen.
+   */
+  const avslutaÖvning = () => {
+    const härIdx = live.idx;
+    const nästa = live.items.findIndex((x, i) => i > härIdx && x.loggade.length < x.set);
+    setLive({ ...live, idx: nästa >= 0 ? nästa : live.items.length - 1 });
+  };
+
+  // Sant när alla ÖVRIGA övningar redan är fullständigt loggade — då finns
+  // ingen "nästa" att hoppa till, och knappen ska inte visas som ett alternativ
+  // till "Avsluta passet".
+  const finnsFlerÖvningar = live.items.some((x, i) => i !== live.idx && x.loggade.length < x.set);
+
   // Alternativ ur samma muskelgrupp. alternativesFor har funnits i motorn sedan
   // programbygget men aldrig anropats från 2.0 — logiken fanns, vägen dit inte.
   const alternativ = useMemo(
@@ -371,6 +397,19 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
                 color: C.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer", minHeight: 32,
               }}>Byt</button>
           )}
+          {/* AVSLUTA ÖVNINGEN, INTE PASSET.
+              Samma rad som "Byt", av samma skäl: en egen rad kostade 59 px och
+              gav scroll på iPhone SE — layoutvakten mätte det. Passvyn är den
+              enda vy som måste rymmas utan scroll. Bara synlig när det finns en
+              oavslutad övning kvar; annars är den samma val som "Avsluta i
+              förtid" fast med ett annat namn. */}
+          {!klara && !allaKlara && finnsFlerÖvningar && (
+            <button onClick={avslutaÖvning} data-avsluta-ovning="1"
+              style={{
+                background: "none", border: `1px solid ${C.border}`, borderRadius: 999,
+                color: C.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer", minHeight: 32,
+              }}>Nästa övning</button>
+          )}
         </div>
         {it.förslag && <div style={{ fontSize: 12, color: C.lime, marginTop: 5 }}>{it.förslag}</div>}
 
@@ -476,7 +515,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
         </>
       )}
 
-      <button onClick={avsluta} style={{ ...btnGhost, marginTop: 12, borderColor: allaKlara ? C.lime : C.border, color: allaKlara ? C.lime : C.text }}>
+      <button onClick={avsluta} style={{ ...btnGhost, marginTop: 10, borderColor: allaKlara ? C.lime : C.border, color: allaKlara ? C.lime : C.text }}>
         {allaKlara ? "Avsluta passet" : "Avsluta i förtid"}
       </button>
       {!allaKlara && klaraSet > 0 && (
