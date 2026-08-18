@@ -18,6 +18,7 @@ import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { ExerciseBank } from "./ExerciseBank.jsx";
 import { MachineGuide } from "./MachineGuide.jsx";
+import { KnowledgeView } from "./KnowledgeView.jsx";
 import { MuscleSplit } from "./MuscleSplit.jsx";
 import { FoodView } from "./FoodView.jsx";
 import { ImportSheet } from "./ImportSheet.jsx";
@@ -542,7 +543,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "fordelning" ? "Muskelfördelning"
+    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "kunskap" ? "Kunskap" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -788,6 +789,12 @@ export function Atlas2() {
           <button onClick={() => setSheet("maskiner")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
             Maskiner — inställningar och vanliga fel →
           </button>
+          {/* Kunskapsbasen står bland de andra uppslagsverken. 23
+              träningsartiklar och 21 muskelbeskrivningar har funnits i
+              datalagret sedan 1.0 utan att nå 2.0. */}
+          <button onClick={() => setSheet("kunskap")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
+            Kunskap — träningsprinciper och muskelfakta →
+          </button>
 
           <div style={{ fontSize: 12.5, color: C.muted, margin: "20px 0 10px" }}>
             Tränat något annat?
@@ -918,6 +925,8 @@ export function Atlas2() {
               <ExerciseBank onClose={() => setSheet(null)} onStarta={startaFrittPass} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
+            ) : sheet === "kunskap" ? (
+              <KnowledgeView onClose={() => setSheet(null)} />
             ) : sheet === "fordelning" ? (
               <MuscleSplit sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
