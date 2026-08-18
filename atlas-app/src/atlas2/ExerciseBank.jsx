@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { C, hdr, label, btnText, card, volt } from "./design.js";
+import { C, hdr, label, btnText, btnPrimary, card, volt } from "./design.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES, GROUP_SV } from "../data/muscles.js";
 import { sökordFör } from "./sokord.js";
@@ -53,7 +53,22 @@ function muskelNamn(id) {
   return m.name;
 }
 
-export function ExerciseBank({ onClose }) {
+/**
+ * ÖVNINGSBANKEN, MED ELLER UTAN VAL.
+ *
+ * Utan onStarta är den ren uppslagning: vad tränar den här övningen, vilken
+ * utrustning behövs. Med onStarta går det också att plocka övningar och köra
+ * dem som ett pass.
+ *
+ * VARFÖR FRITT PASS BEHÖVS. Ett program är rätt när man följer en plan, men
+ * ibland går man till gymmet och tar det som är ledigt — eller kör bara en enda
+ * övning. Utan den vägen tvingades man skapa ett program för att logga ett pass,
+ * och då loggade man inte alls.
+ */
+export function ExerciseBank({ onClose, onStarta }) {
+  // Valda övningar i den ordning de plockades. Ordningen ÄR passets ordning —
+  // den som väljer bänkpress först vill förmodligen börja där.
+  const [valda, setValda] = useState([]);
   const [sök, setSök] = useState("");
   const [grupp, setGrupp] = useState(null);
   const [öppen, setÖppen] = useState(null);
@@ -134,16 +149,35 @@ export function ExerciseBank({ onClose }) {
         </div>
       )}
 
+      {/* STARTKNAPPEN STÅR FÖRE LISTAN.
+          Efter 160 övningar hade den krävt att man scrollar tillbaka hela
+          vägen upp — samma lärdom som loggknappen i matvyn. Den som valt klart
+          ska kunna starta direkt. */}
+      {onStarta && valda.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <button onClick={() => onStarta(valda)} data-starta-fritt="1" style={btnPrimary}>
+            Starta pass — {valda.length} {valda.length === 1 ? "övning" : "övningar"}
+          </button>
+          <button onClick={() => setValda([])} style={{ ...btnText, marginTop: 6, minHeight: 40 }}>
+            Rensa valet
+          </button>
+        </div>
+      )}
+
       {träffar.map(e => {
         const är = öppen === e.id;
         const akt = [...(e.activation || [])].sort((a, b) => b.factor - a.factor);
         return (
           <div key={e.id} style={{ ...rad, marginBottom: 8, overflow: "hidden" }}>
+            {/* PLUSKNAPPEN ÄR SKILD FRÅN RADEN. Ett tryck på raden fäller ut
+                fakta, ett tryck på plus lägger till i passet — två olika
+                avsikter som inte får dela knapp. */}
+            <div style={{ display: "flex", alignItems: "stretch" }}>
             <button onClick={() => setÖppen(är ? null : e.id)} data-övning="1"
               aria-expanded={är}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                width: "100%", textAlign: "left", padding: "13px 15px", minHeight: 44,
+                flex: 1, minWidth: 0, textAlign: "left", padding: "13px 15px", minHeight: 44,
                 background: "none", border: "none", color: C.text, cursor: "pointer",
               }}>
               <span style={{ minWidth: 0 }}>
@@ -155,6 +189,18 @@ export function ExerciseBank({ onClose }) {
               <span style={{ color: C.muted, fontSize: 15, flexShrink: 0,
                 transform: är ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span>
             </button>
+            {onStarta && (
+              <button onClick={() => setValda(v => v.includes(e.id) ? v.filter(x => x !== e.id) : [...v, e.id])}
+                data-valj="1" aria-pressed={valda.includes(e.id)}
+                aria-label={valda.includes(e.id) ? `Ta bort ${e.name}` : `Lägg till ${e.name}`}
+                style={{
+                  width: 48, flexShrink: 0, cursor: "pointer", fontSize: 17,
+                  border: "none", borderLeft: `1px solid ${C.border}`,
+                  background: valda.includes(e.id) ? volt(.1) : "transparent",
+                  color: valda.includes(e.id) ? C.lime : C.muted,
+                }}>{valda.includes(e.id) ? "✓" : "+"}</button>
+            )}
+            </div>
 
             {är && (
               <div style={{ padding: "0 15px 14px" }}>

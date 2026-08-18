@@ -590,6 +590,33 @@ export function Atlas2() {
     setFlik("pass");
   };
 
+  /**
+   * STARTAR ETT FRITT PASS ur valda övningar — utan program.
+   *
+   * Ett program är rätt när man följer en plan, men ibland går man till gymmet
+   * och tar det som är ledigt, eller kör bara en enda övning. Utan den här
+   * vägen tvingades man skapa ett program för att logga ett pass, och då
+   * loggade man inte alls.
+   *
+   * Passet byggs med samma buildLive som ett programpass, så progression,
+   * viktförslag och muskellast räknas identiskt. Skillnaden är bara att
+   * programmet är null — och det får inte läcka: DoneView och statistiken
+   * måste tåla ett pass utan program.
+   *
+   * 3x8 är förvalet. Den som mixar fritt vill komma igång, inte fylla i ett
+   * formulär; set och reps går att ändra i passvyn som vanligt.
+   */
+  const startaFrittPass = exIds => {
+    if (!exIds || !exIds.length) return;
+    const workout = {
+      name: exIds.length === 1 ? "Fritt pass" : "Fritt pass",
+      exercises: exIds.map(id => ({ exId: id, sets: 3, repMin: 6, repMax: 12, restSec: 90 })),
+    };
+    setLive(buildLive(null, workout, sessions));
+    setSheet(null);
+    setFlik("pass");
+  };
+
   const vy = () => {
     if (klart) return (
       <DoneView resultat={klart} sessions={sessions}
@@ -888,7 +915,7 @@ export function Atlas2() {
                 onKost={() => { setSheet(null); setFlik("mat"); }}
                 onClose={() => setSheet(null)} />
             ) : sheet === "ovningar" ? (
-              <ExerciseBank onClose={() => setSheet(null)} />
+              <ExerciseBank onClose={() => setSheet(null)} onStarta={startaFrittPass} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
             ) : sheet === "fordelning" ? (
