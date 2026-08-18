@@ -218,13 +218,21 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
 
             {öppen && (
               <div style={{ padding: "0 2px 14px" }}>
-                {/* Protein och tillit flyttade hit från radens undertext. På
-                    raden konkurrerade de med mängden och gjorde den svår att
-                    skanna; här läser man dem när man faktiskt undrar. */}
+                {/* ALLA FYRA MAKRON, inte bara protein.
+                    Posten har burit carbs och fat hela tiden — motorn räknar
+                    dem, buildEstimatedEntry sparar dem — men detaljvyn visade
+                    bara P. Robert jämförde med en annan app och trodde att
+                    Askr räknade fel; det var ett VISNINGSfel, siffrorna fanns.
+
+                    Kolhydrater och fett räknas ur livsmedlet när posten bär ett
+                    (samma väg som kcal och protein ovan), annars ur postens
+                    egna tal. */}
                 <div style={{ fontFamily: MONO, fontSize: 11.5, color: C.muted, marginBottom: 10 }}>
-                  P {p} g
+                  P {p} g · K {f ? Math.round(f.carbs * (Number(e.grams) || 0) / 100) : Math.round(e.carbs || 0)} g
+                  {" · F "}{f ? Math.round(f.fat * (Number(e.grams) || 0) / 100) : Math.round(e.fat || 0)} g
                   {e.quality === "estimated" ? " · uppskattat" : ""}
                   {e.quality === "photo" ? " · ur foto" : ""}
+                  {e.quality === "ai" ? " · ur coachen" : ""}
                 </div>
                 {/* NAMNET GÅR ATT RÄTTA.
                     Man loggar "kyckl" i farten, eller får "Fotad måltid" ur

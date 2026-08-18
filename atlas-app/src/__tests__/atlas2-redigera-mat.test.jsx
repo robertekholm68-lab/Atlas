@@ -356,3 +356,32 @@ describe("poster utan livsmedel går också att justera", () => {
     expect(logg()[0].kcal).toBe(684);
   });
 });
+
+describe("detaljvyn visar alla fyra makron", () => {
+  it("kolhydrater och fett står bredvid protein", async () => {
+    // Posten har burit carbs och fat hela tiden — motorn räknar dem,
+    // buildEstimatedEntry sparar dem — men vyn visade bara P. Robert jämförde
+    // med en annan app och trodde att Askr räknade fel; det var ett
+    // VISNINGSfel, siffrorna fanns.
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => {
+      r.render(createElement(FoodView, {
+        foodLog: [{ id: "s1", name: "300 gram köttfärssås", kcal: 300, protein: 25,
+          carbs: 14, fat: 15, ts: Date.now(), quality: "estimated" }],
+        setFoodLog: () => {}, nutritionTargets: null, onSätta: () => {},
+        profile: {}, setProfile: () => {},
+      }));
+    });
+    await act(async () => { el.querySelector('button[data-post="1"]').click(); });
+    expect(el.textContent).toMatch(/P 25 g · K 14 g · F 15 g/);
+  });
+
+  it("räknas ur livsmedlet när posten bär ett", async () => {
+    // Samma väg som kcal och protein — annars skulle en justerad mängd ge rätt
+    // kalorier men fel kolhydrater.
+    const { el } = await rendera();
+    await act(async () => { poster(el)[0].click(); });
+    expect(el.textContent).toMatch(/P \d+ g · K \d+ g · F \d+ g/);
+  });
+});
