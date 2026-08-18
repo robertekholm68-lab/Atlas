@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { C, hdr, label, btnText, card, volt } from "./design.js";
+import { C, HFONT, hdr, label, btnText, card, volt } from "./design.js";
 import { MACHINE_TYPES, MACHINE_MODELS, RESISTANCE_TYPES } from "../data/machines.js";
 import { MUSCLES } from "../data/muscles.js";
+import { SkannaMaskin } from "./SkannaMaskin.jsx";
 
 /**
  * MASKINGUIDEN.
@@ -34,6 +35,7 @@ export function MachineGuide({ onClose }) {
   const [sök, setSök] = useState("");
   const [kategori, setKategori] = useState(null);
   const [öppen, setÖppen] = useState(null);
+  const [skannar, setSkannar] = useState(false);
 
   const kategorier = useMemo(() => {
     const räkning = {};
@@ -59,6 +61,22 @@ export function MachineGuide({ onClose }) {
     });
   }, [sök, kategori]);
 
+  // Skanningen ersätter guidevyn medan den pågår, som streckkodsläsaren och
+  // fotovyn för mat — kameran ska aldrig kunna bli kvar bakom något annat.
+  if (skannar) return (
+    <SkannaMaskin
+      onClose={() => setSkannar(false)}
+      onTräff={typIdEllerModell => {
+        // QR-vägen kan ge en full modell (med typeId) eller bara ett typ-id
+        // från fotovägen — båda leder till samma typ, öppnad direkt.
+        const typeId = typIdEllerModell && typIdEllerModell.typeId
+          ? typIdEllerModell.typeId : typIdEllerModell;
+        setSkannar(false);
+        setSök(""); setKategori(null);
+        setÖppen(typeId);
+      }} />
+  );
+
   const rad = { border: `1px solid ${C.border}`, background: C.card2, borderRadius: 14 };
   const punkt = { fontSize: 12.5, color: C.text2, lineHeight: 1.55, marginBottom: 5, paddingLeft: 14, position: "relative" };
   const prick = { position: "absolute", left: 2, top: 7, width: 4, height: 4, borderRadius: 2, background: C.muted };
@@ -73,6 +91,16 @@ export function MachineGuide({ onClose }) {
         {MACHINE_TYPES.length} maskiner med inställningar och vanliga fel — för när du
         står framför en du inte kört förut.
       </div>
+
+      <button onClick={() => setSkannar(true)} data-skanna-maskin="1" style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+        width: "100%", marginTop: 12, marginBottom: 10, padding: "12px 14px",
+        borderRadius: 12, minHeight: 44, cursor: "pointer",
+        border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+        fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
+      }}>
+        <span aria-hidden style={{ fontSize: 15 }}>▥</span> Skanna maskin
+      </button>
 
       <input value={sök} onChange={e => setSök(e.target.value)}
         placeholder="Sök maskin, muskel eller märke…"
