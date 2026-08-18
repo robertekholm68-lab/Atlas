@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card } from "./design.js";
-import { save } from "./store.js";
+import { save, load } from "./store.js";
 import { workoutExercises, alternativesFor } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
@@ -182,6 +182,26 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const [reps, setReps] = useState(it ? it.reps : 8);
   const [vila, setVila] = useState(0);
   const [byter, setByter] = useState(false);
+  const [musik, setMusik] = useState(false);
+  const [musikUrl, setMusikUrl] = useState("");
+
+  // HYDRERAS I EN EFFEKT, inte som initialvärde i useState. load() är
+  // ASYNKRON — som initialvärde blir tillståndet ett Promise i stället för
+  // data, och fältet står tomt fast en länk är sparad. Samma fälla som
+  // veckomenyns byten gick i.
+  useEffect(() => {
+    let lever = true;
+    load("spotify", "").then(u => { if (lever && typeof u === "string") setMusikUrl(u); });
+    return () => { lever = false; };
+  }, []);
+
+  const öppnaMusik = () => {
+    const u = musikUrl.trim();
+    save("spotify", u);
+    // Utan länk öppnas Spotify-appen ändå: "spotify:" är appens egen
+    // URI-schema. Bättre än att inte göra något alls när man tryckt.
+    window.open(u || "spotify:", "_blank", "noopener");
+  };
   const timer = useRef(null);
   // Röstinmatning: samma motor och samma grundregel som mobilen — rösten
   // FÖRESLÅR, den sparar aldrig själv. En felhörd åtta som blir åttio skulle
@@ -353,7 +373,13 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button onClick={onAbort} style={{ background: "none", border: "none", color: C.text, fontSize: 22, cursor: "pointer", padding: 6 }} aria-label="Tillbaka">‹</button>
         <div style={hdr(15)}>Pågående pass</div>
-        <span style={{ width: 34 }} />
+        {/* MUSIKKNAPPEN SATT HÄR I 1.0 och följde aldrig med till 2.0.
+            Platshållaren på 34 px fanns kvar — den balanserade tillbakapilen —
+            så knappen tar ingen extra höjd. Det spelar roll: passvyn är den
+            enda vy som måste rymmas utan scroll. */}
+        <button onClick={() => setMusik(true)} data-musik="1" aria-label="Träningsmusik"
+          style={{ background: "none", border: "none", color: C.text2, fontSize: 19,
+            cursor: "pointer", padding: 6, width: 34 }}>♫</button>
       </div>
 
       {/* Setprogression: en stapel per set i hela passet */}
@@ -428,6 +454,38 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             man gjort, eller så blandas två övningars set i samma post. Att
             avsluta övningen och lägga till en ny är rätt väg där. */}
       </div>
+
+      {/* TRÄNINGSMUSIK. Ingen OAuth, ingen integration — en sparad länk och
+          window.open. Spotify-appen tar över om den är installerad, annars
+          webbspelaren. Samma lösning som i 1.0, och den räcker: det enda man
+          vill göra mitt i ett pass är att starta musiken.
+
+          EGEN NYCKEL FÖR 2.0 (atlas.v3.spotify via store). 1.0 hade separata
+          nycklar för desktop och mobil eftersom olika spellistor per kontext
+          kan vara önskvärt — samma skäl gäller här. */}
+      {musik && (
+        <div style={{ ...card, padding: 16, marginTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ ...label(), color: C.muted }}>Träningsmusik</div>
+            <button onClick={() => setMusik(false)} style={btnText} aria-label="Stäng">Stäng</button>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8, lineHeight: 1.55 }}>
+            Klistra in en Spotify-länk till din spellista, så öppnar knappen den
+            direkt i appen.
+          </div>
+          <input value={musikUrl} onChange={e => setMusikUrl(e.target.value)}
+            placeholder="https://open.spotify.com/playlist/…"
+            aria-label="Spotify-länk" inputMode="url"
+            style={{
+              width: "100%", marginTop: 11, padding: "12px 14px", borderRadius: 12, minHeight: 44,
+              border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13,
+            }} />
+          <button onClick={öppnaMusik} data-oppna-musik="1"
+            style={{ ...btnPrimary, marginTop: 11 }}>
+            ♫ Öppna i Spotify
+          </button>
+        </div>
+      )}
 
       {byter && (
         <div style={{ ...card, padding: 14, marginTop: 4 }}>
