@@ -49,7 +49,14 @@ export function buildLive(program, workout, sessions) {
       loggade: [],
     };
   });
-  return { programId: program.id, workoutId: workout.id, namn: workout.name, startad: Date.now(), idx: 0, items };
+  // PROGRAM KAN VARA NULL — ett fritt pass hör inte till något program.
+  // Utan den här vakten kastar program.id och passet startar aldrig; skärmen
+  // blir blank utan felmeddelande, samma tysta fel som SyntheticEvent-buggen.
+  return {
+    programId: program ? program.id : null,
+    workoutId: workout.id || null,
+    namn: workout.name, startad: Date.now(), idx: 0, items,
+  };
 }
 
 function Ring({ kvar, av, storlek = 168 }) {
