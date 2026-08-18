@@ -4,7 +4,7 @@ import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES, GROUP_SV } from "../data/muscles.js";
 import { sökordFör } from "./sokord.js";
 import { bildFör } from "../data/exerciseImages.js";
-import { ÖvningsIkon } from "./exerciseIcons.jsx";
+import { MuskelIkon } from "./muscleIcon.jsx";
 
 /**
  * ÖVNINGSBANKEN.
@@ -181,12 +181,14 @@ export function ExerciseBank({ onClose, onStarta }) {
                 flex: 1, minWidth: 0, textAlign: "left", padding: "13px 15px", minHeight: 44,
                 background: "none", border: "none", color: C.text, cursor: "pointer",
               }}>
-              {/* MINIATYR FÖRE NAMNET. 157 av 160 övningar saknar foto, men ett
-                  piktogram per rörelsemönster ger varje rad en igenkännbar
-                  form redan i dag — 20 mönster täcker alla 160.
+              {/* MINIATYR FÖRE NAMNET: kroppssiluett med primärmuskeln i volt.
+                  Ersatte piktogram per rörelsemönster, som inte gick att skilja
+                  åt vid 20 px och dessutom svarade på fel fråga — mönstret står
+                  redan i klartext på raden, det som skiljer övningar åt är
+                  vilken muskel de belastar.
 
-                  Ikonen ersätts tyst av ett riktigt foto den dagen ett sådant
-                  finns: bildFör(id) prövas först, ikonen är bara fallback. */}
+                  Ersätts tyst av ett riktigt foto den dagen ett sådant finns:
+                  bildFör(id) prövas först. */}
               <span aria-hidden style={{
                 width: 34, height: 34, flexShrink: 0, borderRadius: 8,
                 border: `1px solid ${C.hairline}`, background: C.card2,
@@ -194,7 +196,7 @@ export function ExerciseBank({ onClose, onStarta }) {
               }}>
                 {bildFör(e.id)
                   ? <img src={bildFör(e.id)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 7 }} />
-                  : <ÖvningsIkon pattern={e.pattern} size={20} />}
+                  : <MuskelIkon exercise={e} size={30} />}
               </span>
               <span style={{ minWidth: 0 }}>
                 <span style={{ ...hdr(13.5), display: "block" }}>{e.name}</span>
