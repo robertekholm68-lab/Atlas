@@ -4,6 +4,7 @@ import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES, GROUP_SV } from "../data/muscles.js";
 import { sökordFör } from "./sokord.js";
 import { bildFör } from "../data/exerciseImages.js";
+import { ÖvningsIkon } from "./exerciseIcons.jsx";
 
 /**
  * ÖVNINGSBANKEN.
@@ -180,6 +181,21 @@ export function ExerciseBank({ onClose, onStarta }) {
                 flex: 1, minWidth: 0, textAlign: "left", padding: "13px 15px", minHeight: 44,
                 background: "none", border: "none", color: C.text, cursor: "pointer",
               }}>
+              {/* MINIATYR FÖRE NAMNET. 157 av 160 övningar saknar foto, men ett
+                  piktogram per rörelsemönster ger varje rad en igenkännbar
+                  form redan i dag — 20 mönster täcker alla 160.
+
+                  Ikonen ersätts tyst av ett riktigt foto den dagen ett sådant
+                  finns: bildFör(id) prövas först, ikonen är bara fallback. */}
+              <span aria-hidden style={{
+                width: 34, height: 34, flexShrink: 0, borderRadius: 8,
+                border: `1px solid ${C.hairline}`, background: C.card2,
+                display: "flex", alignItems: "center", justifyContent: "center", color: C.text2,
+              }}>
+                {bildFör(e.id)
+                  ? <img src={bildFör(e.id)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 7 }} />
+                  : <ÖvningsIkon pattern={e.pattern} size={20} />}
+              </span>
               <span style={{ minWidth: 0 }}>
                 <span style={{ ...hdr(13.5), display: "block" }}>{e.name}</span>
                 <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>

@@ -29,6 +29,9 @@ const SÖKORD = [
   [/shrug/i, "shrugs axlar trapezius"],
   [/overhead/i, "axelpress över huvudet"],
   [/leg press/i, "benpress"],
+  // Specifikt mönster FÖRE det generella /extension/i nedan — ordningen
+  // avgör: "Leg Extension" ska ge "benspark", inte bara "sträck".
+  [/leg extension/i, "benspark"],
   [/pushup|push-?up/i, "armhävning armhävningar"],
 ];
 
