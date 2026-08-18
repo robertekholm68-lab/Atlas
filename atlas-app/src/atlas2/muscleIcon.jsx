@@ -58,12 +58,53 @@ function beskärning(vy) {
 
 const BOX = { front: beskärning("front"), back: beskärning("back") };
 
+/**
+ * ZOOMAR IN PÅ MUSKELN i stället för att visa hela kroppen.
+ *
+ * Hela figuren i en kvadratisk 30 px-ruta gav 15 px bredd — figuren är 364×744,
+ * så höjden styr skalan och bredden halveras. Mätt i den skarpa filen:
+ * bröstmuskeln renderades 7×3 PIXLAR. En prick, precis som Robert sa.
+ *
+ * Ramen läggs runt muskeln med tillräckligt av kroppen omkring för att man ska
+ * se VAR på kroppen den sitter — utan sammanhang vore en tänd fläck omöjlig att
+ * placera. Kvadratisk ram, så inget stjäls av proportionerna.
+ */
+function zoomBox(region, vy) {
+  if (!region) return BOX[vy];
+  const [mx0, my0, mx1, my1] = region.box;
+  const cx = (mx0 + mx1) / 2, cy = (my0 + my1) / 2;
+  // Kvadraten spänner minst 2,6 gånger muskelns största mått — nog för att
+  // visa kroppsdelen runt omkring, inte hela figuren.
+  const storlek = Math.max(mx1 - mx0, my1 - my0) * 2.6;
+  const [fx0, fy0, fb, fh] = BOX[vy].split(" ").map(Number);
+  // Håll ramen innanför figuren, annars hamnar den halvt utanför för muskler
+  // vid kanten (vader, underarmar).
+  const s = Math.min(storlek, Math.min(fb, fh));
+  const x = Math.max(fx0, Math.min(cx - s / 2, fx0 + fb - s));
+  const y = Math.max(fy0, Math.min(cy - s / 2, fy0 + fh - s));
+  return `${x} ${y} ${s} ${s}`;
+}
+
+/** Måtten på en uppsättning paths: [x0, y0, x1, y1]. */
+function mått(paths) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const d of paths) {
+    const tal = d.match(/-?\d+\.?\d*/g) || [];
+    for (let i = 0; i + 1 < tal.length; i += 2) {
+      const x = parseFloat(tal[i]), y = parseFloat(tal[i + 1]);
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  return [x0, y0, x1, y1];
+}
+
 const idx = {};
 for (const vy of ["front", "back"]) {
   for (const r of REGIONS[vy].regions) {
     // Finns muskeln i BÅDA vyerna (trapezius, deltoids, forearms) vinner den
     // första — front. Godtyckligt men konsekvent, och de musklerna syns ändå.
-    if (!idx[r.id]) idx[r.id] = { vy, id: r.id };
+    if (!idx[r.id]) idx[r.id] = { vy, id: r.id, box: mått(r.d) };
   }
 }
 
@@ -92,7 +133,7 @@ export function MuskelIkon({ exercise, size = 34, färg = "#D4FF00", kontur = "#
   const region = muskel ? regionFörMuskel(muskel) : null;
   const vy = region ? region.vy : "front";
   const markerad = region ? region.id : null;
-  const box = BOX[vy];
+  const box = zoomBox(region, vy);
   const alla = REGIONS[vy].regions;
 
   return (
