@@ -12,8 +12,9 @@
 // muskellast, inte en attrapp.
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card } from "./design.js";
+import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import { save, load } from "./store.js";
+import { restDoneCue, DEFAULT_CUES } from "../engines/cues.js";
 import { workoutExercises, alternativesFor } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
@@ -183,6 +184,10 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const [vila, setVila] = useState(0);
   const [byter, setByter] = useState(false);
   const [musik, setMusik] = useState(false);
+  // Ljud och vibration på som standard, röst och notis av — samma DEFAULT_CUES
+  // som 1.0. Röst kräver att man vill höra appen tala i ett gym, notiser kräver
+  // ett tillstånd man inte ska behöva ge för att träna.
+  const [signaler, setSignaler] = useState(DEFAULT_CUES);
   const [musikUrl, setMusikUrl] = useState("");
 
   // HYDRERAS I EN EFFEKT, inte som initialvärde i useState. load() är
@@ -192,8 +197,22 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   useEffect(() => {
     let lever = true;
     load("spotify", "").then(u => { if (lever && typeof u === "string") setMusikUrl(u); });
+    load("cues", DEFAULT_CUES).then(c => {
+      // Bara kända nycklar tas emot — en trasig eller gammal post ska inte
+      // kunna slå av allt tyst.
+      if (lever && c && typeof c === "object") setSignaler({ ...DEFAULT_CUES, ...c });
+    });
     return () => { lever = false; };
   }, []);
+
+  const växlaSignal = nyckel => setSignaler(s => {
+    const ny = { ...s, [nyckel]: !s[nyckel] };
+    save("cues", ny);
+    // Ett ljud som slås PÅ ska höras direkt — annars vet man inte om det
+    // fungerar förrän nästa vila, och då är det för sent att justera.
+    if (ny[nyckel]) restDoneCue({ ...DEFAULT_CUES, sound: false, voice: false, vibrate: false, notify: false, [nyckel]: true });
+    return ny;
+  });
 
   const öppnaMusik = () => {
     const u = musikUrl.trim();
@@ -224,6 +243,32 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     timer.current = setTimeout(() => setVila(v => v - 1), 1000);
     return () => clearTimeout(timer.current);
   }, [vila]);
+
+  /**
+   * SIGNAL NÄR VILAN ÄR SLUT.
+   *
+   * Motorn engines/cues.js har funnits sedan 1.0 med tre kanaler — ljud, röst,
+   * vibration, notis — och aldrig anropats från 2.0. Timern räknade ner i
+   * tystnad, vilket är det sämsta läget: man tittar inte på telefonen mellan
+   * set, så vilan blir antingen för kort eller för lång.
+   *
+   * TVÅ VAKTER, BÅDA NÖDVÄNDIGA:
+   *
+   * 1. vila går 0 -> 90 när ett set loggas. Utan förraVila.current hade
+   *    övergången till 0 tolkats som "vilan är slut" redan innan den börjat.
+   *
+   * 2. "Hoppa över vilan" sätter också vila till 0 — men då har man aktivt
+   *    avbrutit den, och signalen skulle säga "du tryckte på en knapp" i
+   *    stället för "vilan är slut". Mätt i webbläsaren: utan avbröt.current
+   *    ljöd den vid varje överhoppning.
+   */
+  const förraVila = useRef(0);
+  const avbröt = useRef(false);
+  useEffect(() => {
+    if (förraVila.current > 0 && vila === 0 && !avbröt.current) restDoneCue(signaler);
+    if (vila === 0) avbröt.current = false;
+    förraVila.current = vila;
+  }, [vila, signaler]);
 
   // Kontinuerlig persistens: varje ändring skrivs direkt.
   useEffect(() => { save("live", live); }, [live]);
@@ -484,6 +529,29 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             style={{ ...btnPrimary, marginTop: 11 }}>
             ♫ Öppna i Spotify
           </button>
+
+          {/* SIGNALERNA HÖR HEMMA HÄR. Panelen handlar redan om ljud under
+              passet, och en egen inställningsvy för fyra växlar hade varit ett
+              steg för mycket — man justerar dem i gymmet, inte i förväg. */}
+          <div style={{ ...label(), color: C.muted, margin: "18px 0 8px" }}>
+            När vilan är slut
+          </div>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+            {[["sound", "Ljud"], ["vibrate", "Vibration"], ["voice", "Röst"], ["notify", "Notis"]].map(([nyckel, namn]) => (
+              <button key={nyckel} onClick={() => växlaSignal(nyckel)}
+                data-signal={nyckel} aria-pressed={!!signaler[nyckel]}
+                style={{
+                  padding: "8px 13px", minHeight: 40, borderRadius: 999, cursor: "pointer", fontSize: 12.5,
+                  border: `1px solid ${signaler[nyckel] ? C.lime : C.border}`,
+                  color: signaler[nyckel] ? C.lime : C.muted,
+                  background: signaler[nyckel] ? volt(.08) : C.card2,
+                }}>{namn}</button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+            Notiser når fram även när appen ligger i bakgrunden, men kräver
+            tillstånd av telefonen.
+          </div>
         </div>
       )}
 
@@ -514,7 +582,8 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       {vila > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 20 }}>
           <Ring kvar={vila} av={it.vila} />
-          <button onClick={() => setVila(0)} style={{ ...btnGhost, marginTop: 16, maxWidth: 220 }}>Hoppa över vilan</button>
+          <button onClick={() => { avbröt.current = true; setVila(0); }}
+            style={{ ...btnGhost, marginTop: 16, maxWidth: 220 }}>Hoppa över vilan</button>
         </div>
       ) : (
         <>
