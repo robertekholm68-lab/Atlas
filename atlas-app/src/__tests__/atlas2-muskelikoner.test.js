@@ -13,6 +13,8 @@ import { describe, it, expect } from "vitest";
 import { primärMuskel, regionFörMuskel } from "../atlas2/muscleIcon.jsx";
 import { EXERCISES } from "../data/exercises.js";
 import REGIONS from "../atlas2/body_regions.json";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 describe("varje övning kan ritas", () => {
   it("alla 160 har en primärmuskel med en region", () => {
@@ -77,5 +79,45 @@ describe("beskärningen använder figurens faktiska mått", () => {
     const box = REGIONS.front.viewBox.split(" ").map(Number);
     expect(box[2]).toBe(500);
     expect(box[3]).toBe(1020);
+  });
+});
+
+describe("ikonen zoomar in på muskeln", () => {
+  it("ramen är kvadratisk", () => {
+    // En helkroppsfigur (364×744) i en kvadratisk 30 px-ruta gav 15 px bredd —
+    // höjden styr skalan och bredden halveras. Mätt i den skarpa filen:
+    // bröstmuskeln renderades 7×3 PIXLAR.
+    const src = readFileSync(resolve("src/atlas2/muscleIcon.jsx"), "utf8");
+    expect(src).toMatch(/\$\{s\} \$\{s\}`/);
+  });
+
+  it("ramen centreras på muskeln", () => {
+    const src = readFileSync(resolve("src/atlas2/muscleIcon.jsx"), "utf8");
+    expect(src).toMatch(/cx - s \/ 2/);
+    expect(src).toMatch(/cy - s \/ 2/);
+  });
+
+  it("tillräckligt av kroppen syns runt omkring", () => {
+    // Utan sammanhang vore en tänd fläck omöjlig att placera på kroppen.
+    const src = readFileSync(resolve("src/atlas2/muscleIcon.jsx"), "utf8");
+    expect(src).toMatch(/\* 2\.6/);
+  });
+
+  it("ramen hålls innanför figuren", () => {
+    // Annars hamnar den halvt utanför för muskler vid kanten (vader,
+    // underarmar) och halva rutan blir tom.
+    const src = readFileSync(resolve("src/atlas2/muscleIcon.jsx"), "utf8");
+    expect(src).toMatch(/Math\.max\(fx0, Math\.min/);
+    expect(src).toMatch(/Math\.max\(fy0, Math\.min/);
+  });
+
+  it("varje region har mätta mått", () => {
+    for (const m of ["pectoralis_major", "quadriceps", "biceps_brachii", "calves"]) {
+      const r = regionFörMuskel(m);
+      expect(r && r.box, m).toBeTruthy();
+      const [x0, y0, x1, y1] = r.box;
+      expect(x1, m).toBeGreaterThan(x0);
+      expect(y1, m).toBeGreaterThan(y0);
+    }
   });
 });
