@@ -46,7 +46,10 @@ describe("två vakter mot falska signaler", () => {
     // en knapp" i stället för "vilan är slut". Mätt i webbläsaren: utan
     // avbröt.current ljöd den vid varje överhoppning.
     expect(src).toMatch(/&& !avbröt\.current\) restDoneCue/);
-    expect(src).toMatch(/avbröt\.current = true; setVila\(0\)/);
+    // Knappen nollställer nu också klockslaget — vilan räknas ur Date.now()
+    // sedan timern gjordes bakgrundssäker, så ett kvarlämnat slutTid hade
+    // återuppväckt en vila man avbrutit.
+    expect(src).toMatch(/avbröt\.current = true; slutTid\.current = 0/);
   });
 
   it("flaggan nollställs så nästa vila ljuder", () => {
