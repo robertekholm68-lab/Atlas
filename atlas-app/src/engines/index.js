@@ -424,13 +424,31 @@ function rensaSökfras(q) {
   return ord.join(" ");
 }
 
-function searchFoods(q, group, history, limit = 50) {
+function searchFoods(q, group, history, limit = 50, egna = null) {
   // Rensa först; faller allt bort är frasen bara en mängd utan livsmedel och
   // originalet får försöka i stället för att ge noll träffar.
   const rensad = rensaSökfras(q);
   const qf = foldStr(rensad || q); if (!qf) return null;
-  const freq = {}; (history || []).forEach(e => { if (e.foodId) freq[e.foodId] = (freq[e.foodId] || 0) + 1; });
+  const freq = {};
+  (history || []).forEach(e => {
+    // ownId för skafferiposter, foodId för Livsmedelsverkets — båda ska räknas,
+    // annars kan en egen vara aldrig ranka högre hur ofta man än äter den.
+    const id = e.ownId || e.foodId;
+    if (id) freq[id] = (freq[id] || 0) + 1;
+  });
   const res = [];
+  // SKAFFERIET SÖKS FÖRST OCH FÅR ETT PÅSLAG.
+  //
+  // En vara man själv sparat är nästan alltid den man menar: skriver man
+  // "yoghurt" och har en sparad favoritsort ska den stå före Livsmedelsverkets
+  // fjorton generiska yoghurtposter. Påslaget är 120 poäng — nog för att vinna
+  // vid likvärdig namnmatchning, men inte nog att låta en svag träff i
+  // skafferiet slå en exakt träff i databasen.
+  for (const f of egna || []) {
+    if (group && group !== "Alla" && group !== "Eget") continue;
+    const s = scoreFood(qf, f, freq);
+    if (s > 0) res.push([s + 120, f]);
+  }
   for (const f of FOOD_INDEX) { if (group && group !== "Alla" && f.group !== group) continue; const s = scoreFood(qf, f, freq); if (s > 0) res.push([s, f]); }
   res.sort((a, b) => b[0] - a[0]);
   return res.slice(0, limit).map(x => x[1]);

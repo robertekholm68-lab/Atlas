@@ -22,11 +22,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
 import { lookupBarcode, tolkaPortion } from "../engines/index.js";
+import { skafferiFrånStreckkod } from "../engines/skafferi.js";
 import { nyId } from "./store.js";
 
 const stöds = () => typeof window !== "undefined" && "BarcodeDetector" in window;
 
-export function Streckkod({ onLägg, onStäng }) {
+export function Streckkod({ onLägg, onStäng, onSpara }) {
   const [kamera, setKamera] = useState("av");     // av | på | nekad | stöds-ej
   const [kod, setKod] = useState("");
   const [laddar, setLaddar] = useState(false);
@@ -102,6 +103,11 @@ export function Streckkod({ onLägg, onStäng }) {
       barcode: träff.code,
       ts: Date.now(),
     });
+    // SPARA I SKAFFERIET AUTOMATISKT. En vara man skannat vill man nästan
+    // alltid hitta igen — och utan detta måste man skanna om varje gång, även
+    // när burken står hemma och man är i affären. Att fråga varje gång vore ett
+    // extra tryck för något man ändå vill.
+    if (onSpara) onSpara(skafferiFrånStreckkod({ ...träff, portion: portionsGram }));
   };
 
   return (

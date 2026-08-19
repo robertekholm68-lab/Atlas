@@ -29,6 +29,13 @@ export function buildEstimatedEntry(text, est, nowMs = Date.now()) {
     estimateHigh: est.estimateHigh,
     assumptions: est.assumptions || null,
     quality: "estimated",
+    // HUR MÅNGA KOMPONENTER DATABASEN KÄNDE IGEN.
+    //
+    // Utan detta går det inte att skilja "100 g keso" — en exakt träff i
+    // Livsmedelsverkets bank — från "mormors köttbullelåda", som bara fick en
+    // svag delmatchning. Erbjudandet att spara i skafferiet ska bara komma för
+    // det senare; för keso vore det brus, varan finns redan sökbar.
+    hits: est.hits || 0,
     ts: nowMs,
   };
 }
