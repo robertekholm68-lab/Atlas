@@ -17,6 +17,7 @@ import { filterRecipes } from "../engines/recipes.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
 import { searchFoods } from "../engines/index.js";
 import { Streckkod } from "./Streckkod.jsx";
+import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet } from "../engines/skafferi.js";
 import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
@@ -76,7 +77,7 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onSkala, onSättKcal, onTaBort }) {
+function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onSkala, onSättKcal, onTaBort, onSpara }) {
   const [redigerar, setRedigerar] = useState(null);
 
   const stegKnapp = {
@@ -334,6 +335,20 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                   })}
                 </div>
 
+                {/* SPARA I SKAFFERIET. Det man äter ofta ska inte behöva sökas
+                    fram varje gång. Knappen sitter i detaljvyn för att den är
+                    ett sällan-val — man sparar en gång, sedan använder man den. */}
+                {onSpara && (
+                  <button onClick={() => onSpara(e)} data-spara-skafferi="1"
+                    style={{
+                      width: "100%", marginTop: 12, padding: "11px 0", minHeight: 44,
+                      borderRadius: 999, border: `1px solid ${C.border}`,
+                      background: "transparent", color: C.text2, fontSize: 12.5, cursor: "pointer",
+                    }}>
+                    Spara i skafferiet
+                  </button>
+                )}
+
                 <button onClick={() => taBort(e.id)} data-tabort="1"
                   style={{
                     width: "100%", marginTop: 12, padding: "11px 0", minHeight: 44, borderRadius: 999,
@@ -364,7 +379,7 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
  * gissning se exakt ut. Rösten FYLLER bara textfältet; ingenting loggas utan
  * att användaren tryckt Lägg till.
  */
-function SnabbLogg({ onLägg }) {
+function SnabbLogg({ onLägg, onLoggad }) {
   const [text, setText] = useState("");
   const [fråga, setFråga] = useState(null);
   const [est, setEst] = useState(null);
@@ -480,7 +495,7 @@ function SnabbLogg({ onLägg }) {
    * skilja det från en vägd portion och från databasens egen uppskattning.
    */
   const läggAI = a => {
-    onLägg({
+    const post = {
       id: nyId("f_"), name: a.namn,
       kcal: a.kcal, protein: a.protein, carbs: a.carbs, fat: a.fat,
       ...(a.gram ? { grams: a.gram } : {}),
@@ -488,14 +503,20 @@ function SnabbLogg({ onLägg }) {
       // alltså modellens tillit till kedjans näringsvärden.
       ts: Date.now(), quality: "ai", source: "ai",
       säkerhet: a.säkerhet || (aiSvar && aiSvar.säkerhet) || "medel",
-    });
+    };
+    onLägg(post);
+    // FRÅGAN KOMMER EFTER LOGGNINGEN, inte före. Maten är redan registrerad när
+    // erbjudandet dyker upp — annars vore det ett hinder mellan användaren och
+    // det hen kom för att göra.
+    if (onLoggad) onLoggad(post);
     nollställ();
   };
 
   const lägg = () => {
     const e = estimateMeal(estText || text, portion);
     const post = buildEstimatedEntry(text, e);
-    if (post) onLägg({
+    let sparad = null;
+    if (post) onLägg(sparad = {
       id: nyId("f_"), ...post,
       // MÄNGDEN SPARAS SOM DEN ANGAVS.
       //
@@ -505,6 +526,7 @@ function SnabbLogg({ onLägg }) {
       ...(e.angivetAntal ? { antal: e.angivetAntal.antal, antalOrd: e.angivetAntal.ord } : {}),
       ...(e.angivenMängd && !e.angivetAntal ? { grams: e.angivenMängd } : {}),
     });
+    if (sparad && onLoggad) onLoggad(sparad);
     nollställ();
   };
 
@@ -717,7 +739,7 @@ function SnabbLogg({ onLägg }) {
 
 /* ── LOGGA ── */
 
-function Logga({ onLägg, foodLog }) {
+function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad }) {
   const [skannar, setSkannar] = useState(false);
   const [fotar, setFotar] = useState(false);
   const [sök, setSök] = useState("");
@@ -731,7 +753,7 @@ function Logga({ onLägg, foodLog }) {
   // en andra sanning om vad maten heter.
   const träffar = useMemo(() => {
     const q = sök.trim();
-    return q.length < 2 ? [] : (searchFoods(q, null, foodLog, 25) || []);
+    return q.length < 2 ? [] : (searchFoods(q, null, foodLog, 25, skafferi) || []);
   }, [sök, foodLog]);
 
   if (vald) {
@@ -771,7 +793,10 @@ function Logga({ onLägg, foodLog }) {
 
   // Skanningen ersätter loggvyn medan den pågår i stället för att ligga i ett
   // ark ovanpå — kameran ska inte kunna bli kvar bakom något annat.
-  if (skannar) return <Streckkod onLägg={p => { onLägg(p); setSkannar(false); }} onStäng={() => setSkannar(false)} />;
+  if (skannar) return <Streckkod
+    onLägg={p => { onLägg(p); setSkannar(false); }}
+    onStäng={() => setSkannar(false)}
+    onSpara={ny => setSkafferi && ny && setSkafferi(x => läggISkafferi(x, ny))} />;
 
   // Samma skäl som för skanningen: fotovyn ersätter loggvyn i stället för att
   // ligga i ett ark, så kameran aldrig blir kvar bakom något annat.
@@ -779,7 +804,7 @@ function Logga({ onLägg, foodLog }) {
 
   return (
     <div>
-      <SnabbLogg onLägg={onLägg} />
+      <SnabbLogg onLägg={onLägg} onLoggad={onLoggad} />
 
       <button onClick={() => setSkannar(true)} style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
@@ -962,12 +987,53 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foo
 
 /* ── VYN ── */
 
-export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [], supplements, egnaRecept = [], setEgnaRecept }) {
+export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [], supplements, egnaRecept = [], setEgnaRecept, skafferi = [], setSkafferi }) {
   const [flik, setFlik] = useState("oversikt");
   const layout = useLayout();
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
   const totaler = dagensNutrition(foodLog);
   const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
+
+  // Erbjudandet att spara i skafferiet: posten som just loggades, eller null.
+  const [erbjudande, setErbjudande] = useState(null);
+
+  /**
+   * ERBJUDER ATT SPARA när maten inte fanns i databasen.
+   *
+   * Robert: "så slipper man komma ihåg". Att spara är annars något man måste
+   * minnas att göra i efterhand, i en annan vy — och då gör man det inte.
+   *
+   * LIGGER I FoodView, INTE I LOGGA-FLIKEN. Loggning byter flik till Idag, så
+   * en ruta i Logga-vyn hade aldrig synts. Första försöket gjorde precis det
+   * felet; webbläsarkontrollen visade att erbjudandet aldrig nådde skärmen.
+   *
+   * BARA FÖR MAT DATABASEN INTE HADE. En keso som slogs upp i FOOD_INDEX finns
+   * redan sökbar; att erbjuda ett skafferi för den vore brus.
+   */
+  const erbjudSpara = post => {
+    if (!setSkafferi || !post || !post.name) return;
+    if (post.foodId) return;
+    // EN AI-POST ERBJUDS ALLTID — den kommer per definition från mat databasen
+    // inte hade.
+    //
+    // För en uppskattad post räcker inte hits > 0 som villkor. "mormors
+    // köttbullelåda" får hits 1 eftersom "köttbulle" matchar som DELORD, precis
+    // som "hamburgare från max" matchade råvaran. Träffen finns men är svag, och
+    // rätten går ändå inte att söka fram nästa gång.
+    //
+    // Villkoret är i stället om HELA texten redan är sökbar: hittar searchFoods
+    // en post vars namn börjar med det man skrev, finns varan och erbjudandet
+    // vore brus. "100 g keso" -> "Keso" stoppas; "mormors köttbullelåda" -> ingen
+    // post börjar så, alltså erbjuds den.
+    if (post.quality === "estimated") {
+      const rent = String(post.name || "").toLowerCase()
+        .replace(/\d+([.,]\d+)?\s*(gram|g|kg|dl|cl|ml|st)\b/g, "").trim();
+      const träff = (searchFoods(rent, null, [], 1, skafferi) || [])[0];
+      if (träff && träff.name.toLowerCase().startsWith(rent.split(" ")[0])) return;
+    }
+    if (redanISkafferiet(skafferi, { name: post.name })) return;
+    setErbjudande(post);
+  };
 
   // ÄNDRING OCH BORTTAGNING AV LOGGAD MAT.
   //
@@ -1065,12 +1131,41 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
         ))}
       </div>
 
+      {/* Erbjudandet står överst i Idag-vyn, dit man skickas efter loggning.
+          Det är ett erbjudande, inte en fråga som blockerar — trycker man inte
+          försvinner det vid nästa loggning. */}
+      {flik === "oversikt" && erbjudande && (
+        <div style={{ ...card, padding: 14, marginBottom: 14, borderColor: C.lime }}>
+          <div style={{ ...label(C.lime), marginBottom: 6 }}>Sparad i loggen</div>
+          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.55 }}>
+            ”{erbjudande.name}” fanns inte i livsmedelsdatabasen. Spara den i
+            skafferiet så hittar du den på namn nästa gång.
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button onClick={() => {
+              setSkafferi(x => läggISkafferi(x, skafferiFrånPost(erbjudande)));
+              setErbjudande(null);
+            }} data-spara-erbjudande="1"
+              style={{
+                flex: 1, padding: "11px 0", minHeight: 44, borderRadius: 999, cursor: "pointer",
+                border: "none", background: C.lime, color: "#0A0A0A", fontSize: 12.5, fontWeight: 600,
+              }}>Spara</button>
+            <button onClick={() => setErbjudande(null)}
+              style={{
+                flex: 1, padding: "11px 0", minHeight: 44, borderRadius: 999, cursor: "pointer",
+                border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontSize: 12.5,
+              }}>Nej tack</button>
+          </div>
+        </div>
+      )}
+
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
         onLogga={() => setFlik("logga")} onSätta={onSätta}
         onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onSättGram={sättGramPost}
         onSättMåltid={sättMåltidPost} onSkala={skalaPost} onSättKcal={sättKcalPost}
-        onTaBort={taBortPost} />}
-      {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} />}
+        onTaBort={taBortPost}
+        onSpara={setSkafferi ? (post => setSkafferi(x => läggISkafferi(x, skafferiFrånPost(post)))) : null} />}
+      {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} skafferi={skafferi} setSkafferi={setSkafferi} onLoggad={erbjudSpara} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
           profile={profile} setProfile={setProfile} bred={layout.desktop} foodLog={foodLog}
