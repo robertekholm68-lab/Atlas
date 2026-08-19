@@ -182,6 +182,16 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const [vikt, setVikt] = useState(it ? it.vikt : null);
   const [reps, setReps] = useState(it ? it.reps : 8);
   const [vila, setVila] = useState(0);
+  // KLOCKSLAGET NÄR VILAN TAR SLUT, inte en nedräknare.
+  //
+  // setTimeout fryser när skärmen släcks eller man byter app — webbläsaren
+  // pausar timers i bakgrunden. Timern stod alltså still i fickan: efter 90 s
+  // visade den fortfarande 90 s kvar, och signalen kom aldrig.
+  //
+  // Med ett måltidsklockslag räknas återstoden ur Date.now() varje tick, och
+  // stämmer oavsett hur länge appen varit borta. Samma princip som passtiden,
+  // som räknas ur `startad` i stället för att tickas upp.
+  const slutTid = useRef(0);
   const [byter, setByter] = useState(false);
   const [musik, setMusik] = useState(false);
   // Ljud och vibration på som standard, röst och notis av — samma DEFAULT_CUES
@@ -236,13 +246,41 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     if (n) { setVikt(n.vikt); setReps(n.reps); }
   }, [live.idx]);
 
-  // Nedräkning. Rensas alltid vid avmontering — annars tickar den vidare
-  // osynligt och startar om nästa gång vyn öppnas.
+  // Nedräkning ur klockslaget. Rensas alltid vid avmontering — annars tickar
+  // den vidare osynligt och startar om nästa gång vyn öppnas.
   useEffect(() => {
     if (vila <= 0) return;
-    timer.current = setTimeout(() => setVila(v => v - 1), 1000);
+    timer.current = setTimeout(() => {
+      const kvar = Math.max(0, Math.round((slutTid.current - Date.now()) / 1000));
+      setVila(kvar);
+    }, 1000);
     return () => clearTimeout(timer.current);
   }, [vila]);
+
+  // NÄR APPEN VAKNAR räknas återstoden om direkt, utan att vänta på nästa tick.
+  // Utan detta visar vyn det frusna värdet i upp till en sekund efter att man
+  // väckt skärmen — och har vilan tagit slut under tiden ska den sluta NU, inte
+  // efter ett tick till.
+  // ÅTERSTÄLL VID MONTERING. Passet kan ha legat stängt över vilan; då ska
+  // återstoden räknas ur det sparade klockslaget, inte börja om på noll.
+  useEffect(() => {
+    if (!live.vilaSlut) return;
+    slutTid.current = live.vilaSlut;
+    setVila(Math.max(0, Math.round((live.vilaSlut - Date.now()) / 1000)));
+  }, []);
+
+  useEffect(() => {
+    const vakna = () => {
+      if (document.visibilityState !== "visible" || !slutTid.current) return;
+      setVila(Math.max(0, Math.round((slutTid.current - Date.now()) / 1000)));
+    };
+    document.addEventListener("visibilitychange", vakna);
+    window.addEventListener("focus", vakna);
+    return () => {
+      document.removeEventListener("visibilitychange", vakna);
+      window.removeEventListener("focus", vakna);
+    };
+  }, []);
 
   /**
    * SIGNAL NÄR VILAN ÄR SLUT.
@@ -316,7 +354,13 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       ? { ...x, loggade: [...x.loggade, { vikt, reps, ts: Date.now() }] } : x);
     const sista = klara + 1 >= it.set;
     const nästaIdx = sista ? Math.min(live.idx + 1, live.items.length - 1) : live.idx;
-    setLive({ ...live, items: nya, idx: nästaIdx });
+    // Klockslaget läggs på LIVE-passet, som redan sparas vid varje ändring.
+    // Utan det överlever vilan inte att appen stängs helt — bara att den läggs
+    // i bakgrunden. Ett pass man återvänder till efter en minut ska visa rätt
+    // återstod, inte börja om.
+    const slut = Date.now() + it.vila * 1000;
+    slutTid.current = slut;
+    setLive({ ...live, items: nya, idx: nästaIdx, vilaSlut: slut });
     setVila(it.vila);
   };
 
@@ -582,7 +626,11 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       {vila > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 20 }}>
           <Ring kvar={vila} av={it.vila} />
-          <button onClick={() => { avbröt.current = true; setVila(0); }}
+          <button onClick={() => {
+            avbröt.current = true; slutTid.current = 0;
+            setLive(l => ({ ...l, vilaSlut: 0 }));
+            setVila(0);
+          }}
             style={{ ...btnGhost, marginTop: 16, maxWidth: 220 }}>Hoppa över vilan</button>
         </div>
       ) : (
