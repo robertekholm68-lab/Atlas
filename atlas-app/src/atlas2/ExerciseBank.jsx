@@ -66,7 +66,7 @@ function muskelNamn(id) {
  * övning. Utan den vägen tvingades man skapa ett program för att logga ett pass,
  * och då loggade man inte alls.
  */
-export function ExerciseBank({ onClose, onStarta }) {
+export function ExerciseBank({ onClose, onStarta, iPågåendePass = false }) {
   // Valda övningar i den ordning de plockades. Ordningen ÄR passets ordning —
   // den som väljer bänkpress först vill förmodligen börja där.
   const [valda, setValda] = useState([]);
@@ -157,7 +157,7 @@ export function ExerciseBank({ onClose, onStarta }) {
       {onStarta && valda.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <button onClick={() => onStarta(valda)} data-starta-fritt="1" style={btnPrimary}>
-            Starta pass — {valda.length} {valda.length === 1 ? "övning" : "övningar"}
+            {iPågåendePass ? "Lägg till" : "Starta pass"} — {valda.length} {valda.length === 1 ? "övning" : "övningar"}
           </button>
           <button onClick={() => setValda([])} style={{ ...btnText, marginTop: 6, minHeight: 40 }}>
             Rensa valet

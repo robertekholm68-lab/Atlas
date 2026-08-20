@@ -617,6 +617,49 @@ export function Atlas2() {
    * 3x8 är förvalet. Den som mixar fritt vill komma igång, inte fylla i ett
    * formulär; set och reps går att ändra i passvyn som vanligt.
    */
+  /**
+   * TOMT PASS — övningarna väljs efterhand.
+   *
+   * Skiljer sig från fritt pass, där man plockar allt i förväg. På gymmet vet
+   * man ofta inte: man tar det som är ledigt och bestämmer nästa övning när
+   * den förra är klar.
+   *
+   * Passet byggs med samma buildLive, bara utan övningar. Progression och
+   * muskellast räknas identiskt när övningarna väl läggs till.
+   */
+  const startaTomtPass = () => {
+    setLive(buildLive(null, { name: "Fritt pass", exercises: [] }, sessions));
+    setSheet(null);
+    setFlik("pass");
+  };
+
+  /**
+   * Lägger till en övning i ett PÅGÅENDE pass.
+   *
+   * Går till samma övningsbank som fritt pass, men i stället för att starta
+   * ett nytt pass fylls det som redan är igång på. Loggade set rörs inte.
+   */
+  const läggTillÖvningIPass = exIds => {
+    // VILLKORET FÅR INTE LÄSA `live` FRÅN STÄNGNINGEN.
+    //
+    // Arket renderas i samma träd som passet; funktionen skapades i en render
+    // där live kunde vara null, och `!live` slog då ut hela tillägget tyst —
+    // övningen försvann utan felmeddelande. setLive får i stället avgöra
+    // utifrån det AKTUELLA värdet.
+    if (!exIds || !exIds.length) return;
+    // buildLive bygger items med progression, viktförslag och muskellast. Att
+    // återanvända den för de nya övningarna ger exakt samma behandling som om
+    // de stått i passet från början — en övning tillagd mitt i passet ska inte
+    // vara en andra klassens post.
+    const tillägg = buildLive(null, {
+      name: "tillägg",
+      exercises: exIds.map(id => ({ exId: id, sets: 3, repMin: 6, repMax: 12, restSec: 90 })),
+    }, sessions);
+    setLive(l => (l ? { ...l, items: [...l.items, ...tillägg.items] } : l));
+    setSheet(null);
+    setFlik("pass");
+  };
+
   const startaFrittPass = exIds => {
     if (!exIds || !exIds.length) return;
     const workout = {
@@ -676,6 +719,7 @@ export function Atlas2() {
       if (live) return (
         <WorkoutView live={live} setLive={setLive} sessions={sessions} setSessions={setSessions}
           avslutaDirekt={avslutaDirekt}
+          onLäggTillÖvning={() => setSheet("ovningar")}
           onDone={r => { setLive(null); setAvslutaDirekt(false); setKlart(r); }}
           // AVSLUTA I FÖRTID MÅSTE RENSA PASSET, inte bara byta flik.
           //
@@ -795,6 +839,12 @@ export function Atlas2() {
 
           <button onClick={() => setSheet("ovningar")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
             Bläddra bland alla övningar →
+          </button>
+          {/* TOMT PASS. Skiljer sig från att plocka övningar i banken: här
+              bestämmer man ingenting i förväg utan fyller på i gymmet. */}
+          <button onClick={startaTomtPass} data-starta-tomt="1"
+            style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
+            Starta tomt pass — fyll på efterhand →
           </button>
           <button onClick={() => setSheet("maskiner")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
             Maskiner — inställningar och vanliga fel →
@@ -933,7 +983,9 @@ export function Atlas2() {
                 onKost={() => { setSheet(null); setFlik("mat"); }}
                 onClose={() => setSheet(null)} />
             ) : sheet === "ovningar" ? (
-              <ExerciseBank onClose={() => setSheet(null)} onStarta={startaFrittPass} />
+              <ExerciseBank onClose={() => setSheet(null)}
+                onStarta={live ? läggTillÖvningIPass : startaFrittPass}
+                iPågåendePass={!!live} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
             ) : sheet === "kunskap" ? (
