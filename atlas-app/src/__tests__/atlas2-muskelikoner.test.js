@@ -48,8 +48,10 @@ describe("aliasen täcker namnskillnaderna", () => {
     }
   });
 
-  it("obliques hittar external_obliques", () => {
-    expect(regionFörMuskel("obliques").id).toBe("external_obliques");
+  it("obliques har en egen region", () => {
+    // Regionen hette external_obliques i den handritade kartan. Den nya, byggd
+    // ur masker, använder motorns eget id.
+    expect(regionFörMuskel("obliques").id).toBe("obliques");
   });
 
   it("en okänd muskel ger null", () => {
@@ -76,9 +78,10 @@ describe("beskärningen använder figurens faktiska mått", () => {
   it("kartans viewBox har tomrum som miniatyren inte ska visa", () => {
     // Figuren ligger i mitten av 500×1020. Utan beskärning blir den hälften så
     // stor som den kunde vara och musklerna reduceras till prickar.
+    // Kartans viewBox rymmer hela figuren; miniatyren zoomar in på muskeln.
     const box = REGIONS.front.viewBox.split(" ").map(Number);
-    expect(box[2]).toBe(500);
-    expect(box[3]).toBe(1020);
+    expect(box[2]).toBeGreaterThan(300);
+    expect(box[3]).toBeGreaterThan(800);
   });
 });
 

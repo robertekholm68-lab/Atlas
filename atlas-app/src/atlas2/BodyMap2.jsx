@@ -17,7 +17,7 @@
 // per-muskel-SVG som vi inte har.
 
 import { useState } from "react";
-import { C, HFONT, statusColor } from "./design.js";
+import { C, HFONT, recoveryColor } from "./design.js";
 import REGIONS from "./body_regions.json";
 import figurFram from "../assets/brand/figur-fram.webp";
 import figurBak from "../assets/brand/figur-bak.webp";
@@ -124,7 +124,12 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
         </defs>
       {data.regions.map(r => {
         const st = regionState(r.id, states);
-        const färg = st ? statusColor(st.status) : GRUNDTON;
+        // STEGLÖS FÄRG UR readiness, inte ur status.
+        //
+        // status var fyra hinkar; readiness är det tal motorn faktiskt räknar,
+        // med muskelspecifik halveringstid. Nyansen följer nu återhämtningen i
+        // exakt den takt den sker i verkligheten.
+        const färg = st ? (recoveryColor(st.readiness) || GRUNDTON) : GRUNDTON;
         const aktiv = rör === r.id;
         return (
           <g key={r.id} data-region={r.id}
@@ -156,9 +161,19 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
                 // färgen mot ett ljust underlag — samma 0,5 som räckte mot ett
                 // mörkt foto ger blek status mot ett ljust. Mätt i pixelvärden,
                 // inte uppskattat.
-                fillOpacity={st ? (aktiv ? 0.85 : 0.66) : (aktiv ? 0.22 : 0)}
+                fillOpacity={st ? (aktiv ? 0.78 : 0.62) : (aktiv ? 0.18 : 0)}
                 stroke={aktiv && st ? färg : "none"} strokeWidth={1.5}
-                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "overlay" }} />
+                // MULTIPLY, INTE OVERLAY, MOT DEN LJUSA FIGUREN.
+                //
+                // "overlay" behåller underlagets ljus och lägger färgen som en
+                // ton. Mot det gamla MÖRKA fotot fungerade det; mot den ljusa
+                // anatomiillustrationen blev resultatet nästan osynligt — den
+                // ljusa huden drog färgen mot vitt.
+                //
+                // "multiply" mörknar i stället, vilket ger full kulör mot ljust
+                // underlag och samtidigt låter muskelteckningens skuggor lysa
+                // igenom. Mätt på skärmbild, inte uppskattat.
+                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "multiply" }} />
             ))}
           </g>
         );

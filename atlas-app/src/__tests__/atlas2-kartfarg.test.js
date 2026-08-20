@@ -20,9 +20,9 @@ import { resolve } from "path";
 const src = readFileSync(resolve("src/atlas2/BodyMap2.jsx"), "utf8");
 
 describe("färgen ligger i anatomin, inte ovanpå den", () => {
-  it("blandningsläget är overlay, inte screen", () => {
+  it("blandningsläget är multiply mot den ljusa figuren", () => {
     // screen ljusnar bara; overlay behåller fotots ljus och skugga.
-    expect(src).toMatch(/mixBlendMode:\s*"overlay"/);
+    expect(src).toMatch(/mixBlendMode:\s*"multiply"/);
     expect(src).not.toMatch(/mixBlendMode:\s*"screen"/);
   });
 
@@ -52,7 +52,7 @@ describe("otränade muskler lyser fortfarande inte", () => {
   it("utan underlag ritas ingen färg alls", () => {
     // Ärlighetsregeln: det som lyser är det som har underlag. Anatomibilden
     // under räcker för att visa att muskeln finns.
-    expect(src).toMatch(/: \(aktiv \? 0\.22 : 0\)/);
+    expect(src).toMatch(/: \(aktiv \? 0\.18 : 0\)/);
   });
 });
 
