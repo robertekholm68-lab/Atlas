@@ -17,7 +17,7 @@
 // per-muskel-SVG som vi inte har.
 
 import { useState } from "react";
-import { C, HFONT, statusColor } from "./design.js";
+import { C, HFONT, recoveryColor } from "./design.js";
 import REGIONS from "./body_regions.json";
 import figurFram from "../assets/brand/figur-fram.webp";
 import figurBak from "../assets/brand/figur-bak.webp";
@@ -91,21 +91,19 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
         <img src={bildUrl(vy)} alt="" onError={() => setBildOk(false)}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
-            // LJUSARE FIGUR.
+            // INGEN UPPLJUSNING AV DEN ANATOMISKA ILLUSTRATIONEN.
             //
-            // Bilden mörkades vid genereringen för att de färgade musklerna
-            // skulle bära informationen. Med overlay-blandningen behövs det
-            // inte längre: färgen tar sin ton ur underlaget i stället för att
-            // konkurrera med det, så ett mörkare foto ger bara en mörkare karta.
+            // brightness(1.8) fanns för det gamla, MÖRKA fotot — det behövde
+            // ljusas upp för att synas mot appens svarta bakgrund. Den nya
+            // illustrationen är redan ljus (medelvärde 156 i PSD:n), och 1,8
+            // blåste ut den till 252,250,249: nästan rent vitt. Muskelteckningen
+            // försvann och hela figuren såg blek ut. Mätt på skärmbild.
             //
-            // Kontrasten höjs en aning tillsammans med ljusstyrkan. Enbart
-            // brightness gör bilden gråare — muskeldefinitionen bleks ut, och
-            // det är just den som gör att färgen inte ser påklistrad ut.
-            // Mättnaden dras NER på underlaget så att statusfärgen får bära
-            // kulören ensam. Utan det konkurrerar figurens egen hudton med
-            // färgen, och vid hög ljusstyrka blir resultatet ljusrosa i stället
-            // för rött. Mätt: grönt tappade 31 % mättnad mellan 1,45 och 1,8.
-            filter: "brightness(1.8) contrast(1.15) saturate(0.55)",
+            // Kontrasten höjs en aning i stället. Den lyfter fram
+            // muskeldefinitionen utan att flytta ljusheten, och det är just
+            // teckningen som gör att färgen ser inbakad ut i stället för
+            // påklistrad.
+            filter: "contrast(1.12)",
           }} />
       )}
       <svg viewBox={data.viewBox} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
@@ -124,7 +122,12 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
         </defs>
       {data.regions.map(r => {
         const st = regionState(r.id, states);
-        const färg = st ? statusColor(st.status) : GRUNDTON;
+        // STEGLÖS FÄRG UR readiness, inte ur status.
+        //
+        // status var fyra hinkar; readiness är det tal motorn faktiskt räknar,
+        // med muskelspecifik halveringstid. Nyansen följer nu återhämtningen i
+        // exakt den takt den sker i verkligheten.
+        const färg = st ? (recoveryColor(st.readiness) || GRUNDTON) : GRUNDTON;
         const aktiv = rör === r.id;
         return (
           <g key={r.id} data-region={r.id}
@@ -156,9 +159,19 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
                 // färgen mot ett ljust underlag — samma 0,5 som räckte mot ett
                 // mörkt foto ger blek status mot ett ljust. Mätt i pixelvärden,
                 // inte uppskattat.
-                fillOpacity={st ? (aktiv ? 0.85 : 0.66) : (aktiv ? 0.22 : 0)}
+                fillOpacity={st ? (aktiv ? 0.78 : 0.62) : (aktiv ? 0.18 : 0)}
                 stroke={aktiv && st ? färg : "none"} strokeWidth={1.5}
-                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "overlay" }} />
+                // MULTIPLY, INTE OVERLAY, MOT DEN LJUSA FIGUREN.
+                //
+                // "overlay" behåller underlagets ljus och lägger färgen som en
+                // ton. Mot det gamla MÖRKA fotot fungerade det; mot den ljusa
+                // anatomiillustrationen blev resultatet nästan osynligt — den
+                // ljusa huden drog färgen mot vitt.
+                //
+                // "multiply" mörknar i stället, vilket ger full kulör mot ljust
+                // underlag och samtidigt låter muskelteckningens skuggor lysa
+                // igenom. Mätt på skärmbild, inte uppskattat.
+                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "multiply" }} />
             ))}
           </g>
         );

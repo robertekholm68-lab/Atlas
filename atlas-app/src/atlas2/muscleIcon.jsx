@@ -25,8 +25,10 @@ import REGIONS from "./body_regions.json";
 const ALIAS = {
   deltoid_anterior: "deltoids",
   deltoid_lateral: "deltoids",
+  // Regionen hette external_obliques i den handritade kartan. Den nya, byggd
+  // ur masker, använder motorns eget id — aliaset behövs inte längre och
+  // pekade på en region som inte finns.
   deltoid_posterior: "deltoids",
-  obliques: "external_obliques",
 };
 
 /**

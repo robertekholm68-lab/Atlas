@@ -66,6 +66,39 @@ export function statusColor(status) {
     critical: C.critical, undertrained: C.undertrained, no_data: C.nodata })[status] || C.nodata;
 }
 
+/**
+ * STEGLÖS ÅTERHÄMTNINGSFÄRG. score 0-100, eller null när underlag saknas.
+ *
+ * Kartan färgades förut i fyra hinkar: ready, nearly_ready, recovering,
+ * critical. Men motorn räknar redan ett STEGLÖST värde ur exponentiellt
+ * avtagande last med muskelspecifik halveringstid — bröstet 48 h, magen 36 h.
+ * Att runda det till fyra lådor kastade bort information: en muskel på 55 %
+ * och en på 68 % såg identiska ut fast de inte är det.
+ *
+ * Nu ärver nyansen kurvan rakt av. Efter ett bröstpass går färgen röd → orange
+ * → gul → grön i exakt den takt muskeln faktiskt återhämtar sig.
+ *
+ * NULL GER NULL, inte en grå färg. Anropande kod ska kunna välja att inte rita
+ * något alls — ofärgat är signalen för "ingen data", och en grå fyllning hade
+ * sett ut som ett tillstånd i skalan.
+ */
+export function recoveryColor(score) {
+  if (score == null || Number.isNaN(score)) return null;
+  const t = Math.max(0, Math.min(100, score)) / 100;
+  // 6° (röd) → 142° (grön). Mättnaden sjunker något mot grönt så en vilad
+  // kropp inte skriker; ljusheten stiger för att grönt uppfattas mörkare.
+  const h = 6 + t * 136;
+  const s = 0.62 - t * 0.10;
+  const l = 0.52 + t * 0.04;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  const hex = n => Math.round(255 * f(n)).toString(16).padStart(2, "0");
+  return `#${hex(0)}${hex(8)}${hex(4)}`;
+}
+
 // Typografi enligt guiden:
 //   Display — Archivo Expanded Bold. Versaler, tracking +2 %. Rubriker, siffror.
 //   UI & brödtext — Inter. Semibold för kortrubriker/knappar, Regular för
