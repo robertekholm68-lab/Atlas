@@ -173,7 +173,7 @@ function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = fal
 
 
 
-export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort, avslutaDirekt = false }) {
+export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort, avslutaDirekt = false, onLäggTillÖvning }) {
   // Hooks före villkorade returer (projektlag). Bredden avgör sifferstorleken i
   // stegarna: träffytorna är låsta vid 44 px, så det är talet som får ge vika
   // när skärmen är smal.
@@ -311,14 +311,17 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   // Kontinuerlig persistens: varje ändring skrivs direkt.
   useEffect(() => { save("live", live); }, [live]);
 
-  if (!it) return null;
 
-  const klara = it.loggade.length;
+  // TÅL ETT TOMT PASS. Vyn för noll övningar renderas längre ner — men de här
+  // raderna körs vid VARJE render, alltså även innan dess. Utan skyddet kastar
+  // it.loggade och hela vyn blir blank, vilket är precis det felet tomvyn
+  // skulle lösa.
+  const klara = it ? it.loggade.length : 0;
   const totaltSet = live.items.reduce((a, x) => a + x.set, 0);
   const klaraSet = live.items.reduce((a, x) => a + x.loggade.length, 0);
-  const förra = klara > 0 ? it.loggade[klara - 1] : null;
+  const förra = it && klara > 0 ? it.loggade[klara - 1] : null;
 
-  const saknarVikt = it.yttreVikt && !(vikt > 0);
+  const saknarVikt = !!it && it.yttreVikt && !(vikt > 0);
 
   const lyssnaSet = () => {
     if (röst && röst.läge === "lyssnar") { if (stoppaRöst.current) stoppaRöst.current(); setRöst(null); return; }
@@ -455,6 +458,46 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     if (avslutaDirekt && !avslutat.current) { avslutat.current = true; avsluta(); }
   }, [avslutaDirekt]);
 
+  /**
+   * TOMT PASS — övningar läggs till efterhand.
+   *
+   * Ett program och ett fritt pass kräver båda att man bestämmer allt i förväg.
+   * På gymmet vet man ofta inte: man tar det som är ledigt och bestämmer nästa
+   * övning när den förra är klar.
+   *
+   * `return null` gav BLANK SKÄRM för ett pass utan övningar — passet fanns i
+   * storage men vyn ritade ingenting alls. Nu blir det en inbjudan i stället.
+   */
+  if (!it) return (
+    <div style={{ padding: "4px 0 24px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <button onClick={onAbort} style={{ background: "none", border: "none", color: C.text, fontSize: 22, cursor: "pointer", padding: 6 }} aria-label="Tillbaka">‹</button>
+        <div style={hdr(15)}>Pågående pass</div>
+        <span style={{ width: 34 }} />
+      </div>
+
+      <div style={{ ...card, padding: 20, marginTop: 18, textAlign: "center" }}>
+        <div style={{ ...hdr(16), marginBottom: 8 }}>Passet är igång</div>
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
+          Lägg till första övningen när du står vid den. Du kan fylla på
+          efterhand — passet behöver ingen plan i förväg.
+        </div>
+        {onLäggTillÖvning && (
+          <button onClick={onLäggTillÖvning} data-lagg-till-forsta="1"
+            style={{ ...btnPrimary, marginTop: 18 }}>
+            Lägg till övning
+          </button>
+        )}
+      </div>
+
+      {/* Avsluta finns även här: startar man ett tomt pass av misstag ska man
+          inte behöva lägga till en övning för att komma ur det. */}
+      <button onClick={onAbort} style={{ ...btnGhost, marginTop: 12 }}>
+        Avsluta passet
+      </button>
+    </div>
+  );
+
   const allaKlara = klaraSet >= totaltSet;
 
   return (
@@ -531,6 +574,18 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
                 background: "none", border: `1px solid ${C.border}`, borderRadius: 999,
                 color: C.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer", minHeight: 32,
               }}>Nästa övning</button>
+          )}
+          {/* LÄGG TILL FLER UNDER PASSETS GÅNG — i setraden, inte på egen rad.
+              Layoutvakten mätte +59 px scroll på iPhone SE med en fristående
+              knapp, exakt som för "Nästa övning" tidigare. Passvyn är den enda
+              vy som måste rymmas utan scroll. */}
+          {onLäggTillÖvning && (
+            <button onClick={onLäggTillÖvning} data-lagg-till-ovning="1"
+              aria-label="Lägg till övning i passet"
+              style={{
+                background: "none", border: `1px solid ${C.border}`, borderRadius: 999,
+                color: C.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer", minHeight: 32,
+              }}>+</button>
           )}
         </div>
         {it.förslag && <div style={{ fontSize: 12, color: C.lime, marginTop: 5 }}>{it.förslag}</div>}
