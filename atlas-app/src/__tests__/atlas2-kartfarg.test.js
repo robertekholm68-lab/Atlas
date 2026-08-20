@@ -71,10 +71,21 @@ describe("figuren är ljus nog att se anatomin i", () => {
     expect(src).toMatch(/contrast\(1\.\d+\)/);
   });
 
-  it("underlagets mättnad dras ner så statusfärgen bär kulören", () => {
-    // Utan saturate konkurrerar figurens egen hudton med statusfärgen, och vid
-    // hög ljusstyrka blir rött ljusrosa i stället för rött.
-    expect(src).toMatch(/saturate\(0?\.\d+\)/);
+  it("figuren ljusas INTE upp", () => {
+    // brightness(1.8) fanns för det gamla MÖRKA fotot. Den nya anatomiska
+    // illustrationen är redan ljus (medelvärde 156 i källan), och 1,8 blåste ut
+    // den till 252,250,249 — nästan rent vitt. Muskelteckningen försvann helt.
+    //
+    // Mätt på skärmbild: standardavvikelsen i huden gick från 14,9 (utblåst)
+    // till 42,3 (teckning synlig) när uppljusningen togs bort.
+    //
+    // saturate behövdes av samma skäl: utan uppljusning konkurrerar figurens
+    // hudton inte längre med statusfärgen.
+    // Matchar filter-RADEN, inte kommentaren som förklarar varför den ser ut
+    // som den gör — en regex mot hela filen träffar båda.
+    const rad = src.match(/filter: "[^"]+"/)[0];
+    expect(rad).not.toMatch(/brightness/);
+    expect(rad).toMatch(/contrast\(1\.\d+\)/);
   });
 
   it("filtret sitter på bilden, inte på färglagret", () => {
