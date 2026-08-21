@@ -7,7 +7,7 @@
 // råkar dela nycklar.
 
 import {
-  computeRecovery, computeReadiness, computeSystemicFatigue,
+  computeRecovery, computeReadiness, computeSystemicFatigue, normalWeeklyLoad,
   computeNutrition, distinctNutritionDays,
 } from "../engines/index.js";
 import { MUSCLES } from "../data/muscles.js";
@@ -51,7 +51,7 @@ export function bodyState(sessions, nowMs = Date.now()) {
   const states = {};
   const sysFat = computeSystemicFatigue ? computeSystemicFatigue(sessions, nowMs) : 0;
   const cardioPenalty = Math.min(18, Math.round(sysFat || 0));
-  let sum = 0, n = 0;
+  let sum = 0, n = 0, medData = 0;
   Object.keys(MUSCLES).forEach(id => {
     const rec = computeRecovery(sessions, id, nowMs);
     const weeklyLoad = (sessions || [])
@@ -60,16 +60,46 @@ export function bodyState(sessions, nowMs = Date.now()) {
     // Cardio tär på hela systemet, inte bara den muskel som lyfte — samma
     // avdrag som nuvarande appen gör, annars skulle 2.0 visa en gladare siffra
     // för samma historik.
-    const base = computeReadiness(rec.recoveryScore, weeklyLoad, rec.daysSince);
+    // Tröskeln jämförs mot användarens EGEN normalvecka, inte ett fast tal.
+    const normal = normalWeeklyLoad ? normalWeeklyLoad(sessions, id, nowMs) : 0;
+    const base = computeReadiness(rec.recoveryScore, weeklyLoad, rec.daysSince, normal);
     const readiness = rec.status === "no_data" ? base : Math.max(0, Math.min(100, base - cardioPenalty));
     states[id] = { ...rec, readiness, weeklyLoad };
-    if (rec.status !== "no_data" && readiness != null) { sum += readiness; n++; }
+
+    // HELKROPPSSNITTET VÄGER IN OTRÄNADE MUSKLER SOM UTVILADE.
+    //
+    // Förut räknades bara muskler MED data. Tränade man bara ben blev
+    // helkroppssiffran snittet av tre trötta benmuskler — bröst, rygg och axlar
+    // var fullt utvilade men bidrog med ingenting alls.
+    //
+    // Mätt på ett verkligt fall: 7 set ben i tisdags gav overall 68, räknat på
+    // 5 av 21 muskler. Med hela kroppen inräknad blir siffran den den ska vara:
+    // benen är trötta, resten är redo.
+    //
+    // VIKTAT EFTER MUSKELSTORLEK, inte rakt snitt. Annars skulle vaderna väga
+    // lika tungt som ryggen, och en kropp med trötta ben se lika redo ut som en
+    // med trötta vader. Stora muskler bär mer av vad "hela kroppen" betyder.
+    const vikt = { large: 3, medium: 2, small: 1 }[(MUSCLES[id] || {}).size] || 2;
+    // En otränad muskel ÄR utvilad — men bidrar med HALV vikt.
+    //
+    // Full vikt gjorde ett helkroppspass till en gladare siffra än ett benpass:
+    // helkroppspasset har färre otränade muskler att dra upp snittet med. Mätt:
+    // helkropp igår 88, ben igår 85 — fel ordning, eftersom helkroppspasset
+    // tröttar mer.
+    //
+    // Halv vikt låter de utvilade lyfta snittet utan att dominera det. Kroppen
+    // du faktiskt belastat väger tyngst.
+    const bidrag = rec.status === "no_data" ? 100 : readiness;
+    const b_vikt = rec.status === "no_data" ? vikt * 0.5 : vikt;
+    if (bidrag != null) { sum += bidrag * b_vikt; n += b_vikt; }
+    if (rec.status !== "no_data") medData++;
   });
   return {
     states,
-    // Ingen historik → ingen siffra. Aldrig ett påhittat medelvärde.
-    overall: n ? Math.round(sum / n) : null,
-    covered: n,
+    // Ingen historik alls → ingen siffra. Aldrig ett påhittat medelvärde.
+    // Men SÅ SNART något är loggat räknas hela kroppen, inte bara det tränade.
+    overall: medData ? Math.round(sum / n) : null,
+    covered: medData,
     systemic: sysFat,
   };
 }
