@@ -264,11 +264,59 @@ function balanceScore({ overallReadiness, sessions, foodLog, nutritionTargets, s
   return { pillars, overall, weakest, hasData: true, trainingLeads };
 }
 
-function computeReadiness(recoveryScore, weeklyLoad, daysSince) {
-  const threshold = 1000;
-  const overloadPenalty = weeklyLoad > threshold ? Math.min(20, (weeklyLoad - threshold) / threshold * 20) : 0;
+/**
+ * @param {number} recoveryScore  0-100 ur exponentiellt avtagande last
+ * @param {number} weeklyLoad     summerad last senaste 7 dygnen
+ * @param {number} daysSince      dygn sedan muskeln tränades
+ * @param {number} [normalLoad]   användarens EGEN normala veckolast för muskeln
+ */
+function computeReadiness(recoveryScore, weeklyLoad, daysSince, normalLoad) {
+  // TRÖSKELN SKALAS EFTER EGEN HISTORIK, inte ett fast tal.
+  //
+  // Fast tröskel 1000 var satt för en skala som inte finns i verkligheten.
+  // Lasten är vikt × reps × aktivering: ett enda set knäböj med 100 kg × 8 ger
+  // ~640 på quadriceps. Mätt på riktiga pass:
+  //
+  //   3 set 60 kg  → 1440  → halva straffet
+  //   7 set 100 kg → 4480  → MAXAT
+  //   15 set 120 kg→ 11520 → maxat, exakt samma avdrag
+  //
+  // Ett normalt pass och ett extremt fick alltså identiskt straff, och motorn
+  // kunde omöjligt skilja dem åt. Dessutom straffades den starke: samma antal
+  // set med tyngre vikt gav högre last och lägre readiness.
+  //
+  // Nu jämförs veckan med användarens EGEN normala vecka. Överbelastning är
+  // att göra mer än man brukar — inte att passera ett tal någon annan satt.
+  // Utan historik faller den tillbaka på 4000, vilket motsvarar ett normalt
+  // benpass i den här skalan.
+  const threshold = normalLoad > 0 ? normalLoad * 1.5 : 4000;
+  const overloadPenalty = weeklyLoad > threshold
+    ? Math.min(20, (weeklyLoad - threshold) / threshold * 20)
+    : 0;
   const undertrain = daysSince >= 5 ? Math.min(10, (daysSince - 4) * 2) : 0;
   return Math.max(0, Math.min(100, recoveryScore - overloadPenalty + undertrain));
+}
+
+/**
+ * Användarens normala veckolast per muskel — medianveckan de senaste 8 veckorna.
+ *
+ * MEDIAN, INTE MEDEL. En enstaka extrem vecka ska inte flytta vad "normalt"
+ * betyder; det är just avvikelsen från det normala som ska straffas.
+ */
+function normalWeeklyLoad(sessions, muscleId, nowMs = Date.now()) {
+  const veckor = [];
+  for (let v = 0; v < 8; v++) {
+    const slut = nowMs - v * 6048e5, start = slut - 6048e5;
+    const last = (sessions || [])
+      .filter(s => s && s.completedAt > start && s.completedAt <= slut)
+      .reduce((a, s) => a + ((s.muscleLoads && s.muscleLoads[muscleId]) || 0), 0);
+    if (last > 0) veckor.push(last);
+  }
+  // Färre än två veckor med data säger inget om vad som är normalt.
+  if (veckor.length < 2) return 0;
+  veckor.sort((a, b) => a - b);
+  const m = Math.floor(veckor.length / 2);
+  return veckor.length % 2 ? veckor[m] : (veckor[m - 1] + veckor[m]) / 2;
 }
 
 function computeRecommendation(muscleStates) {
@@ -1980,4 +2028,4 @@ function recoveryColor(score) {
   return `rgb(${r},${g},${b})`;
 }
 
-export { computeSessionLoad, computeRecovery, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, tolkaPortion, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, formatVolume, formatBuildTime, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
+export { computeSessionLoad, computeRecovery, normalWeeklyLoad, muscleWeeklySets, recoveryContributions, volumeStatus, groupWeeklySets, laggingMuscleAdvice, laggingGroups, balanceScore, variationAdvice, computeReadiness, computeRecommendation, computeSportLoad, computeCardioLoad, computeSystemicFatigue, importLivsmedelsverket, foldStr, triSet, triSim, editDist, scoreFood, searchFoods, lookupBarcode, tolkaPortion, goalProgress, daysLeft, estimateMeal, mealDecision, dayNutritionRange, qualityColor, buildRescue, recentIntakeSummary, nutritionProgress, interpretCrisis, normMeal, matchMemory, rememberMeal, computeNutrition, nutritionReadinessModifier, nutritionReadinessSignal, dataConfidence, confidenceLevel, domainLevel, DOMAIN_RULES, resolveSlug, repState, repActivation, bestRecoveredMuscle, coachFor, subExercise, epley1RM, roundInc, formatWeight, formatKg, formatVolume, formatBuildTime, lastPerformance, lastSessionSets, best1RM, progressionSuggestion, strengthLevel, currentWeight, latestMetric, metricSeries, polyArea, sessionVolume, liftTrend, prioritizeInsights, computeInsights, bestStrengthTrend, coachGreeting, buildBriefing, buildUserModel, buildPredictions, analyzeExercise, detectAdaptive, plateauResponse, analyzeBodyComp, readImage, hexToRgb, zoneMuscle, bodyGlow, groupState, recoveryColor, startOfLocalDay, workoutStreak, milestones, sevenDayTrainingLoad, deriveTrainingMetrics, distinctNutritionDays, resolveNutritionTargets, suggestNutritionTargets, ACTIVITY_LEVELS, DIETS, DIET_APPROACHES, DIET_RESTRICTIONS, deriveMilestone, exerciseStrengthConfidence, cyclePhase, cycleReadinessModifier, CYCLE_PHASES, computeMicros, microRef, MICRO_REF, MICRO_KEYS, recentDailyMicros, supplementAdvice, recentDailyNutrition, nutritionRecoveryModifier, readinessBreakdown, logReliability, personalInsight };
