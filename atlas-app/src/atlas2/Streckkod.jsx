@@ -103,10 +103,14 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
       barcode: träff.code,
       ts: Date.now(),
     });
-    // SPARA I SKAFFERIET AUTOMATISKT. En vara man skannat vill man nästan
-    // alltid hitta igen — och utan detta måste man skanna om varje gång, även
-    // när burken står hemma och man är i affären. Att fråga varje gång vore ett
-    // extra tryck för något man ändå vill.
+    // ERBJUD ATT SPARA — fråga, spara inte tyst.
+    //
+    // Första versionen sparade automatiskt, med motiveringen att man ändå vill
+    // ha varan. Men då fylls skafferiet med allt man någonsin skannat, även det
+    // man provade en gång och inte tänker köpa igen. Robert bad om frågan.
+    //
+    // Erbjudandet kommer EFTER loggningen: maten är redan registrerad, så
+    // frågan är ett tillval och inte ett hinder.
     if (onSpara) onSpara(skafferiFrånStreckkod({ ...träff, portion: portionsGram }));
   };
 

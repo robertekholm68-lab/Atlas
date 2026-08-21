@@ -146,9 +146,11 @@ const sammaDag = (a, b) => {
  * fat, estimated, total }. `total` är antalet loggade poster idag; noll betyder
  * att inget loggats än idag.
  */
-export function dagensNutrition(foodLog, now = Date.now()) {
+export function dagensNutrition(foodLog, now = Date.now(), egnaLivsmedel) {
   const idag = (foodLog || []).filter(e => e && e.ts != null && sammaDag(e.ts, now));
-  return computeNutrition(idag);
+  // Skafferiet skickas med: en post som pekar på en egen vara har ett own_-id
+  // som inte finns i FOOD_INDEX, och räknades tidigare som noll.
+  return computeNutrition(idag, egnaLivsmedel);
 }
 
 /**

@@ -471,6 +471,19 @@ async function lookupBarcode(code) {
     protein: Math.round((n.proteins_100g || 0) * 10) / 10,
     carbs: Math.round((n.carbohydrates_100g || 0) * 10) / 10,
     fat: Math.round((n.fat_100g || 0) * 10) / 10,
+    // FLER NÄRINGSVÄRDEN FRÅN FÖRPACKNINGEN.
+    //
+    // Open Food Facts har dem, men bara de fyra stora hämtades. Fiber och
+    // mättat fett står på varje svensk förpackning och är det man faktiskt
+    // tittar efter i affären — att kasta bort dem när de redan är hämtade är
+    // ett onödigt tapp.
+    //
+    // null när uppgiften saknas, INTE 0. En vara utan fiberuppgift har inte
+    // noll fiber; den har okänd fiber, och att visa 0 vore en osanning.
+    fiber: n.fiber_100g != null ? Math.round(n.fiber_100g * 10) / 10 : null,
+    sugar: n.sugars_100g != null ? Math.round(n.sugars_100g * 10) / 10 : null,
+    saturated: n["saturated-fat_100g"] != null ? Math.round(n["saturated-fat_100g"] * 10) / 10 : null,
+    salt: n.salt_100g != null ? Math.round(n.salt_100g * 100) / 100 : null,
   };
 }
 
@@ -1058,11 +1071,33 @@ function rememberMeal(memory, entry) {
   return [...memory, { name: entry.name, kcal: entry.kcal, protein: entry.protein, carbs: entry.carbs || 0, fat: entry.fat || 0, count: 1, quality: entry.quality || "estimated" }];
 }
 
-function computeNutrition(log) {
+function computeNutrition(log, egna) {
   const t = { kcal: 0, protein: 0, carbs: 0, fat: 0, estimated: 0, total: 0 };
   log.forEach(e => {
     t.total++;
-    if (e.foodId) { const f = FOOD_INDEX.find(x => x.id === e.foodId); if (f) { const k = e.grams / 100; t.kcal += f.kcal * k; t.protein += f.protein * k; t.carbs += f.carbs * k; t.fat += f.fat * k; } }
+    if (e.foodId) {
+      // SKAFFERIPOSTER MÅSTE OCKSÅ HITTAS.
+      //
+      // FOOD_INDEX är Livsmedelsverkets bank. En sparad egen vara har ett
+      // own_-id som inte finns där, så `if (f)` föll och posten bidrog med
+      // NOLL — maten låg i loggen men räknades aldrig in i dagens kalorier
+      // eller protein. Tyst, utan felmeddelande.
+      const f = FOOD_INDEX.find(x => x.id === e.foodId)
+        || (egna || []).find(x => x.id === e.foodId);
+      if (f) {
+        // En portionspost ("min frukostgröt") bär färdiga tal för HELA
+        // portionen, inte per 100 g. Att skala den med gram/100 hade
+        // multiplicerat en frukost med två.
+        const k = f.portionsMat ? 1 : (e.grams / 100);
+        t.kcal += (f.kcal || 0) * k; t.protein += (f.protein || 0) * k;
+        t.carbs += (f.carbs || 0) * k; t.fat += (f.fat || 0) * k;
+      } else if (e.kcal != null) {
+        // Livsmedlet är borta ur skafferiet men posten finns kvar i loggen.
+        // Faller tillbaka på postens egna tal i stället för att räkna noll.
+        t.kcal += e.kcal; t.protein += e.protein || 0;
+        t.carbs += e.carbs || 0; t.fat += e.fat || 0;
+      }
+    }
     else if (e.kcal != null) { t.kcal += e.kcal; t.protein += e.protein || 0; t.carbs += e.carbs || 0; t.fat += e.fat || 0; if (e.quality === "estimated") t.estimated++; }
   });
   ["kcal", "protein", "carbs", "fat"].forEach(k => t[k] = Math.round(t[k]));

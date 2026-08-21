@@ -17,7 +17,7 @@ import { filterRecipes } from "../engines/recipes.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
 import { searchFoods } from "../engines/index.js";
 import { Streckkod } from "./Streckkod.jsx";
-import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet } from "../engines/skafferi.js";
+import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet, uppdateraSkafferi, taBortUrSkafferi } from "../engines/skafferi.js";
 import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
@@ -739,8 +739,14 @@ function SnabbLogg({ onLägg, onLoggad }) {
 
 /* ── LOGGA ── */
 
-function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad }) {
+function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbjud }) {
   const [skannar, setSkannar] = useState(false);
+  const [visarSkafferi, setVisarSkafferi] = useState(false);
+  const [redigerar, setRedigerar] = useState(null);
+  const fältStil = {
+    width: "100%", padding: "10px 12px", borderRadius: 10, minHeight: 40,
+    border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: 13,
+  };
   const [fotar, setFotar] = useState(false);
   const [sök, setSök] = useState("");
   const [vald, setVald] = useState(null);
@@ -796,7 +802,13 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad }) {
   if (skannar) return <Streckkod
     onLägg={p => { onLägg(p); setSkannar(false); }}
     onStäng={() => setSkannar(false)}
-    onSpara={ny => setSkafferi && ny && setSkafferi(x => läggISkafferi(x, ny))} />;
+    // Erbjudandet i stället för tyst sparning: posten läggs i erbjudande-läget
+    // och användaren väljer. Redan sparade varor frågas inte om igen.
+    onSpara={ny => {
+      if (!setSkafferi || !ny) return;
+      if (redanISkafferiet(skafferi, ny)) return;
+      if (onErbjud) onErbjud({ ...ny, _skafferipost: true });
+    }} />;
 
   // Samma skäl som för skanningen: fotovyn ersätter loggvyn i stället för att
   // ligga i ett ark, så kameran aldrig blir kvar bakom något annat.
@@ -814,6 +826,88 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad }) {
       }}>
         <span aria-hidden style={{ fontSize: 15 }}>▥</span> Skanna streckkod
       </button>
+
+      {/* SKAFFERIET. Varorna gick bara att nå via sökning — vill man rätta ett
+          näringsvärde fanns ingen väg alls. Knappen visas bara när det finns
+          något att visa; en tom lista är brus. */}
+      {skafferi.length > 0 && (
+        <button onClick={() => setVisarSkafferi(v => !v)} data-skafferi-knapp="1"
+          aria-expanded={visarSkafferi} style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+          width: "100%", marginBottom: 12, padding: "12px 14px", borderRadius: 12, minHeight: 44,
+          border: `1px solid ${visarSkafferi ? C.lime : C.border}`,
+          background: visarSkafferi ? volt(.08) : C.card2,
+          color: visarSkafferi ? C.lime : C.text, cursor: "pointer",
+          fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
+        }}>
+          <span aria-hidden style={{ fontSize: 15 }}>▤</span> Skafferiet ({skafferi.length})
+        </button>
+      )}
+
+      {visarSkafferi && (
+        <div style={{ marginBottom: 14 }}>
+          {sorteratSkafferi(skafferi, foodLog).map(v => {
+            const öppen = redigerar === v.id;
+            const enhet = v.portionsMat ? "per portion" : "per 100 g";
+            return (
+              <div key={v.id} style={{
+                border: `1px solid ${C.border}`, background: C.card2,
+                borderRadius: 12, marginBottom: 7, overflow: "hidden",
+              }}>
+                <button onClick={() => setRedigerar(öppen ? null : v.id)}
+                  data-skafferi-post="1" aria-expanded={öppen}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                    width: "100%", textAlign: "left", padding: "12px 14px", minHeight: 44,
+                    background: "none", border: "none", color: C.text, cursor: "pointer",
+                  }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 13.5, display: "block" }}>{v.name}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>
+                      {Math.round(v.kcal)} kcal · P {v.protein} · {enhet}
+                    </span>
+                  </span>
+                  <span style={{ color: C.muted, fontSize: 15, flexShrink: 0,
+                    transform: öppen ? "rotate(180deg)" : "none", transition: "transform 150ms" }}>⌄</span>
+                </button>
+
+                {öppen && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 9, lineHeight: 1.5 }}>
+                      Värdena gäller {enhet}. Rätta dem om förpackningen säger något annat.
+                    </div>
+                    <input value={v.name} data-skafferi-namn="1" aria-label="Namn"
+                      onChange={e => setSkafferi(x => uppdateraSkafferi(x, v.id, { name: e.target.value }))}
+                      style={fältStil} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginTop: 8 }}>
+                      {[["kcal", "kcal"], ["protein", "Protein"], ["carbs", "Kolhydrater"], ["fat", "Fett"],
+                        ...(v.fiber != null ? [["fiber", "Fiber"]] : []),
+                        ...(v.saturated != null ? [["saturated", "varav mättat"]] : []),
+                        ...(v.sugar != null ? [["sugar", "varav socker"]] : []),
+                        ...(v.salt != null ? [["salt", "Salt"]] : [])].map(([nyckel, etikett]) => (
+                        <label key={nyckel} style={{ fontSize: 11, color: C.muted }}>
+                          {etikett}
+                          <input value={v[nyckel] ?? 0} inputMode="decimal"
+                            data-skafferi-falt={nyckel} aria-label={etikett}
+                            onChange={e => setSkafferi(x => uppdateraSkafferi(x, v.id, { [nyckel]: e.target.value }))}
+                            style={{ ...fältStil, marginTop: 3, fontFamily: MONO, fontSize: 13 }} />
+                        </label>
+                      ))}
+                    </div>
+                    <button onClick={() => { setSkafferi(x => taBortUrSkafferi(x, v.id)); setRedigerar(null); }}
+                      data-skafferi-tabort="1"
+                      style={{
+                        width: "100%", marginTop: 12, padding: "10px 0", minHeight: 44,
+                        borderRadius: 999, border: `1px solid ${C.border}`,
+                        background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer",
+                      }}>Ta bort ur skafferiet</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <button onClick={() => setFotar(true)} data-fotoknapp="1" style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
@@ -991,7 +1085,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   const [flik, setFlik] = useState("oversikt");
   const layout = useLayout();
   const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
-  const totaler = dagensNutrition(foodLog);
+  const totaler = dagensNutrition(foodLog, Date.now(), skafferi);
   const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
 
   // Erbjudandet att spara i skafferiet: posten som just loggades, eller null.
@@ -1138,12 +1232,16 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
         <div style={{ ...card, padding: 14, marginBottom: 14, borderColor: C.lime }}>
           <div style={{ ...label(C.lime), marginBottom: 6 }}>Sparad i loggen</div>
           <div style={{ fontSize: 13, color: C.text, lineHeight: 1.55 }}>
-            ”{erbjudande.name}” fanns inte i livsmedelsdatabasen. Spara den i
-            skafferiet så hittar du den på namn nästa gång.
+            {erbjudande._skafferipost
+              ? `Spara ”${erbjudande.name}” i skafferiet så hittar du den på namn nästa gång — utan att skanna om.`
+              : `”${erbjudande.name}” fanns inte i livsmedelsdatabasen. Spara den i skafferiet så hittar du den på namn nästa gång.`}
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button onClick={() => {
-              setSkafferi(x => läggISkafferi(x, skafferiFrånPost(erbjudande)));
+              // En skannad vara är redan en färdig skafferipost (per 100 g från
+              // förpackningen). En loggad måltid måste räknas om först.
+              setSkafferi(x => läggISkafferi(x,
+                erbjudande._skafferipost ? erbjudande : skafferiFrånPost(erbjudande)));
               setErbjudande(null);
             }} data-spara-erbjudande="1"
               style={{
@@ -1165,7 +1263,7 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
         onSättMåltid={sättMåltidPost} onSkala={skalaPost} onSättKcal={sättKcalPost}
         onTaBort={taBortPost}
         onSpara={setSkafferi ? (post => setSkafferi(x => läggISkafferi(x, skafferiFrånPost(post)))) : null} />}
-      {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} skafferi={skafferi} setSkafferi={setSkafferi} onLoggad={erbjudSpara} />}
+      {flik === "logga" && <Logga onLägg={lägg} foodLog={foodLog} skafferi={skafferi} setSkafferi={setSkafferi} onLoggad={erbjudSpara} onErbjud={setErbjudande} />}
       {flik === "recept" && (
         <Recept onLägg={lägg} nutritionTargets={nutritionTargets}
           profile={profile} setProfile={setProfile} bred={layout.desktop} foodLog={foodLog}

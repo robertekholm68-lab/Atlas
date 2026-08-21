@@ -36,6 +36,12 @@ export function skafferiFrånStreckkod(träff) {
     carbs: Math.round((träff.carbs || 0) * 10) / 10,
     fat: Math.round((träff.fat || 0) * 10) / 10,
     group: "Eget",
+    // Fiber, socker, mättat fett och salt följer med från förpackningen.
+    // null betyder okänt, inte noll — se lookupBarcode.
+    ...(träff.fiber != null ? { fiber: träff.fiber } : {}),
+    ...(träff.sugar != null ? { sugar: träff.sugar } : {}),
+    ...(träff.saturated != null ? { saturated: träff.saturated } : {}),
+    ...(träff.salt != null ? { salt: träff.salt } : {}),
     barcode: träff.code || null,
     // Portionen från förpackningen är värd att spara — den är varans egen
     // uppgift, inte en gissning, och sparar ett steg vid varje loggning.
@@ -139,4 +145,35 @@ export function sorteratSkafferi(skafferi, foodLog) {
     const d = (f[b.id] || 0) - (f[a.id] || 0);
     return d !== 0 ? d : (b.tillagd || 0) - (a.tillagd || 0);
   });
+}
+
+
+/**
+ * Uppdaterar en post i skafferiet.
+ *
+ * VÄRDENA ÄR PER 100 G, utom för portionsmat. Redigerar man en vara med
+ * portionsMat gäller talen hela portionen — samma regel som när den sparades,
+ * annars byter samma post betydelse mitt i.
+ */
+export function uppdateraSkafferi(skafferi, id, ändringar) {
+  return (skafferi || []).map(p => {
+    if (p.id !== id) return p;
+    const ny = { ...p, ...ändringar };
+    // Tal ska vara tal. Ett tomt fält blir 0, inte NaN — en post med NaN i
+    // kcal förgiftar hela dagssumman tyst.
+    for (const k of ["kcal", "protein", "carbs", "fat", "fiber", "sugar", "saturated", "salt", "portion"]) {
+      if (k in ändringar) {
+        const v = Number(String(ändringar[k]).replace(",", "."));
+        ny[k] = Number.isFinite(v) && v >= 0 ? v : (k === "portion" ? null : 0);
+      }
+    }
+    if ("name" in ändringar) ny.name = String(ändringar.name).trim().slice(0, 80) || p.name;
+    return ny;
+  });
+}
+
+/** Tar bort en vara ur skafferiet. Loggade poster som pekar på den behåller
+    sina egna tal — computeNutrition faller tillbaka på dem. */
+export function taBortUrSkafferi(skafferi, id) {
+  return (skafferi || []).filter(p => p.id !== id);
 }
