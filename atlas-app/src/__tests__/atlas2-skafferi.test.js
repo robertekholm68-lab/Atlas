@@ -10,12 +10,13 @@
 // ingen väg alls.
 
 import { describe, it, expect } from "vitest";
-import { searchFoods } from "../engines/index.js";
+import { searchFoods, computeNutrition } from "../engines/index.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import {
   skafferiFrånStreckkod, skafferiFrånPost, läggISkafferi,
   redanISkafferiet, sorteratSkafferi, skafferiFrekvens,
+  uppdateraSkafferi, taBortUrSkafferi,
 } from "../engines/skafferi.js";
 
 const OFF = { code: "7310865004703", name: "Proteinpudding Choklad", brand: "Lindahls",
@@ -154,5 +155,84 @@ describe("appen erbjuder att spara — man slipper komma ihåg", () => {
   it("mängdord rensas innan sökbarheten prövas", () => {
     // "100 g keso" ska jämföras som "keso", annars matchar ingenting.
     expect(src).toMatch(/gram\|g\|kg\|dl\|cl\|ml\|st/);
+  });
+});
+
+describe("skafferimat räknas i dagssumman", () => {
+  it("en post med own_-id gav NOLL innan fixen", () => {
+    // FOOD_INDEX är Livsmedelsverkets bank. En sparad egen vara har ett own_-id
+    // som inte finns där, så `if (f)` föll och posten bidrog med noll — maten
+    // låg i loggen men räknades aldrig in. Tyst, utan felmeddelande.
+    const egna = [{ id: "own_1", name: "Kvarg", kcal: 65, protein: 11, carbs: 4, fat: 0.2 }];
+    const logg = [{ id: "a", foodId: "own_1", grams: 200, ts: Date.now() }];
+    expect(computeNutrition(logg).kcal).toBe(0);
+    expect(computeNutrition(logg, egna).kcal).toBe(130);
+    expect(computeNutrition(logg, egna).protein).toBe(22);
+  });
+
+  it("portionsmat skalas INTE med gram", () => {
+    // "min frukostgröt" bär färdiga tal för hela portionen. Att skala med
+    // gram/100 hade multiplicerat en frukost med två.
+    const egna = [{ id: "own_2", name: "Gröt", portionsMat: true, kcal: 420, protein: 18 }];
+    const logg = [{ id: "b", foodId: "own_2", grams: 200, ts: Date.now() }];
+    expect(computeNutrition(logg, egna).kcal).toBe(420);
+  });
+
+  it("en borttagen vara faller tillbaka på postens egna tal", () => {
+    // Livsmedlet är borta ur skafferiet men posten finns kvar i loggen. Utan
+    // fallbacken skulle historiken tappa kalorier retroaktivt.
+    const logg = [{ id: "c", foodId: "own_saknas", grams: 100, kcal: 200, protein: 9, ts: Date.now() }];
+    expect(computeNutrition(logg, []).kcal).toBe(200);
+  });
+});
+
+describe("streckkoden sparar alla näringsvärden", () => {
+  it("fiber, socker, mättat fett och salt följer med", () => {
+    const p = skafferiFrånStreckkod({ ...OFF, fiber: 1.2, sugar: 3.8, saturated: 1.9, salt: 0.15 });
+    expect(p.fiber).toBe(1.2);
+    expect(p.sugar).toBe(3.8);
+    expect(p.saturated).toBe(1.9);
+    expect(p.salt).toBe(0.15);
+  });
+
+  it("saknad uppgift utelämnas — inte satt till noll", () => {
+    // En vara utan fiberuppgift har inte noll fiber; den har OKÄND fiber, och
+    // att visa 0 vore en osanning.
+    const p = skafferiFrånStreckkod(OFF);
+    expect("fiber" in p).toBe(false);
+  });
+});
+
+describe("varor i skafferiet går att rätta", () => {
+  it("namn och värden uppdateras", () => {
+    const s = [{ id: "own_1", name: "Fel namn", kcal: 65, protein: 11 }];
+    const ny = uppdateraSkafferi(s, "own_1", { name: "Rätt namn", kcal: "95" });
+    expect(ny[0].name).toBe("Rätt namn");
+    expect(ny[0].kcal).toBe(95);
+  });
+
+  it("komma fungerar som decimaltecken", () => {
+    // Svensk tangentbordsvana. Utan detta blir 1,2 till NaN.
+    const s = [{ id: "own_1", name: "X", protein: 10 }];
+    expect(uppdateraSkafferi(s, "own_1", { protein: "11,5" })[0].protein).toBe(11.5);
+  });
+
+  it("skräp blir noll, inte NaN", () => {
+    // En post med NaN i kcal förgiftar hela dagssumman tyst.
+    const s = [{ id: "own_1", name: "X", kcal: 65 }];
+    expect(uppdateraSkafferi(s, "own_1", { kcal: "" })[0].kcal).toBe(0);
+    expect(uppdateraSkafferi(s, "own_1", { kcal: "abc" })[0].kcal).toBe(0);
+  });
+
+  it("andra poster rörs inte", () => {
+    const s = [{ id: "own_1", name: "A", kcal: 10 }, { id: "own_2", name: "B", kcal: 20 }];
+    expect(uppdateraSkafferi(s, "own_1", { kcal: 99 })[1].kcal).toBe(20);
+  });
+
+  it("borttagning tar bara rätt post", () => {
+    const s = [{ id: "own_1", name: "A" }, { id: "own_2", name: "B" }];
+    const ny = taBortUrSkafferi(s, "own_1");
+    expect(ny.length).toBe(1);
+    expect(ny[0].id).toBe("own_2");
   });
 });
