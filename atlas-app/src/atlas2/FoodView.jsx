@@ -17,7 +17,7 @@ import { filterRecipes } from "../engines/recipes.js";
 import { mealSuggestions } from "../engines/mealSuggest.js";
 import { searchFoods } from "../engines/index.js";
 import { Streckkod } from "./Streckkod.jsx";
-import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet, uppdateraSkafferi, taBortUrSkafferi } from "../engines/skafferi.js";
+import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet, uppdateraSkafferi, taBortUrSkafferi, läggTillPortion, taBortPortion, portionsval } from "../engines/skafferi.js";
 import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
@@ -743,6 +743,7 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
   const [skannar, setSkannar] = useState(false);
   const [visarSkafferi, setVisarSkafferi] = useState(false);
   const [redigerar, setRedigerar] = useState(null);
+  const [nyPortion, setNyPortion] = useState({ namn: "", gram: "" });
   const fältStil = {
     width: "100%", padding: "10px 12px", borderRadius: 10, minHeight: 40,
     border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: 13,
@@ -894,6 +895,46 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
                         </label>
                       ))}
                     </div>
+                    {/* EGNA PORTIONER. Förpackningen anger en portion; du äter
+                        en annan. En skopa proteinpulver är 30 g för
+                        tillverkaren men 45 g i din shaker, och att skriva om
+                        gramtalet varje gång är precis det slitage som gör att
+                        man slutar logga. */}
+                    <div style={{ ...label(), color: C.muted, margin: "16px 0 7px" }}>
+                      Mina portioner
+                    </div>
+                    {(v.portioner || []).length > 0 && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                        {v.portioner.map(pt => (
+                          <button key={pt.namn} onClick={() => setSkafferi(x => taBortPortion(x, v.id, pt.namn))}
+                            data-portion-chip="1"
+                            aria-label={`Ta bort portionen ${pt.namn}`}
+                            style={{
+                              padding: "6px 11px", minHeight: 36, borderRadius: 999, cursor: "pointer",
+                              border: `1px solid ${C.border}`, background: C.card, color: C.text2, fontSize: 12,
+                            }}>{pt.namn} · {pt.gram} g <span style={{ opacity: .5 }}>×</span></button>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input value={nyPortion.namn} placeholder="t.ex. Skopa"
+                        aria-label="Portionens namn" data-portion-namn="1"
+                        onChange={e => setNyPortion(n => ({ ...n, namn: e.target.value }))}
+                        style={{ ...fältStil, flex: 1 }} />
+                      <input value={nyPortion.gram} placeholder="g" inputMode="numeric"
+                        aria-label="Portionens gram" data-portion-gram="1"
+                        onChange={e => setNyPortion(n => ({ ...n, gram: e.target.value.replace(/\D/g, "") }))}
+                        style={{ ...fältStil, width: 72, fontFamily: MONO }} />
+                      <button onClick={() => {
+                        setSkafferi(x => läggTillPortion(x, v.id, nyPortion.namn, nyPortion.gram));
+                        setNyPortion({ namn: "", gram: "" });
+                      }} data-portion-spara="1"
+                        style={{
+                          padding: "0 15px", minHeight: 40, borderRadius: 10, cursor: "pointer",
+                          border: "none", background: C.lime, color: "#0A0A0A", fontSize: 13, fontWeight: 600,
+                        }}>+</button>
+                    </div>
+
                     <button onClick={() => { setSkafferi(x => taBortUrSkafferi(x, v.id)); setRedigerar(null); }}
                       data-skafferi-tabort="1"
                       style={{

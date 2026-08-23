@@ -177,3 +177,50 @@ export function uppdateraSkafferi(skafferi, id, ändringar) {
 export function taBortUrSkafferi(skafferi, id) {
   return (skafferi || []).filter(p => p.id !== id);
 }
+
+
+/**
+ * EGNA PORTIONER PER VARA.
+ *
+ * Förpackningen anger en portion; du äter en annan. En skopa proteinpulver är
+ * 30 g för tillverkaren men 45 g i din shaker, och att skriva om gramtalet
+ * varje gång är precis det slitage som gör att man slutar logga.
+ *
+ * Sparas på skafferiposten som en lista, inte som ett enda tal — man har ofta
+ * flera: "liten skopa 30 g", "stor skopa 45 g".
+ */
+export function läggTillPortion(skafferi, id, namn, gram) {
+  const g = Math.round(Number(gram) || 0);
+  if (!(g > 0)) return skafferi || [];
+  const rent = String(namn || "").trim().slice(0, 24) || `${g} g`;
+  return (skafferi || []).map(p => {
+    if (p.id !== id) return p;
+    const fanns = (p.portioner || []).filter(x => x.namn.toLowerCase() !== rent.toLowerCase());
+    // Högst sex — fler blir en lista att leta i, inte en genväg.
+    return { ...p, portioner: [...fanns, { namn: rent, gram: g }].slice(-6) };
+  });
+}
+
+/** Tar bort en sparad portion. */
+export function taBortPortion(skafferi, id, namn) {
+  return (skafferi || []).map(p => p.id === id
+    ? { ...p, portioner: (p.portioner || []).filter(x => x.namn !== namn) }
+    : p);
+}
+
+/**
+ * Alla portionsval för en vara, i den ordning de bör visas.
+ *
+ * EGNA FÖRST. Har man sparat en egen portion är det nästan alltid den man
+ * menar — förpackningens uppgift är tillverkarens gissning om hur mycket man
+ * borde äta, inte hur mycket man faktiskt tar.
+ */
+export function portionsval(vara) {
+  if (!vara) return [];
+  const ut = (vara.portioner || []).map(p => ({ ...p, egen: true }));
+  if (vara.portion > 0 && !ut.some(x => x.gram === vara.portion)) {
+    ut.push({ namn: "Portion", gram: vara.portion, egen: false });
+  }
+  if (!ut.some(x => x.gram === 100)) ut.push({ namn: "100 g", gram: 100, egen: false });
+  return ut;
+}

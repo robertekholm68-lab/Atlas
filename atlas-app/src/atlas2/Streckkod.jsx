@@ -22,6 +22,35 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
 import { lookupBarcode, tolkaPortion } from "../engines/index.js";
+import { DEKLARATION_SYSTEM, tolkaDeklaration, stämmerMakron } from "../engines/deklaration.js";
+
+/**
+ * Bild till base64, nedskalad.
+ *
+ * Proxyn har ett hårt tak på 2,8 MB, och en modern telefonkamera ger lätt mer
+ * än så. 1600 px långsida räcker gott för att läsa en näringstabell — texten
+ * är stor och tryckt, inte handskriven.
+ */
+const MAX_KANT = 1600;
+async function tillBase64(fil) {
+  const url = URL.createObjectURL(fil);
+  try {
+    const img = await new Promise((ok, fel) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => fel(new Error("kunde inte läsa bilden"));
+      i.src = url;
+    });
+    const skala = Math.min(1, MAX_KANT / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * skala);
+    c.height = Math.round(img.height * skala);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.85).split(",")[1];
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 import { skafferiFrånStreckkod } from "../engines/skafferi.js";
 import { nyId } from "./store.js";
 
@@ -33,6 +62,61 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
   const [laddar, setLaddar] = useState(false);
   const [träff, setTräff] = useState(null);
   const [hittades, setHittades] = useState(true);
+  const [dekLäge, setDekLäge] = useState(null);      // läser | fel
+  const [dekNotering, setDekNotering] = useState("");
+  const dekFil = useRef(null);
+
+  /**
+   * Läser näringsdeklarationen ur ett foto och bygger en träff av den.
+   *
+   * Resultatet går in i SAMMA flöde som en Open Food Facts-träff: samma
+   * gramväljare, samma portionsknappar, samma loggning. Skillnaden är källan,
+   * och den märks på posten (source "foto-deklaration") så dataConfidence kan
+   * skilja den från en verifierad databasuppgift.
+   */
+  const läsDeklaration = async fil => {
+    if (!fil) return;
+    setDekLäge("läser"); setDekNotering("");
+    try {
+      const bild = await tillBase64(fil);
+      const r = await fetch("https://askr-coach.vercel.app/api/coach", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          system: DEKLARATION_SYSTEM,
+          meddelande: "Läs näringsdeklarationen på bilden. Svara med JSON enligt formatet.",
+          bild, bildTyp: "image/jpeg",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.fel || "kunde inte läsa");
+      const t = tolkaDeklaration(d.text);
+      if (!t.ok) {
+        setDekLäge("fel");
+        setDekNotering(t.notering || (t.skäl === "orimligt" ? "Värdet ser orimligt ut." : ""));
+        return;
+      }
+      // MAKROKOLLEN FLAGGAR, STOPPAR INTE. Fiber och avrundningar gör att
+      // summan sällan stämmer exakt ens på en korrekt läsning — men en STOR
+      // avvikelse betyder att någon siffra lästs fel, och det ska synas.
+      const rimligt = stämmerMakron(t);
+      setTräff({
+        name: t.namn || "Fotad produkt",
+        brand: t.märke || null,
+        kcal: t.kcal, protein: t.protein, carbs: t.carbs, fat: t.fat,
+        fiber: t.fiber ?? null, sugar: t.sugar ?? null,
+        saturated: t.saturated ?? null, salt: t.salt ?? null,
+        serving: t.portion ? `${t.portion} ${t.enhet}` : null,
+        code: kod || null,
+        källa: "foto-deklaration",
+        säkerhet: rimligt ? t.säkerhet : "låg",
+        varning: rimligt ? null : "Makrona summerar inte till energivärdet — kontrollera mot förpackningen.",
+      });
+      setHittades(true); setDekLäge(null);
+    } catch (e) {
+      setDekLäge("fel");
+      setDekNotering("Kunde inte nå coachen.");
+    }
+  };
   const [gram, setGram] = useState(100);
   const video = useRef(null);
 
@@ -179,9 +263,35 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
                 Produkten finns inte i Open Food Facts.
               </div>
               <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6, marginTop: 8 }}>
-                Databasen är folkbidragen och långt ifrån komplett. Logga
-                måltiden med text eller sök i livsmedelsregistret i stället.
+                Databasen är folkbidragen och långt ifrån komplett. Men
+                uppgiften står på förpackningen — fota tabellen så läser
+                coachen av den.
               </div>
+
+              {/* FOTA DEKLARATIONEN. Förut var okänd streckkod en återvändsgränd:
+                  enda vägen var att skriva in allt för hand eller gissa.
+                  Näringstabellen är tryckt, standardiserad och obligatorisk
+                  enligt EU — den går att läsa av. */}
+              <input ref={dekFil} type="file" accept="image/*" capture="environment"
+                onChange={e => läsDeklaration(e.target.files && e.target.files[0])}
+                style={{ display: "none" }} aria-hidden />
+              <button onClick={() => dekFil.current && dekFil.current.click()}
+                data-fota-deklaration="1" style={{ ...btnPrimary, marginTop: 14 }}>
+                ◉ Fota näringsdeklarationen
+              </button>
+            </div>
+          )}
+
+          {dekLäge === "läser" && (
+            <div style={{ ...label(C.lime), marginTop: 14, textAlign: "center" }}>
+              Läser tabellen…
+            </div>
+          )}
+
+          {dekLäge === "fel" && (
+            <div style={{ ...card, padding: 13, marginTop: 12, fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
+              {dekNotering || "Kunde inte läsa tabellen."} Prova ett rakare foto
+              med bättre ljus, där hela tabellen syns.
             </div>
           )}
         </>
