@@ -191,7 +191,8 @@ describe("ingen klickar fram AI:n", () => {
   });
 
   it("okänd mat frågar modellen direkt", () => {
-    const fn = src.slice(src.indexOf("const uppskatta"), src.indexOf("const uppskatta") + 1800);
+    // Fönstret rymmer nu även skafferikollen, som prövas före uppskattningen.
+    const fn = src.slice(src.indexOf("const uppskatta"), src.indexOf("const uppskatta") + 3000);
     expect(fn).toMatch(/frågaAI\(text\)/);
   });
 

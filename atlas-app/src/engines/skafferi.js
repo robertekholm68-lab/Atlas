@@ -42,6 +42,9 @@ export function skafferiFrånStreckkod(träff) {
     ...(träff.sugar != null ? { sugar: träff.sugar } : {}),
     ...(träff.saturated != null ? { saturated: träff.saturated } : {}),
     ...(träff.salt != null ? { salt: träff.salt } : {}),
+    // Produktbilden följer med. Namnet räcker inte alltid för att känna igen
+    // varan — "Rökt skinka (Scan)" säger inte vilken av fem förpackningar.
+    ...(träff.bild ? { bild: träff.bild } : {}),
     barcode: träff.code || null,
     // Portionen från förpackningen är värd att spara — den är varans egen
     // uppgift, inte en gissning, och sparar ett steg vid varje loggning.

@@ -20,14 +20,14 @@ import { Streckkod } from "./Streckkod.jsx";
 import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet, uppdateraSkafferi, taBortUrSkafferi, läggTillPortion, taBortPortion, portionsval } from "../engines/skafferi.js";
 import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
-import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
+import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
 import { grupperaMåltider, måltidAvTid, MÅLTID_SV, MÅLTID_ORDNING } from "../engines/recipes.js";
 import { MAT_SYSTEM, tolkaMatsvar, behöverAI } from "../engines/aiMat.js";
 import { receptBild } from "../data/recipeImages.js";
 import { dagensNutrition, nyId } from "./store.js";
-import { mealDecision, estimateMeal } from "../engines/index.js";
+import { mealDecision, estimateMeal, rensaSökfras, gramUrText } from "../engines/index.js";
 import { createDictation, voiceSupport } from "../engines/voice.js";
 import { buildEstimatedEntry } from "./foodlog.js";
 
@@ -379,7 +379,7 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
  * gissning se exakt ut. Rösten FYLLER bara textfältet; ingenting loggas utan
  * att användaren tryckt Lägg till.
  */
-function SnabbLogg({ onLägg, onLoggad }) {
+function SnabbLogg({ onLägg, onLoggad, skafferi = [] }) {
   const [text, setText] = useState("");
   const [fråga, setFråga] = useState(null);
   const [est, setEst] = useState(null);
@@ -392,6 +392,7 @@ function SnabbLogg({ onLägg, onLoggad }) {
   const [aiLäge, setAiLäge] = useState(null);      // frågar | klar | vet-inte | fel
   const [aiSvar, setAiSvar] = useState(null);
   const [aiNotering, setAiNotering] = useState("");
+  const [skafferiTräff, setSkafferiTräff] = useState(null);
   const förslag = useMemo(() => mealSuggestions(text), [text]);
   const stoppa = useRef(null);
   const stöd = useMemo(() => voiceSupport(), []);
@@ -442,7 +443,31 @@ function SnabbLogg({ onLägg, onLoggad }) {
 
   const uppskatta = () => {
     if (!text.trim()) return;
-    setAiSvar(null); setAiLäge(null); setAiNotering("");
+    setAiSvar(null); setAiLäge(null); setAiNotering(""); setSkafferiTräff(null);
+
+    // SKAFFERIET SÖKS FÖRST — även från mikrofonen.
+    //
+    // Snabbloggen skrev bara fritext och gick rakt till uppskattning; en vara
+    // man själv sparat kunde aldrig hittas den vägen. Säger man "kvarg" och har
+    // en favoritsort i skafferiet är det nästan säkert den man menar, med exakta
+    // värden från förpackningen i stället för en uppskattning.
+    //
+    // Bara vid TYDLIG träff: namnet ska börja med det man sagt. Annars skulle
+    // "kycklinggryta" fastna på en sparad "kyckling" och ge fel mat.
+    const rent = rensaSökfras(text) || text;
+    const ord = rent.trim().toLowerCase();
+    if (ord.length >= 3 && skafferi.length) {
+      const träff = skafferi.find(v => {
+        const n = String(v.name || "").toLowerCase();
+        return n.startsWith(ord) || ord.startsWith(n);
+      });
+      if (träff) {
+        setSkafferiTräff({ vara: träff, gram: gramUrText(text) || träff.portion || 100 });
+        setEst(null); setFråga(null);
+        return;
+      }
+    }
+
     const d = mealDecision(text);
     if (d.kind === "described") {
       const e = estimateMeal(text, portion);
@@ -596,6 +621,53 @@ function SnabbLogg({ onLägg, onLoggad }) {
               }}>{l}</button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TRÄFF I SKAFFERIET. Exakta värden från förpackningen slår alltid en
+          uppskattning — och det man sparat är nästan alltid det man menar. */}
+      {skafferiTräff && (
+        <div style={{ ...card, padding: 15, marginTop: 14, borderColor: C.lime }}>
+          <div style={{ ...label(C.lime), marginBottom: 7 }}>Ur ditt skafferi</div>
+          <div style={{ ...hdr(15), marginBottom: 4 }}>{skafferiTräff.vara.name}</div>
+          <div style={{ fontFamily: MONO, fontSize: 13, color: C.text2 }}>
+            {Math.round((skafferiTräff.vara.kcal || 0) * (skafferiTräff.vara.portionsMat ? 1 : skafferiTräff.gram / 100))} kcal
+            {" · P "}{Math.round((skafferiTräff.vara.protein || 0) * (skafferiTräff.vara.portionsMat ? 1 : skafferiTräff.gram / 100))} g
+            {!skafferiTräff.vara.portionsMat && ` · ${skafferiTräff.gram} g`}
+          </div>
+
+          {/* Portionsknappar: dina egna först, sedan förpackningens och 100 g. */}
+          {!skafferiTräff.vara.portionsMat && portionsval(skafferiTräff.vara).length > 1 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 11 }}>
+              {portionsval(skafferiTräff.vara).map(pt => (
+                <button key={pt.namn + pt.gram}
+                  onClick={() => setSkafferiTräff(t => ({ ...t, gram: pt.gram }))}
+                  data-skafferi-portion="1"
+                  style={{
+                    padding: "7px 12px", minHeight: 38, borderRadius: 999, cursor: "pointer", fontSize: 12,
+                    border: `1px solid ${skafferiTräff.gram === pt.gram ? C.lime : C.border}`,
+                    color: skafferiTräff.gram === pt.gram ? C.lime : C.muted,
+                    background: skafferiTräff.gram === pt.gram ? volt(.08) : C.card2,
+                  }}>{pt.namn}</button>
+              ))}
+            </div>
+          )}
+
+          <button onClick={() => {
+            const v = skafferiTräff.vara;
+            onLägg({
+              id: nyId("f_"), foodId: v.id, name: v.name,
+              ...(v.portionsMat ? {} : { grams: skafferiTräff.gram }),
+              ts: Date.now(),
+            });
+            setSkafferiTräff(null); nollställ();
+          }} data-logga-skafferi="1" style={{ ...btnPrimary, marginTop: 12 }}>
+            Lägg till <span style={{ fontSize: 18 }}>+</span>
+          </button>
+          <button onClick={() => { setSkafferiTräff(null); setEst(estimateMeal(text, portion)); setEstText(text); }}
+            style={{ ...btnText, marginTop: 6, minHeight: 40 }}>
+            Nej, uppskatta i stället
+          </button>
         </div>
       )}
 
@@ -840,7 +912,7 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
 
   return (
     <div>
-      <SnabbLogg onLägg={onLägg} onLoggad={onLoggad} />
+      <SnabbLogg onLägg={onLägg} onLoggad={onLoggad} skafferi={skafferi} />
 
       <button onClick={() => setSkannar(true)} style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
@@ -885,7 +957,15 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
                     width: "100%", textAlign: "left", padding: "12px 14px", minHeight: 44,
                     background: "none", border: "none", color: C.text, cursor: "pointer",
                   }}>
-                  <span style={{ minWidth: 0 }}>
+                  {/* Produktbild som miniatyr: känns igen på en blick, till
+                      skillnad från ett namn man kanske inte minns. */}
+                  {v.bild && (
+                    <img src={v.bild} alt="" style={{
+                      width: 38, height: 38, objectFit: "cover", borderRadius: 8,
+                      flexShrink: 0, marginRight: 2,
+                    }} />
+                  )}
+                  <span style={{ minWidth: 0, flex: 1 }}>
                     <span style={{ fontSize: 13.5, display: "block" }}>{v.name}</span>
                     <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>
                       {Math.round(v.kcal)} kcal · P {v.protein} · {enhet}
