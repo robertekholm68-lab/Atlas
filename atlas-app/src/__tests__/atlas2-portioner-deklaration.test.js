@@ -7,6 +7,8 @@
 import { describe, it, expect } from "vitest";
 import { läggTillPortion, taBortPortion, portionsval } from "../engines/skafferi.js";
 import { tolkaDeklaration, stämmerMakron, DEKLARATION_SYSTEM } from "../engines/deklaration.js";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 describe("egna portioner per vara", () => {
   const vara = () => [{ id: "own_1", name: "Proteinpulver", kcal: 380, portion: 30 }];
@@ -152,5 +154,47 @@ describe("prompten håller reglerna", () => {
 
   it("kJ-fällan nämns", () => {
     expect(DEKLARATION_SYSTEM).toMatch(/Ta KCAL-talet/);
+  });
+});
+
+describe("gramtalet går att skriva i alla vyer", () => {
+  const vyer = ["FoodView", "Streckkod", "FotoMaltid"];
+
+  it("varje vy med gramväljare har ett skrivbart fält", () => {
+    // Livsmedelssökningen hade bara +/− med 25 g steg: vill man ha 165 g krävs
+    // sju tryck från 100, och träffar man fel får man börja om.
+    for (const vy of vyer) {
+      const src = readFileSync(resolve(`src/atlas2/${vy}.jsx`), "utf8");
+      expect(src, vy).toMatch(/data-gram="1"/);
+    }
+  });
+
+  it("stegknapparna finns kvar för finjustering", () => {
+    const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+    expect(src).toMatch(/aria-label="Minska"/);
+    expect(src).toMatch(/aria-label="Öka"/);
+  });
+
+  it("tomt fält tillåts under redigering", () => {
+    // Annars hoppar det tillbaka till 0 så fort man raderar för att skriva om.
+    const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+    expect(src).toMatch(/setGram\(r === "" \? "" :/);
+  });
+
+  it("men faller tillbaka på 100 när fältet lämnas", () => {
+    const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+    expect(src).toMatch(/onBlur=\{\(\) => \{ if \(gram === "" \|\| Number\(gram\) < 1\) setGram\(100\)/);
+  });
+
+  it("loggningen skyddas mot NaN", () => {
+    // En post med grams: "" ger NaN i näringsräkningen och förgiftar
+    // dagssumman tyst.
+    const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+    expect(src).toMatch(/const g = Number\(gram\) \|\| 100;/);
+  });
+
+  it("förhandsvisningen tål tomt fält", () => {
+    const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+    expect(src).toMatch(/Math\.round\(n \* \(Number\(gram\) \|\| 0\) \/ 100\)/);
   });
 });

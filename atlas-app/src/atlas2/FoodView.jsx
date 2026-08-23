@@ -764,7 +764,9 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
   }, [sök, foodLog]);
 
   if (vald) {
-    const k = n => Math.round(n * gram / 100);
+    // Number() så ett tomt fält under redigering ger 0 i förhandsvisningen,
+    // inte NaN.
+    const k = n => Math.round(n * (Number(gram) || 0) / 100);
     return (
       <div>
         <button onClick={() => setVald(null)} style={{ ...btnGhost, marginBottom: 16 }}>‹ Tillbaka till sökningen</button>
@@ -774,12 +776,31 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
         <div style={{ ...card, marginTop: 18 }}>
           <div style={{ ...label(), textAlign: "center", marginBottom: 10 }}>Mängd</div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
-            <button onClick={() => setGram(g => Math.max(5, g - 25))} style={{ width: 46, height: 46, borderRadius: 999, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 22, cursor: "pointer" }} aria-label="Minska">−</button>
+            <button onClick={() => setGram(g => Math.max(5, (Number(g) || 0) - 25))} style={{ width: 46, height: 46, borderRadius: 999, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 22, cursor: "pointer" }} aria-label="Minska">−</button>
+            {/* GRAMTALET GÅR ATT SKRIVA, inte bara stega.
+                Steget är 25 g: vill man ha 165 g krävs sju tryck från 100, och
+                träffar man fel får man börja om. Ett fält löser det på en
+                sekund, och stegknapparna finns kvar för finjustering.
+
+                Samma mönster som streckkoden och fotologgningen redan använder
+                — det här var den enda gramväljaren utan skrivbart fält. */}
             <div style={{ minWidth: 92, textAlign: "center" }}>
-              <div style={hdr(29)}>{gram}</div>
+              <input value={gram} inputMode="numeric" data-gram="1" aria-label="Mängd i gram"
+                onChange={e => {
+                  const r = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  // Tomt fält tillåts under redigering — annars hoppar det
+                  // tillbaka till 0 så fort man raderar för att skriva om.
+                  setGram(r === "" ? "" : Math.min(5000, Number(r)));
+                }}
+                onBlur={() => { if (gram === "" || Number(gram) < 1) setGram(100); }}
+                style={{
+                  ...hdr(29), width: 92, textAlign: "center", padding: 0,
+                  background: "none", border: "none", borderBottom: `1px solid ${C.border}`,
+                  color: C.text, outline: "none",
+                }} />
               <div style={label()}>gram</div>
             </div>
-            <button onClick={() => setGram(g => g + 25)} style={{ width: 46, height: 46, borderRadius: 999, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 22, cursor: "pointer" }} aria-label="Öka">+</button>
+            <button onClick={() => setGram(g => (Number(g) || 0) + 25)} style={{ width: 46, height: 46, borderRadius: 999, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 22, cursor: "pointer" }} aria-label="Öka">+</button>
           </div>
         </div>
 
@@ -792,7 +813,9 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
           ))}
         </div>
 
-        <button onClick={() => { onLägg({ id: nyId("f_"), foodId: vald.id, name: vald.name, grams: gram, ts: Date.now() }); setVald(null); setSök(""); }}
+        {/* NaN-SKYDD. Fältet får vara tomt under redigering, men en post med
+            grams: "" ger NaN i näringsräkningen och förgiftar dagssumman tyst. */}
+        <button onClick={() => { const g = Number(gram) || 100; onLägg({ id: nyId("f_"), foodId: vald.id, name: vald.name, grams: g, ts: Date.now() }); setVald(null); setSök(""); }}
           style={{ ...btnPrimary, marginTop: 20 }}>Lägg till <span style={{ fontSize: 19 }}>+</span></button>
       </div>
     );
