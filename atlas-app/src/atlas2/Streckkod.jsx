@@ -65,6 +65,33 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
   const [dekLäge, setDekLäge] = useState(null);      // läser | fel
   const [dekNotering, setDekNotering] = useState("");
   const dekFil = useRef(null);
+  const prodFil = useRef(null);
+
+  /**
+   * Sparar produktbilden på träffen.
+   *
+   * LITEN OCH KOMPRIMERAD. Bilden ska bara känna igen en förpackning i en
+   * lista, inte visas i fullskärm — 400 px räcker gott, och skafferiet ligger
+   * i localStorage där en handfull megabyte-bilder skulle fylla kvoten.
+   */
+  const sparaProduktbild = async fil => {
+    if (!fil) return;
+    try {
+      const url = URL.createObjectURL(fil);
+      const img = await new Promise((ok, fel) => {
+        const i = new Image();
+        i.onload = () => ok(i); i.onerror = () => fel(new Error("bild"));
+        i.src = url;
+      });
+      const skala = Math.min(1, 400 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * skala);
+      c.height = Math.round(img.height * skala);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      setTräff(t => ({ ...t, bild: c.toDataURL("image/jpeg", 0.72) }));
+    } catch (e) { /* en misslyckad bild ska inte stoppa loggningen */ }
+  };
 
   /**
    * Läser näringsdeklarationen ur ett foto och bygger en träff av den.
@@ -99,15 +126,25 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
       // summan sällan stämmer exakt ens på en korrekt läsning — men en STOR
       // avvikelse betyder att någon siffra lästs fel, och det ska synas.
       const rimligt = stämmerMakron(t);
+      // NAMNET BYGGS UR DELARNA. "Kvarg Vanilj" är mer sökbart än "Kvarg", och
+      // märket läggs på separat så det syns i listan utan att dubbleras.
+      const fulltNamn = [t.namn, t.variant].filter(Boolean).join(" ") || "Fotad produkt";
       setTräff({
-        name: t.namn || "Fotad produkt",
+        name: fulltNamn,
         brand: t.märke || null,
+        // Modellen FÖRESLÅR namnet — användaren bekräftar. Ser den inte texten
+        // står "Fotad produkt" och man skriver själv, i stället för att få ett
+        // påhittat märke som gör varan omöjlig att hitta igen.
+        _namnFöreslaget: !!t.namn,
         kcal: t.kcal, protein: t.protein, carbs: t.carbs, fat: t.fat,
         fiber: t.fiber ?? null, sugar: t.sugar ?? null,
         saturated: t.saturated ?? null, salt: t.salt ?? null,
         serving: t.portion ? `${t.portion} ${t.enhet}` : null,
         code: kod || null,
         källa: "foto-deklaration",
+        // Frågar om produktbild efteråt: namnet ur deklarationen räcker inte
+        // alltid för att känna igen varan i hyllan nästa gång.
+        _fotaProdukt: true,
         säkerhet: rimligt ? t.säkerhet : "låg",
         varning: rimligt ? null : "Makrona summerar inte till energivärdet — kontrollera mot förpackningen.",
       });
@@ -295,6 +332,58 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
             </div>
           )}
         </>
+      )}
+
+      {/* FOTA SJÄLVA PRODUKTEN.
+          Näringstabellen ger siffrorna men inte igenkänningen — "Rökt skinka
+          (Scan)" säger inte vilken av fem förpackningar i hyllan det var.
+          Ett bild på framsidan gör varan sökbar med ögat, inte bara med namn.
+
+          Frivilligt och efter att siffrorna är på plats: det som betyder något
+          är redan sparat, bilden är en bonus. */}
+      {/* NAMNET GÅR ATT RÄTTA innan varan sparas. Modellen läser tryckt text,
+          men en sned bild eller skymd etikett kan ge fel — och namnet är det
+          som gör varan sökbar sedan. */}
+      {träff && träff.källa === "foto-deklaration" && (
+        <div style={{ ...card, padding: 14, marginTop: 12 }}>
+          <div style={{ ...label(), color: C.muted, marginBottom: 7 }}>
+            {träff._namnFöreslaget ? "Läst från förpackningen" : "Namnge varan"}
+          </div>
+          <input value={träff.name} data-produktnamn="1" aria-label="Produktnamn"
+            onChange={e => setTräff(t => ({ ...t, name: e.target.value }))}
+            style={{
+              width: "100%", padding: "11px 13px", borderRadius: 10, minHeight: 44,
+              border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 14,
+            }} />
+          {träff.brand && (
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>
+              Märke: {träff.brand}
+            </div>
+          )}
+        </div>
+      )}
+
+      {träff && träff._fotaProdukt && !träff.bild && (
+        <div style={{ ...card, padding: 14, marginTop: 12 }}>
+          <div style={{ fontSize: 12.5, color: C.text2, lineHeight: 1.55 }}>
+            Vill du fota förpackningens framsida? Då känner du igen varan i
+            skafferiet nästa gång.
+          </div>
+          <input ref={prodFil} type="file" accept="image/*" capture="environment"
+            onChange={e => sparaProduktbild(e.target.files && e.target.files[0])}
+            style={{ display: "none" }} aria-hidden />
+          <button onClick={() => prodFil.current && prodFil.current.click()}
+            data-fota-produkt="1" style={{ ...btnGhost, marginTop: 11 }}>
+            ◉ Fota produkten
+          </button>
+        </div>
+      )}
+
+      {träff && träff.bild && (
+        <img src={träff.bild} alt="" style={{
+          width: "100%", maxHeight: 180, objectFit: "cover",
+          borderRadius: 12, marginTop: 12, display: "block",
+        }} />
       )}
 
       {träff && (

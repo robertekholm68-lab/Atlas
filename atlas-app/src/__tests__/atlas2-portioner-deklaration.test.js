@@ -198,3 +198,77 @@ describe("gramtalet går att skriva i alla vyer", () => {
     expect(src).toMatch(/Math\.round\(n \* \(Number\(gram\) \|\| 0\) \/ 100\)/);
   });
 });
+
+describe("produkten identifieras ur förpackningen", () => {
+  it("namn, märke och variant tolkas", () => {
+    // Mätt mot skarp proxy på en etikett med både tabell och framsida:
+    // "Lindahls" / "Kvarg" / "Vanilj" lästes rätt.
+    const t = tolkaDeklaration('{"namn":"Kvarg","märke":"Lindahls","variant":"Vanilj","kcal":65,"protein":11}');
+    expect(t.namn).toBe("Kvarg");
+    expect(t.märke).toBe("Lindahls");
+    expect(t.variant).toBe("Vanilj");
+  });
+
+  it("namnet byggs ur namn + variant", () => {
+    // "Kvarg Vanilj" är mer sökbart än bara "Kvarg".
+    const src = readFileSync(resolve("src/atlas2/Streckkod.jsx"), "utf8");
+    expect(src).toMatch(/\[t\.namn, t\.variant\]\.filter\(Boolean\)\.join\(" "\)/);
+  });
+
+  it("utan läst namn blir det Fotad produkt", () => {
+    // Ett GISSAT produktnamn följer med tyst in i skafferiet och gör varan
+    // omöjlig att hitta igen — sämre än inget namn, för då skriver användaren
+    // själv.
+    const t = tolkaDeklaration('{"kcal":65,"protein":11}');
+    expect("namn" in t).toBe(false);
+  });
+
+  it("namnet går att rätta innan sparning", () => {
+    // Modellen FÖRESLÅR, användaren bekräftar. En sned bild eller skymd etikett
+    // kan ge fel, och namnet är det som gör varan sökbar sedan.
+    const src = readFileSync(resolve("src/atlas2/Streckkod.jsx"), "utf8");
+    expect(src).toMatch(/data-produktnamn="1"/);
+  });
+
+  it("prompten varnar för gissade namn", () => {
+    expect(DEKLARATION_SYSTEM).toMatch(/Ett gissat produktnamn följer med tyst/);
+  });
+});
+
+describe("produktbilden sparas i skafferiet", () => {
+  it("bilden följer med posten", () => {
+    const src = readFileSync(resolve("src/engines/skafferi.js"), "utf8");
+    expect(src).toMatch(/träff\.bild \? \{ bild: träff\.bild \}/);
+  });
+
+  it("bilden komprimeras — localStorage har en kvot", () => {
+    // 400 px räcker för att känna igen en förpackning i en lista.
+    const src = readFileSync(resolve("src/atlas2/Streckkod.jsx"), "utf8");
+    expect(src).toMatch(/400 \/ Math\.max\(img\.width, img\.height\)/);
+  });
+});
+
+describe("skafferiet söks från snabbloggen — även med rösten", () => {
+  const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+
+  it("skafferiet prövas före uppskattning", () => {
+    // Snabbloggen skrev bara fritext och gick rakt till uppskattning; en vara
+    // man själv sparat kunde aldrig hittas den vägen.
+    const fn = src.slice(src.indexOf("const uppskatta = () =>"), src.indexOf("const uppskatta = () =>") + 1400);
+    expect(fn).toMatch(/setSkafferiTräff/);
+    expect(fn.indexOf("setSkafferiTräff")).toBeLessThan(fn.indexOf("mealDecision"));
+  });
+
+  it("bara vid tydlig träff", () => {
+    // Annars skulle "kycklinggryta" fastna på en sparad "kyckling".
+    expect(src).toMatch(/n\.startsWith\(ord\) \|\| ord\.startsWith\(n\)/);
+  });
+
+  it("kortet renderas oberoende av est", () => {
+    // Kortet låg först inuti {est && (...)}, men skafferiträffen sätter est till
+    // null — så det renderades aldrig. Matchningen träffade, kortet syntes inte.
+    const kort = src.indexOf("TRÄFF I SKAFFERIET");
+    const estBlock = src.indexOf("      {est && (");
+    expect(kort).toBeLessThan(estBlock);
+  });
+});

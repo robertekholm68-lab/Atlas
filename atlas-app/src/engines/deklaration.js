@@ -17,7 +17,7 @@ export const DEKLARATION_SYSTEM = `Du läser näringsdeklarationer på svenska l
 Användaren fotar tabellen "Näringsvärde per 100 g" (eller per 100 ml).
 
 SVARA ENDAST MED JSON, inget annat — ingen inledning, inga kodstaket:
-{"namn":"Kvarg Vanilj","märke":"Lindahls","kcal":65,"protein":11,"carbs":4,"fat":0.2,"fiber":0.5,"sugar":3.8,"saturated":0.1,"salt":0.1,"portion":150,"enhet":"g","säkerhet":"hög"}
+{"namn":"Kvarg","märke":"Lindahls","variant":"Vanilj","kcal":65,"protein":11,"carbs":4,"fat":0.2,"fiber":0.5,"sugar":3.8,"saturated":0.1,"salt":0.1,"portion":150,"enhet":"g","säkerhet":"hög"}
 
 REGLER:
 
@@ -31,7 +31,11 @@ portion = portionsstorleken i gram om förpackningen anger en ("1 portion = 150 
 
 enhet = "g" eller "ml" beroende på vad tabellen anger.
 
-namn och märke om de syns på bilden. Utelämna annars.
+IDENTIFIERA PRODUKTEN om förpackningen syns på bilden. Läs namnet och märket som de STÅR TRYCKTA — "Kvarg Vanilj" och "Lindahls", inte en beskrivning av vad du tror att det är.
+
+Ser du inte namnet tydligt: utelämna det. Ett gissat produktnamn följer med tyst in i användarens skafferi och gör varan omöjlig att hitta igen — sämre än inget namn alls, för då skriver användaren själv.
+
+variant om förpackningen anger smak, sort eller storlek ("Vanilj", "Naturell", "Extra proteinrik").
 
 säkerhet: "hög" när tabellen är skarp och fullständigt läsbar, "medel" när något är suddigt eller du räknat om, "låg" när du är osäker på flera värden.
 
@@ -87,6 +91,7 @@ export function tolkaDeklaration(text) {
   if (portion != null && portion > 0) ut.portion = portion;
   if (d.namn) ut.namn = String(d.namn).trim().slice(0, 60);
   if (d.märke) ut.märke = String(d.märke).trim().slice(0, 40);
+  if (d.variant) ut.variant = String(d.variant).trim().slice(0, 30);
   return ut;
 }
 
