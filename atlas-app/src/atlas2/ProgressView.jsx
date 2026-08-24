@@ -20,7 +20,7 @@ const TRÖSKEL = 3;
 // men vyn ska inte bli en oändlig logg — de senaste veckorna är det man rättar.
 const LISTA_STEG = 8;
 
-export function ProgressView({ sessions = [], weights = [], activeProgram, nutRec, onOpenSession, onOpenFordelning }) {
+export function ProgressView({ sessions = [], weights = [], activeProgram, nutRec, onOpenSession, onOpenFordelning, onOpenUtveckling }) {
   const now = Date.now();
   const done = sessions.filter(s => s && s.completedAt);
   const facts = coachFacts({ sessions, activeProgram, weights, nutRec }, now);
@@ -80,6 +80,16 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
         <button onClick={onOpenFordelning} data-fordelning="1"
           style={{ ...btnText, marginTop: 14, minHeight: 44 }}>
           Muskelfördelning — vad kroppen fått →
+        </button>
+      )}
+
+      {/* UTVECKLING. Den här vyn svarar på "har jag tränat?"; utvecklingsvyn på
+          "har det gett något?". Alltid synlig — den är också vägen in för att
+          logga sin första mätning. */}
+      {onOpenUtveckling && (
+        <button onClick={onOpenUtveckling} data-utveckling="1"
+          style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
+          Utveckling — vikt, kropp och styrka →
         </button>
       )}
 
