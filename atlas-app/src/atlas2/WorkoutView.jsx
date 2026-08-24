@@ -241,10 +241,19 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   useEffect(() => () => { if (stoppaRöst.current) stoppaRöst.current(); }, []);
 
   // Byt övning → hämta det nya förslaget.
+  //
+  // LYSSNAR PÅ ÖVNINGENS ID, INTE BARA PÅ idx.
+  //
+  // I ett tomt pass är idx redan 0 när första övningen läggs till — idx ändras
+  // alltså inte, effekten körde aldrig, och vikten stod kvar på det null den
+  // fick av useState när listan var tom. Vyn visade "—" fast buildLive räknat
+  // fram 80 kg ur förra veckans pass. Mätt i webbläsaren: förslaget fanns hela
+  // tiden, det nådde bara aldrig fältet.
+  const aktivId = it ? it.exId : null;
   useEffect(() => {
     const n = live.items[live.idx];
     if (n) { setVikt(n.vikt); setReps(n.reps); }
-  }, [live.idx]);
+  }, [live.idx, aktivId]);
 
   // Nedräkning ur klockslaget. Rensas alltid vid avmontering — annars tickar
   // den vidare osynligt och startar om nästa gång vyn öppnas.
