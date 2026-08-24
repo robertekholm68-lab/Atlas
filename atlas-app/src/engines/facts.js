@@ -30,6 +30,7 @@
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "../atlas2/store.js";
 import { MUSCLES } from "../data/muscles.js";
 import { resa as byggResa, nästaDelmål } from "./journey.js";
+import { planLäge } from "./malplan.js";
 import { readinessBreakdown, metricSeries } from "./index.js";
 import { analyzeProgram } from "./coach-programs.js";
 
@@ -172,6 +173,15 @@ export function coachFacts(ctx = {}, now = Date.now()) {
   // Det enda blocket som handlar om FRAMTIDEN. Utan mål är det tomt — coachen
   // ska inte låtsas att det finns en riktning när användaren inte satt någon.
   const r = ctx.goal ? byggResa(ctx.goal, sessions, now) : null;
+  // PLANLÄGET är det coachplanerade målets egna, DATERADE delmål — skilt från
+  // journeys fasdelmål, som bara är tidsmässiga hållpunkter. Finns ingen plan
+  // (mål satt gamla vägen) är det null, och coachen talar om faser som förut.
+  // Alla tal här kommer ur malplan-motorn, som redan har ärlighetsgrindarna:
+  // vikt äldre än fjorton dagar ger skäl i stället för siffra.
+  const planläge = (ctx.goal && ctx.goal.plan) ? planLäge(ctx.goal, { weights: ctx.weights || [], sessions }, now) : null;
+  const nästaMätbara = planläge && planläge.nästa
+    ? { ...planläge.nästa, dagarKvar: Math.max(0, Math.round((planläge.nästa.datum - now) / 864e5)) }
+    : null;
   const målresa = r ? {
     namn: r.mål.namn,
     fas: r.aktivFas ? r.aktivFas.namn : null,
@@ -180,8 +190,16 @@ export function coachFacts(ctx = {}, now = Date.now()) {
     passerat: r.passerat,
     följsamhet: r.följsamhet,
     nästaDelmål: nästaDelmål(r.mål, now),
+    // Nytt: den coachplanerade planens mätbara läge. null när målet saknar plan.
+    harPlan: !!planläge,
+    nästaMätbara,
+    viktAvvikelse: planläge ? planläge.viktAvvikelse : null,
+    viktSkäl: planläge ? planläge.viktSkäl : null,
+    förväntadVikt: planläge ? planläge.förväntadVikt : null,
+    passAvvikelse: planläge ? planläge.passAvvikelse : null,
+    dimensioner: (ctx.goal && ctx.goal.plan && ctx.goal.plan.dimensioner) || null,
     tillit: tillit(r.passLoggade),
-  } : { namn: null, tillit: tillit(0) };
+  } : { namn: null, harPlan: false, tillit: tillit(0) };
 
   // ── kosten ─────────────────────────────────────────────────────────────
   // Mål + DAGENS intag matas in färdiggatat av nutritionCtx: nutritionTargets =
@@ -274,6 +292,79 @@ export function recommendation(facts) {
     knapp: mål ? `Starta pass – ${mål.namn}` : "Starta pass",
     reservation,
   };
+}
+
+/**
+ * MÅLRESAN SOM DAGLIGT BESKED.
+ *
+ * Utan den här är målresan en flik man besöker; med den är den något coachen
+ * väger in. Funktionen svarar på tre saker och inget mer: vad är nästa mätbara
+ * delmål, ligger du före eller efter kurvan, och vad betyder det för idag.
+ *
+ * ÄRLIGHETEN ÄR HELA POÄNGEN. Går läget inte att mäta — ingen färsk vägning,
+ * för kort tid sedan start — sägs det rakt ut med skälet, aldrig en
+ * extrapolerad siffra. En avvikelse under tröskeln rapporteras som "i fas"
+ * i stället för att låtsas att 0,2 kg är ett besked; en vägning svänger mer än
+ * så av vatten och tidpunkt.
+ *
+ * Returnerar null när målet saknas eller saknar plan — anroparen visar då
+ * fasvyn som förut. Aldrig ett påhittat läge.
+ */
+export function målfokus(facts, nu = Date.now()) {
+  const m = facts && facts.målresa;
+  if (!m || !m.namn || !m.harPlan) return null;
+  if (m.passerat) {
+    return { namn: m.namn, status: "passerat", rader: [], besked: "Måldatumet har passerat. Utvärdera resan och sätt ett nytt mål." };
+  }
+
+  const rader = [];
+  const nd = m.nästaMätbara;
+  const ETIKETT = { vikt: "vikt", pass: "styrkepass", cardio: "konditionspass" };
+  if (nd) {
+    const när = nd.dagarKvar === 0 ? "idag" : nd.dagarKvar === 1 ? "imorgon" : `om ${nd.dagarKvar} dagar`;
+    rader.push(`Nästa delmål ${när}: ${ETIKETT[nd.metric] || nd.metric} ${nd.target} ${nd.unit}.`);
+  }
+
+  // Tröskeln skiljer besked från brus. Under den är svaret "i fas".
+  const VIKTBRUS = 0.5;
+  let status = "i_fas";
+  if (m.viktAvvikelse != null) {
+    const av = m.viktAvvikelse;
+    // Riktningen avgör vad "över kurvan" betyder. På väg ner är över = efter.
+    const nerVäg = m.förväntadVikt != null && nd && nd.metric === "vikt" ? nd.riktning !== "upp" : true;
+    if (Math.abs(av) < VIKTBRUS) rader.push(`Vikten följer planens kurva (${m.förväntadVikt} kg förväntat idag).`);
+    else {
+      const efter = nerVäg ? av > 0 : av < 0;
+      status = efter ? "efter" : "före";
+      rader.push(`Vikten ligger ${Math.abs(av)} kg ${av > 0 ? "över" : "under"} kurvan — ${efter ? "efter" : "före"} plan.`);
+    }
+  } else if (m.viktSkäl) {
+    status = "omätbart";
+    rader.push(`Viktläget kan inte bedömas: ${m.viktSkäl}.`);
+  }
+
+  if (m.passAvvikelse != null) {
+    const p = m.passAvvikelse;
+    if (p === 0) rader.push("Passen följer planen.");
+    else if (p > 0) rader.push(`${p} pass före plan.`);
+    else {
+      rader.push(`${Math.abs(p)} pass efter plan.`);
+      if (status !== "efter") status = status === "omätbart" ? "omätbart" : "efter";
+    }
+  }
+
+  if (!rader.length) return null;
+
+  // Beskedet är det coachen SÄGER — en mening, inte en rapport.
+  const besked = status === "efter"
+    ? "Du ligger efter planen. Ett pass idag är det som stänger glappet."
+    : status === "före"
+      ? "Du ligger före planen. Håll takten — det finns ingen anledning att skruva upp den."
+      : status === "omätbart"
+        ? "Jag kan inte säga var du ligger mot planen förrän underlaget finns."
+        : "Du ligger i fas med planen.";
+
+  return { namn: m.namn, status, rader, besked, dimensioner: m.dimensioner || null };
 }
 
 /**

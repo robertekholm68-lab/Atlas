@@ -97,6 +97,21 @@ steg.push(`${/regelbunden läggtid/i.test(t) ? "OK " : "FEL"} dimensionstexten r
 // vägning visas i stället läget mot kurvan; båda är rätt svar.)
 steg.push(`${/väg dig|planens kurva|ingen vägning/i.test(t) ? "OK " : "FEL"} viktläget redovisas ärligt (kurva eller "väg dig")`);
 
+// ── 3. Målläget vägs in i coachens rekommendation ──────────────────────────
+// Vägning som ligger EFTER planens kurva ska ge ett besked om det, inne i
+// rekommendationskortet — inte i ett eget kort man läser förbi.
+await page.evaluate(() => {
+  const v = JSON.parse(localStorage.getItem("atlas.v3.weights") || "[]");
+  v.push({ ts: Date.now() - 864e5, kg: 96.5 });
+  localStorage.setItem("atlas.v3.weights", JSON.stringify(v));
+});
+await page.reload(); await page.waitForTimeout(900);
+await klick("Coachen"); await page.waitForTimeout(600);
+t = await text();
+steg.push(`${/bröllop i juni/i.test(t) ? "OK " : "FEL"} målet nämns i coachvyn`);
+steg.push(`${/efter planen|i fas|före planen|kan inte säga/i.test(t) ? "OK " : "FEL"} coachen ger ett besked om planläget`);
+steg.push(`${/nästa delmål/i.test(t) ? "OK " : "FEL"} nästa delmål visas`);
+
 await browser.close(); srv.close();
 console.log(steg.join("\n"));
 if (fel.length) { console.log("\nSIDFEL:\n" + fel.join("\n")); process.exit(1); }
