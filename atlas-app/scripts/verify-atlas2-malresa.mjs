@@ -43,6 +43,17 @@ const klick = async t => {
   }, t);
   if (!ok) throw new Error("saknar knapp: " + t);
 };
+// FLIKBYTE MÅSTE MATCHA EXAKT. Delsträngen "coachen" träffar numera målradens
+// text på hemvyn ("Coachen planerar träning, kost och vila mot ett datum") och
+// startar då intervjun i stället för att byta flik. Samma fälla som "pass" mot
+// "Starta pass".
+const flik = async namn => {
+  const ok = await page.evaluate(n => {
+    const b = [...document.querySelectorAll("button")].find(k => (k.innerText || "").trim().toUpperCase() === n);
+    if (b) { b.click(); return true; } return false;
+  }, namn.toUpperCase());
+  if (!ok) throw new Error("saknar flik: " + namn);
+};
 const text = () => page.evaluate(() => document.body.innerText);
 const steg = [];
 
@@ -51,7 +62,7 @@ await klick("Kom igång"); await page.waitForTimeout(300);
 await klick("Demo"); await page.waitForTimeout(900);
 
 // ── 1. Intervjuingången i coachchatten ──────────────────────────────────────
-await klick("Coachen"); await page.waitForTimeout(500);
+await flik("Coachen"); await page.waitForTimeout(500);
 await klick("Fråga coachen"); await page.waitForTimeout(400);
 let t = await text();
 steg.push(`${/sätt ett mål med coachen|planera om målet/i.test(t) ? "OK " : "FEL"} chatten erbjuder målintervjun`);
@@ -83,7 +94,7 @@ await page.evaluate(m => localStorage.setItem("atlas.v3.goal", JSON.stringify(m)
 await page.reload(); await page.waitForTimeout(900);
 
 // Målresa-arket öppnas från coachvyns Målresa-kort (onOpenGoal), inte menyn.
-await klick("Coachen"); await page.waitForTimeout(500);
+await flik("Coachen"); await page.waitForTimeout(500);
 await klick("Målresa"); await page.waitForTimeout(500);
 t = await text();
 steg.push(`${/bröllop i juni/i.test(t) ? "OK " : "FEL"} målet visas med sitt namn`);
@@ -111,6 +122,39 @@ t = await text();
 steg.push(`${/bröllop i juni/i.test(t) ? "OK " : "FEL"} målet nämns i coachvyn`);
 steg.push(`${/efter planen|i fas|före planen|kan inte säga/i.test(t) ? "OK " : "FEL"} coachen ger ett besked om planläget`);
 steg.push(`${/nästa delmål/i.test(t) ? "OK " : "FEL"} nästa delmål visas`);
+
+// ── 4. INGÅNGEN LIGGER FRAMME PÅ HEMVYN ────────────────────────────────────
+// Rapporterat problem: intervjun gick bara att nå genom att fälla ut
+// chattkortet inuti coachvyn — två klick ned i en vy man inte gissar.
+await page.evaluate(() => localStorage.removeItem("atlas.v3.goal"));
+await page.reload(); await page.waitForTimeout(900);
+t = await text();
+steg.push(`${/sätt ett mål/i.test(t) ? "OK " : "FEL"} målraden syns direkt på hemvyn utan mål`);
+// Hemvyn är låst till skärmhöjden — målraden får inte skapa scroll.
+const spill = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+steg.push(`${spill <= 1 ? "OK " : "FEL"} hemvyn spiller inte över (${Math.round(spill)} px)`);
+
+// Ett klick ska landa i coachvyn med intervjun IGÅNG, inte i en hopfälld chatt.
+await klick("Sätt ett mål"); await page.waitForTimeout(900);
+t = await text();
+steg.push(`${/berätta vad du siktar på/i.test(t) ? "OK " : "FEL"} klicket startar intervjun direkt`);
+
+// ── 5. INTERVJUN ÖVERLEVER ATT MAN LÄMNAR VYN ──────────────────────────────
+// Rapporterat problem: coachen "glömde vad vi sagt". CoachChat renderas bara
+// när chattkortet är utfällt, så tillstånd i useState RADERADES vid
+// avmontering. Nu ligger det i lagringen.
+const sparadIntervju = await page.evaluate(() => JSON.parse(localStorage.getItem("atlas.v3.intervju") || "null"));
+steg.push(`${sparadIntervju && sparadIntervju.transkript && sparadIntervju.transkript.length ? "OK " : "FEL"} intervjun sparas i lagringen`);
+
+await flik("Hem"); await page.waitForTimeout(400);
+await flik("Coachen"); await page.waitForTimeout(700);
+t = await text();
+steg.push(`${/berätta vad du siktar på/i.test(t) ? "OK " : "FEL"} intervjun finns kvar efter flikbyte`);
+
+await page.reload(); await page.waitForTimeout(1000);
+await flik("Coachen"); await page.waitForTimeout(800);
+const efterOmladdning = await page.evaluate(() => document.body.innerText);
+steg.push(`${/berätta vad du siktar på/i.test(efterOmladdning) ? "OK " : "FEL"} intervjun överlever omladdning`);
 
 await browser.close(); srv.close();
 console.log(steg.join("\n"));

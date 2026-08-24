@@ -56,7 +56,7 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"] || "okänd";
   if (överGräns(ip)) return res.status(429).json({ fel: "för många frågor, vänta en stund" });
 
-  const { system, meddelande } = req.body || {};
+  const { system, meddelande, maxTokens } = req.body || {};
   if (typeof meddelande !== "string" || !meddelande.trim()) {
     return res.status(400).json({ fel: "meddelande saknas" });
   }
@@ -73,7 +73,12 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 400,
+        // 400 räcker för ett chattsvar men INTE alltid för målintervjuns plan:
+        // fem dimensioner à ett par meningar plus struktur ligger nära taket,
+        // och ett kapat svar ger en oparsbar JSON som ser ut som ett fel i
+        // appen. Anroparen får därför höja, med ett tak som skydd mot en
+        // trasig loop.
+        max_tokens: Math.min(1200, Math.max(200, Number(maxTokens) || 400)),
         system: typeof system === "string" ? system : undefined,
         messages: [{ role: "user", content: meddelande }],
       }),
