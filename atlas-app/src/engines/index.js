@@ -7,6 +7,10 @@ import { portionNutrition } from "../data/portions.js";
 import { ACT_RANK, BODY_ZONES, GROUP_SOURCES, GROUP_SV, MUSCLES, SLUG2ID, VOLUME_LANDMARKS } from "../data/muscles.js";
 import { H, T, now } from "../data/tokens.js";
 
+// Modulkonstant — deklareras högst upp eftersom den läses tidigare i filen än
+// den stod förut (TDZ: const är inte hoistad till undefined, den kastar).
+const DAY_MS = 864e5;
+
 function computeSessionLoad(sets, exercises, bodyweight = BODYWEIGHT) {
   const loads = {};
   sets.forEach(set => {
@@ -1299,7 +1303,6 @@ function supplementAdvice({ profile, foodLog, sessions, nutritionTotals, nutriti
 
 // ── §2/§9: HÄRLEDDA PERSONLIGA MÅTT (aktiv historik → aldrig demo-fixtures) ──
 function startOfLocalDay(ts) { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
-const DAY_MS = 864e5;
 
 // ── MENSCYKEL (opt-in) ─────────────────────────────────────────────
 // Ärliga, generella mönster — individuellt olika. Modifierarna är små och tänkta
