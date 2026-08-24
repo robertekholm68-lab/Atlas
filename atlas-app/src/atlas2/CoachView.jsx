@@ -25,7 +25,7 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec }) {
+export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec, setMål }) {
   // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
   // låtsas. Motorn kräver minst tre svar inom tre veckor: två är ingen tendens.
   // Signalen räknas FÖRE facts eftersom den sänker tilliten till readiness inuti
@@ -172,7 +172,8 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         {visaChatt && (
           <div style={{ marginTop: 12 }}>
             <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
-              foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
+              foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart}
+              setMål={setMål} onOpenGoal={onOpenGoal} />
           </div>
         )}
       </div>
