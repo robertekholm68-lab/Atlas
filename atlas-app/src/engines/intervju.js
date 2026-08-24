@@ -73,6 +73,7 @@ export function viktbana({ startKg, målKg, målDatum, nu = Date.now() }) {
 // Allt appen redan VET skickas med, så att coachen aldrig frågar om sådant som
 // står i loggen. Varje tal härleds ur data — inget uppskattas.
 export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = [], nutritionTargets = null, profile = null, nu = Date.now() } = {}) {
+  const pr = profile || {};
   const w = weights.slice().sort((a, b) => a.ts - b.ts);
   const senasteVikt = w.length ? w[w.length - 1] : null;
   const viktFärsk = senasteVikt ? (nu - senasteVikt.ts) <= 14 * DAG : false;
@@ -86,8 +87,20 @@ export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = []
 
   return {
     idag: new Date(nu).toISOString().slice(0, 10),
-    namn: (profile && profile.name) || null,
-    kön: (profile && profile.sex) || null,
+    namn: pr.name || null,
+    // PROFILEN ÄR EN KÄLLA, INTE EN FRÅGA. Allt som redan står här ska coachen
+    // slippa fråga om — och FÅR inte fråga om, enligt prompten. Innan
+    // profilvyn fanns frågade intervjun om ålder, längd och kost varje gång ett
+    // mål sattes, trots att svaret var detsamma varje gång.
+    kön: pr.gender || pr.sex || null,
+    ålder: pr.age != null ? pr.age : null,
+    längdCm: pr.height != null ? pr.height : null,
+    träningsvana: pr.level || null,
+    kosthållning: pr.diet || null,
+    kostupplägg: pr.dietApproach || null,
+    // Användarens egna ord om skador. Coachen ska ta hänsyn men aldrig tolka
+    // dem medicinskt — det står i prompten.
+    skadorOchBesvär: pr.injuryNotes || null,
     // Vikt: senaste mätningen ELLER besked om att den saknas/är gammal. En
     // vikt från i våras är inte ett utgångsläge — då ska coachen fråga.
     senasteViktKg: viktFärsk ? senasteVikt.kg : null,
@@ -107,7 +120,9 @@ export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = []
 export const INTERVJU_SYSTEMPROMPT = `Du är coachen i Askr, en svensk styrketräningsapp, och genomför en MÅLINTERVJU. Användaren vill sätta ett mål (t.ex. ett bröllop, magrutor, en träningsresa) och du ska diskutera dig fram till en komplett plan.
 
 ARBETSSÄTT.
-Ställ EN fråga i taget, kort och konkret. Underlaget innehåller det appen redan vet (vikt, träningsrytm, kostloggning) — fråga ALDRIG om sådant som står där. Det du behöver få klart:
+Ställ EN fråga i taget, kort och konkret. Underlaget innehåller det appen redan vet (vikt, träningsrytm, kostloggning, och profilen: kön, ålder, längd, träningsvana, kosthållning, skador) — fråga ALDRIG om sådant som står där. Står ett fält som null vet appen det inte; fråga bara om det är nödvändigt för just det här målet.
+
+HÄNSYN TILL SKADOR. Står det något under skadorOchBesvär är det användarens EGNA ord, inte en diagnos. Ta hänsyn till det i planens träningsdel och nämn det, men gör aldrig en medicinsk bedömning och avråd inte från vård. Det du behöver få klart:
 1. Målet i klartext och vilken typ det är (typerna står i underlaget).
 2. Ett måldatum. Har användaren inget: föreslå en rimlig horisont i veckor och be om bekräftelse. Planen KRÄVER ett datum.
 3. Om målet rör vikt eller kroppsform: utgångsvikt (ur underlaget om den finns, annars fråga) och målvikt. Respektera säkra takter i underlaget — kräver målet högre takt, säg det rakt och föreslå senare datum eller mindre förändring.

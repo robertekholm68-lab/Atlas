@@ -8,6 +8,7 @@ import { C, MONO, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.
 import { scanna, förbered, genomför } from "./import.js";
 import { buildV3Backup, v3BackupFilename, inspectV3Backup, restoreV3Backup } from "./backup2.js";
 import { formatBuildTime } from "../engines/index.js";
+import { ProfilLucka } from "./ProfileSheet.jsx";
 
 const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
@@ -19,7 +20,7 @@ const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric"
 const byggeLäsbart = () =>
   formatBuildTime(typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "");
 
-export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onClose }) {
+export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, profile, onOpenProfil, onClose }) {
   const [steg, setSteg] = useState("scan");
   const [plan, setPlan] = useState(null);
   const [taMed, setTaMed] = useState([]);
@@ -86,6 +87,19 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, onC
             </button>
           </>
         )}
+        {/* ── OM DIG: profilen styr vad allt annat kan räkna ut ──
+            Luckkortet står bara när något faktiskt saknas; en permanent
+            uppmaning hade blivit tapet man slutar se. */}
+        <div style={{ ...label(), margin: "22px 0 8px" }}>Om dig</div>
+        {onOpenProfil && (
+          <>
+            <ProfilLucka profile={profile} onOpen={onOpenProfil} />
+            <button onClick={onOpenProfil} style={{ ...btnGhost, marginTop: 8 }}>
+              Kön, ålder, längd, kost och skador
+            </button>
+          </>
+        )}
+
         {/* ── DATASÄKERHET: v3-datans egen väg ut och in ── */}
         <div style={{ ...label(), margin: "22px 0 8px" }}>Datasäkerhet</div>
         <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>
