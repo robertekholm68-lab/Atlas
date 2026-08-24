@@ -13,6 +13,7 @@ import { BottomNav } from "./Nav.jsx";
 import { CoachView } from "./CoachView.jsx";
 import { coachFacts } from "./facts.js";
 import { ProgressView } from "./ProgressView.jsx";
+import { UtvecklingView } from "./UtvecklingView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
@@ -316,6 +317,15 @@ export function Atlas2() {
   const [programs, setPrograms] = useState([]);
   const [activeProgramId, setActiveProgramId] = useState(null);
   const [weights, setWeights] = useState([]);
+  // Kroppsmätningar med fler fält än vikt (kroppsfett, muskel, visceralt).
+  // Egen nyckel: weights är { ts, kg } och läses av coach, framsteg och
+  // backup — att bygga om den formen skulle tyst skriva om historik.
+  const [mätningar, setMätningar] = useState([]);
+  const sättMätningar = f => setMätningar(xs => {
+    const ny = typeof f === "function" ? f(xs) : f;
+    save("matningar", ny);
+    return ny;
+  });
   const [live, setLive] = useState(null);   // pågående pass; persisteras av WorkoutView
   const [foodLog, setFoodLog] = useState([]);
   const [mål, setMål] = useState(null);
@@ -401,12 +411,12 @@ export function Atlas2() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl, egna, skaff] = await Promise.all([
+      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl, egna, skaff, mät] = await Promise.all([
         load("mode", null), load("profile", {}), load("sessions", []), load("programs", []),
         load("activeProgramId", null), load("weights", []), load("live", null),
         load("foodLog", []), load("goal", null), load("nutritionTargets", null),
         load("nudgesDismissed", {}), load("supplementLog", []), load("egnaRecept", []),
-        load("skafferi", []),
+        load("skafferi", []), load("matningar", []),
       ]);
       if (!alive) return;
       const p = prof || {};
@@ -420,6 +430,7 @@ export function Atlas2() {
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
       setEgnaRecept(Array.isArray(egna) ? egna : []);
       setSkafferi(Array.isArray(skaff) ? skaff : []);
+      setMätningar(Array.isArray(mät) ? mät : []);
       setWeights(migr.weights); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
 
       // ÖVERGIVET PASS: fråga i stället för att tyst räkna vidare.
@@ -553,7 +564,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "kunskap" ? "Kunskap" : s === "fordelning" ? "Muskelfördelning"
+    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -875,6 +886,7 @@ export function Atlas2() {
     );
     if (flik === "framsteg") return (
       <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} nutRec={nutRec}
+        onOpenUtveckling={() => setSheet("utveckling")}
         onOpenSession={id => setSheet("pass:" + id)}
         onOpenFordelning={() => setSheet("fordelning")} />
     );
@@ -988,6 +1000,9 @@ export function Atlas2() {
                 iPågåendePass={!!live} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
+            ) : sheet === "utveckling" ? (
+              <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar}
+                sessions={sessions} profile={profile} onClose={() => setSheet(null)} />
             ) : sheet === "kunskap" ? (
               <KnowledgeView onClose={() => setSheet(null)} />
             ) : sheet === "fordelning" ? (
