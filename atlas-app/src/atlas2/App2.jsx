@@ -882,7 +882,7 @@ export function Atlas2() {
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
         profile={profile} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
-        onStart={startaPass} onOpenGoal={() => setSheet("mal")} />
+        onStart={startaPass} onOpenGoal={() => setSheet("mal")} setMål={setMål} />
     );
     if (flik === "framsteg") return (
       <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} nutRec={nutRec}
@@ -975,7 +975,7 @@ export function Atlas2() {
                 }}
                 onClose={() => setSheet(null)} />
             ) : sheet === "mal" ? (
-              <GoalSheet mål={mål} setMål={setMål} sessions={sessions} onClose={() => setSheet(null)} />
+              <GoalSheet mål={mål} setMål={setMål} sessions={sessions} weights={weights} onClose={() => setSheet(null)} />
             ) : sheet === "kost" ? (
               <NutritionSheet mål={nutritionTargets} setMål={setNutritionTargets}
                 weights={weights} profile={profile} onClose={() => setSheet(null)} />

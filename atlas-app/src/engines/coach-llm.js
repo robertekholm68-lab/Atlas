@@ -65,6 +65,7 @@ export function byggUnderlag(facts, extra = {}) {
   const k = facts.kropp || {};
   const t = facts.träning || {};
   const kost = facts.kost || {};
+  const mål = facts.målresa || null;
   return {
     readiness: k.readiness,
     readinessFörklaring: (k.readinessWhy && k.readinessWhy.factors || [])
@@ -81,6 +82,22 @@ export function byggUnderlag(facts, extra = {}) {
     program: facts.program && facts.program.namn,
     proteinMål: kost.harMål ? kost.proteinMål : null,
     proteinIntag: kost.harMål ? kost.proteinIntag : null,
+    // MÅLRESANS PLANLÄGE. Tas med bara när målet har en coachplanerad plan —
+    // annars skulle nollor och null-fält bli tal modellen tror sig få använda.
+    // Talen kommer ur malplan-motorn via facts, så de är redan tillåtna av
+    // talkontrollen; skälet ("väg dig") följer med så modellen kan säga att
+    // läget inte går att bedöma i stället för att gissa.
+    ...(mål && mål.harPlan ? {
+      målresa: mål.namn,
+      veckorKvarTillMål: mål.veckorKvar,
+      nästaDelmål: mål.nästaMätbara
+        ? { vad: mål.nästaMätbara.metric, mål: mål.nästaMätbara.target, enhet: mål.nästaMätbara.unit, dagarKvar: mål.nästaMätbara.dagarKvar }
+        : null,
+      viktAvvikelseMotPlan: mål.viktAvvikelse,
+      viktLägeGårInteAttBedöma: mål.viktSkäl,
+      passAvvikelseMotPlan: mål.passAvvikelse,
+      planensRiktlinjer: mål.dimensioner,
+    } : {}),
     fårUttalaSigOm: facts.datalage && facts.datalage.fårUttalaSig,
     ...extra,
   };

@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { C, HFONT, hdr, label, btnPrimary, card, volt } from "./design.js";
-import { coachFacts, recommendation } from "./facts.js";
+import { coachFacts, recommendation, målfokus } from "./facts.js";
 import { CoachChat } from "./CoachChat.jsx";
 import { reasonSignal } from "../engines/post-session.js";
 
@@ -25,7 +25,7 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec }) {
+export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec, setMål }) {
   // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
   // låtsas. Motorn kräver minst tre svar inom tre veckor: två är ingen tendens.
   // Signalen räknas FÖRE facts eftersom den sänker tilliten till readiness inuti
@@ -33,6 +33,9 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
   const signal = reasonSignal(sessions);
   const facts = coachFacts({ sessions, activeProgram, weights, goal, nutRec, reasonSignal: signal });
   const rek = recommendation(facts);
+  // Målresans läge mot planen. null när målet saknas eller saknar plan — då
+  // visas fasvyn som förut, aldrig ett påhittat läge.
+  const fokus = målfokus(facts);
   const namn = (profile && profile.name) || null;
   // Skälen är det man läser EN gång och sedan hoppar över. De fälls därför ihop
   // som standard: rekommendationen ska mötas först, inte motiveringen till den.
@@ -78,6 +81,19 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
             {facts.kropp.tillit.skäl && ` ${facts.kropp.tillit.skäl}`}
           </div>
         )}
+        {/* MÅLRESAN VÄGS IN I DAGENS BESLUT. Raden står INNE i
+            rekommendationskortet med flit: ett eget kort hade gjort målet till
+            ännu en sak att läsa förbi, och poängen är att beslutet idag och
+            målet är samma fråga. Talen kommer ur malplan-motorn. */}
+        {fokus && (
+          <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
+            <div style={label(fokus.status === "efter" ? C.recovering : C.lime)}>{fokus.namn}</div>
+            <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 5 }}>{fokus.besked}</div>
+            {fokus.rader.map((r, i) => (
+              <div key={i} style={{ fontSize: 12, color: C.muted, lineHeight: 1.55, marginTop: 3 }}>{r}</div>
+            ))}
+          </div>
+        )}
         {rek.knapp && activeProgram && (
           <button onClick={onStart} style={{ ...btnPrimary, marginTop: 15 }}>{rek.knapp} <span style={{ fontSize: 19 }}>→</span></button>
         )}
@@ -97,6 +113,13 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
                     ? "Måldatumet har passerat"
                     : `${facts.målresa.fas ? facts.målresa.fas + " · " : ""}${facts.målresa.veckorKvar} veckor kvar`}
                 </div>
+                {/* Med en coachplanerad plan är nästa DATERADE delmål mer
+                    användbart än fasnamnet — det är det man styr efter. */}
+                {facts.målresa.nästaMätbara && !facts.målresa.passerat && (
+                  <div style={{ fontSize: 12, color: C.lime, marginTop: 3 }}>
+                    Nästa delmål om {facts.målresa.nästaMätbara.dagarKvar} dgr
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.55, maxWidth: 270 }}>
@@ -172,7 +195,8 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
         {visaChatt && (
           <div style={{ marginTop: 12 }}>
             <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
-              foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart} />
+              foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart}
+              setMål={setMål} onOpenGoal={onOpenGoal} />
           </div>
         )}
       </div>

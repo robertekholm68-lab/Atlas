@@ -9,11 +9,15 @@
 // Att skriva en andra coach hade betytt två sanningar om samma kropp.
 
 import { useState, useRef, useEffect } from "react";
-import { C, HFONT, BFONT, hdr, label, card, volt } from "./design.js";
+import { C, HFONT, BFONT, hdr, label, card, volt, btnPrimary, btnGhost } from "./design.js";
 import { coachReply } from "../features/ai-coach/index.jsx";
 import { frågaCoachen } from "../engines/coach-llm.js";
 import { coachFacts } from "../engines/facts.js";
 import { bodyState, nutritionCtx } from "./store.js";
+import {
+  INTERVJU_SYSTEMPROMPT, byggIntervjuUnderlag, intervjuMeddelande,
+  tolkaIntervjuSvar, valideraPlan, byggMålFrånPlan, viktbana,
+} from "../engines/intervju.js";
 
 /**
  * Proxyn som håller API-nyckeln. Appen anropar aldrig Claude direkt — en nyckel
@@ -40,11 +44,17 @@ const FÖRSLAG = [
   "Bröstet svarar inte",
 ];
 
-export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, weights = [], onStart }) {
+export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, weights = [], onStart, setMål, onOpenGoal }) {
   const [rader, setRader] = useState([]);
   const [text, setText] = useState("");
   const [ämne, setÄmne] = useState(null);
   const [tänker, setTänker] = useState(false);
+  // MÅLINTERVJUN. null = vanlig chatt. Aktiv intervju bär hela transkriptet —
+  // modellen är tillståndslös, så samtalet skickas med varje anrop. `plan` sätts
+  // först när modellen levererat en plan som klarat den deterministiska
+  // valideringen; sparandet sker ändå aldrig förrän användaren tryckt på
+  // knappen i förhandsvisningen. Människan är sista grinden.
+  const [intervju, setIntervju] = useState(null);
   const botten = useRef(null);
 
   // ROLLA TILL SVARETS ÖVERKANT, INTE TILL SIDANS BOTTEN.
@@ -62,9 +72,86 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
     if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [rader, tänker]);
 
+  // ── Målintervjun ──────────────────────────────────────────────────────────
+  // Modellen intervjuar och föreslår; intervju-motorn validerar; delmålen
+  // genereras deterministiskt; användaren godkänner. Fyra led, inget hoppas över.
+  const startaIntervju = () => {
+    const öppning = goal
+      ? "Du har redan en målresa igång — en ny ersätter den. Berätta vad du siktar på, så planerar vi om."
+      : "Berätta vad du siktar på — ett bröllop, magrutor, en träningsresa, vad som helst. Så diskuterar vi oss fram till en plan med delmål.";
+    setIntervju({ transkript: [{ från: "coachen", text: öppning }], plan: null });
+    setRader(r => [...r, { från: "coachen", text: öppning, källa: "intervju" }]);
+  };
+
+  const intervjuTur = async f => {
+    const transkript = [...intervju.transkript, { från: "du", text: f }];
+    setIntervju({ ...intervju, transkript });
+    setRader(r => [...r, { från: "du", text: f }]);
+    setText("");
+    setTänker(true);
+
+    const underlag = byggIntervjuUnderlag({ weights, sessions, foodLog, nutritionTargets, profile });
+    const körTur = async trans => {
+      const svar = await hämtaSvar({
+        system: INTERVJU_SYSTEMPROMPT,
+        meddelande: intervjuMeddelande({ underlag, transkript: trans }),
+      });
+      return tolkaIntervjuSvar(svar);
+    };
+
+    try {
+      let r = await körTur(transkript);
+      let trans = transkript;
+
+      // En plan som inte klarar valideringen skickas tillbaka EN gång med
+      // felen som instruktion. Klarar modellen det inte heller då sägs det
+      // rakt ut — hellre ett ärligt "det gick inte" än en trasig plan.
+      if (r.typ === "plan") {
+        let v = valideraPlan(r.plan, { underlag, transkript: trans });
+        if (!v.ok) {
+          trans = [...trans, { från: "coachen", text: `[Valideringsfel — rätta och fortsätt intervjun eller leverera ny JSON: ${v.fel.join("; ")}]` }];
+          r = await körTur(trans);
+          if (r.typ === "plan") v = valideraPlan(r.plan, { underlag, transkript: trans });
+        }
+        if (r.typ === "plan" && v.ok) {
+          setIntervju({ transkript: trans, plan: r.plan, bana: v.bana });
+          setTänker(false);
+          return;
+        }
+        if (r.typ === "plan") {
+          setTänker(false);
+          setRader(x => [...x, { från: "coachen", källa: "intervju", text: "Planen höll inte måttet: " + v.fel.join(". ") + ". Vi tar det därifrån — svara på det som saknas." }]);
+          setIntervju({ transkript: trans, plan: null });
+          return;
+        }
+      }
+
+      setTänker(false);
+      if (r.typ === "fråga") {
+        setIntervju({ transkript: [...trans, { från: "coachen", text: r.text }], plan: null });
+        setRader(x => [...x, { från: "coachen", text: r.text, källa: "intervju" }]);
+      } else {
+        setRader(x => [...x, { från: "coachen", källa: "intervju", text: "Jag fick inget användbart svar från modellen. Prova att formulera om, eller avbryt intervjun." }]);
+      }
+    } catch (e) {
+      setTänker(false);
+      setRader(x => [...x, { från: "coachen", källa: "intervju", text: "Kopplingen till coachen gick inte fram. Försök igen om en stund." }]);
+    }
+  };
+
+  const sparaPlan = () => {
+    const mål = byggMålFrånPlan(intervju.plan);
+    if (setMål) setMål(mål);
+    setIntervju(null);
+    setRader(r => [...r, { från: "coachen", källa: "intervju", text: `Målresan "${mål.namn}" är igång — ${mål.delmål.length} delmål fram till måldatumet. Du hittar hela planen under Målresa.`, action: onOpenGoal ? { kind: "mål", label: "Öppna målresan" } : null }]);
+  };
+
   const fråga = async q => {
     const f = (q || "").trim();
     if (!f) return;
+    // Pågår en intervju går allt man skriver dit — man är i ett samtal, inte i
+    // en frågelåda. Vanliga chatten kommer tillbaka när intervjun är klar.
+    if (intervju) { intervjuTur(f); return; }
 
     const { states, overall, covered } = bodyState(sessions);
 
@@ -167,6 +254,13 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
                       fontFamily: HFONT, fontSize: 12.5, fontWeight: 700,
                     }}>{r.action.label}</button>
                   )}
+                  {r.action && r.action.kind === "mål" && onOpenGoal && (
+                    <button onClick={onOpenGoal} style={{
+                      marginTop: 11, padding: "9px 15px", borderRadius: 999, cursor: "pointer",
+                      border: "none", background: C.lime, color: "#0A0A0A",
+                      fontFamily: HFONT, fontSize: 12.5, fontWeight: 700,
+                    }}>{r.action.label}</button>
+                  )}
                 </div>
               )}
             </div>
@@ -175,15 +269,68 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
         </div>
       )}
 
-      {/* Följdfrågor: coachens egna chips när de finns, annars startförslagen. */}
+      {/* FÖRHANDSVISNINGEN — hela planen i klartext innan något sparas.
+          Talen kommer ur den VALIDERADE planen och den deterministiska
+          viktbanan; ingenting här är modellens formuleringar. */}
+      {intervju && intervju.plan && (() => {
+        const p = intervju.plan;
+        const bana = intervju.bana || (p.viktmål ? viktbana({ startKg: p.viktmål.startKg, målKg: p.viktmål.målKg, målDatum: new Date(p.målDatum + "T12:00:00").getTime() }) : null);
+        return (
+          <div style={{ ...card, marginTop: 12, borderColor: C.lime, background: volt(.045) }}>
+            <div style={label(C.lime)}>Förslag till målresa</div>
+            <div style={{ ...hdr(17), marginTop: 6 }}>{p.namn}</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+              Måldatum {p.målDatum} · {p.passPerVecka} styrkepass/v{p.cardioPerVecka ? ` · ${p.cardioPerVecka} cardio/v` : ""}
+            </div>
+            {p.viktmål && bana && (
+              <div style={{ fontSize: 13, color: C.text2, marginTop: 8, lineHeight: 1.55 }}>
+                Vikt {p.viktmål.startKg} → {p.viktmål.målKg} kg, ~{Math.abs(bana.kgPerVecka)} kg/vecka — inom säker takt.
+              </div>
+            )}
+            {["träning", "kost", "cardio", "vila", "sömn"].map(k => (p.dimensioner && p.dimensioner[k]) ? (
+              <div key={k} style={{ marginTop: 9 }}>
+                <div style={label()}>{k.charAt(0).toUpperCase() + k.slice(1)}</div>
+                <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.55, marginTop: 2 }}>{p.dimensioner[k]}</div>
+              </div>
+            ) : null)}
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
+              Sömn och vila kan appen inte mäta — de följer med som riktlinjer,
+              inte som delmål. Delmålen sätts på vikt och loggade pass.
+            </div>
+            <button onClick={sparaPlan} style={{ ...btnPrimary, marginTop: 12 }}>Starta resan</button>
+            <button onClick={() => setIntervju({ ...intervju, plan: null })} style={{ ...btnGhost, marginTop: 8 }}>Justera — fortsätt samtalet</button>
+          </div>
+        );
+      })()}
+
+      {/* Följdfrågor: coachens egna chips när de finns, annars startförslagen.
+          Under en intervju visas bara en väg ut — allt annat man skriver hör
+          till samtalet. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7, margin: "12px 0" }}>
-        {((rader.length && rader[rader.length - 1].chips) || FÖRSLAG).slice(0, 4).map(c => (
-          <button key={c} onClick={() => fråga(c)} style={{
+        {intervju ? (
+          <button onClick={() => { setIntervju(null); setRader(r => [...r, { från: "coachen", text: "Intervjun avbruten. Fråga på som vanligt.", källa: "intervju" }]); }} style={{
             padding: "8px 13px", borderRadius: 999, cursor: "pointer",
-            border: `1px solid ${C.border}`, background: C.card2, color: C.text2,
+            border: `1px solid ${C.border}`, background: C.card2, color: C.muted,
             fontFamily: BFONT, fontSize: 12.5,
-          }}>{c}</button>
-        ))}
+          }}>Avbryt intervjun</button>
+        ) : (
+          <>
+            {setMål && (
+              <button onClick={startaIntervju} style={{
+                padding: "8px 13px", borderRadius: 999, cursor: "pointer",
+                border: `1px solid ${C.lime}`, background: volt(.05), color: C.lime,
+                fontFamily: BFONT, fontSize: 12.5,
+              }}>{goal ? "Planera om målet" : "Sätt ett mål med coachen"}</button>
+            )}
+            {((rader.length && rader[rader.length - 1].chips) || FÖRSLAG).slice(0, 4).map(c => (
+              <button key={c} onClick={() => fråga(c)} style={{
+                padding: "8px 13px", borderRadius: 999, cursor: "pointer",
+                border: `1px solid ${C.border}`, background: C.card2, color: C.text2,
+                fontFamily: BFONT, fontSize: 12.5,
+              }}>{c}</button>
+            ))}
+          </>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>

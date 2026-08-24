@@ -4,8 +4,9 @@
 // fejkad tidsaxel — bara en inbjudan att sätta ett.
 
 import { useState } from "react";
-import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, volt } from "./design.js";
+import { C, HFONT, hdr, label, btnPrimary, btnGhost, card, statRow, statCell, volt, DASH } from "./design.js";
 import { MÅLTYPER, skapaMål, resa, delmål, resansText } from "./journey.js";
+import { delmålStatus, planLäge } from "../engines/malplan.js";
 
 const dat = ts => new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" });
 const VECKA = 6048e5;
@@ -72,7 +73,7 @@ function Ny({ onSpara, onAvbryt }) {
   );
 }
 
-export function GoalSheet({ mål, setMål, sessions, onClose }) {
+export function GoalSheet({ mål, setMål, sessions, weights = [], onClose }) {
   const [nytt, setNytt] = useState(false);
   const r = resa(mål, sessions);
 
@@ -145,6 +146,79 @@ export function GoalSheet({ mål, setMål, sessions, onClose }) {
           </div>
         </div>
       ))}
+
+      {/* DELMÅL PÅ DATUM — finns bara på mål planerade med coachen. Statusen
+          bedöms mot LOGGAD data av malplan-motorn: en vägning nära datumet
+          eller ackumulerade pass. Saknas mätning sägs det — aldrig en gissning. */}
+      {Array.isArray(mål.delmål) && mål.delmål.length > 0 && (() => {
+        const läge = planLäge(mål, { weights, sessions });
+        const namn = { vikt: "Vikt", pass: "Styrkepass", cardio: "Cardio" };
+        const statusText = { uppnått: "Uppnått", missat: "Missat", ingen_mätning: "Ingen mätning", kommande: null };
+        const statusFärg = { uppnått: C.lime, missat: C.recovering, ingen_mätning: C.muted };
+        return (
+          <>
+            {läge && (läge.viktAvvikelse != null || läge.viktSkäl || läge.passAvvikelse != null) && (
+              <div style={{ ...card, marginTop: 16 }}>
+                <div style={label(C.lime)}>Läge mot plan</div>
+                {läge.viktAvvikelse != null && (
+                  <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 6 }}>
+                    Vikten ligger {Math.abs(läge.viktAvvikelse)} kg {läge.viktAvvikelse > 0 ? "över" : läge.viktAvvikelse < 0 ? "under" : "på"} planens kurva
+                    {läge.viktAvvikelse === 0 ? "" : ` (förväntat ${läge.förväntadVikt} kg idag)`}.
+                  </div>
+                )}
+                {läge.viktSkäl && (
+                  <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginTop: 6 }}>
+                    Viktläget kan inte bedömas — {läge.viktSkäl}.
+                  </div>
+                )}
+                {läge.passAvvikelse != null && (
+                  <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.6, marginTop: 6 }}>
+                    {läge.passAvvikelse === 0 ? "Passen följer planen exakt."
+                      : läge.passAvvikelse > 0 ? `${läge.passAvvikelse} pass före plan.`
+                      : `${Math.abs(läge.passAvvikelse)} pass efter plan.`}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ ...label(), margin: "22px 0 4px" }}>Delmål</div>
+            {mål.delmål.map(d => {
+              const s = delmålStatus(d, { weights, sessions, startDatum: mål.startDatum });
+              return (
+                <div key={d.id} style={{ display: "flex", gap: 11, padding: "11px 2px", borderBottom: `1px solid ${C.border}`, alignItems: "baseline" }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 4, flexShrink: 0, alignSelf: "center",
+                    background: s.status === "uppnått" ? C.lime : s.status === "missat" ? C.recovering : C.border }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, color: s.status === "kommande" ? C.text : C.muted }}>
+                      {namn[d.metric] || d.metric} {d.metric === "vikt" ? `${d.target} kg` : `${d.target} ${d.unit}`}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>{dat(d.datum)}</div>
+                  </div>
+                  <div style={{ fontSize: 12, fontFamily: HFONT, fontWeight: 700,
+                    color: statusFärg[s.status] || C.text2 }}>
+                    {statusText[s.status] || (s.uppmätt != null ? String(s.uppmätt) : DASH)}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        );
+      })()}
+
+      {/* Planens fem dimensioner — coachens riktlinjer i klartext. Sömn och
+          vila står här och bara här: appen kan inte mäta dem, så de får inga
+          delmål med datumstämpel. */}
+      {mål.plan && mål.plan.dimensioner && (
+        <>
+          <div style={{ ...label(), margin: "22px 0 4px" }}>Planen</div>
+          {["träning", "kost", "cardio", "vila", "sömn"].map(k => mål.plan.dimensioner[k] ? (
+            <div key={k} style={{ padding: "10px 2px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={label(C.lime)}>{k.charAt(0).toUpperCase() + k.slice(1)}</div>
+              <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.6, marginTop: 3 }}>{mål.plan.dimensioner[k]}</div>
+            </div>
+          ) : null)}
+        </>
+      )}
 
       <button onClick={() => setNytt(true)} style={{ ...btnGhost, marginTop: 20 }}>Sätt ett nytt mål</button>
       <button onClick={() => setMål(null)} style={{ width: "100%", marginTop: 9, padding: 11, borderRadius: 999, border: "none", background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer" }}>
