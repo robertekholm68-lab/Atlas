@@ -381,10 +381,6 @@ export function Atlas2() {
     save("supplementLog", ny);
     return ny;
   });
-  const ändraSupp = id => uppdatera(p => {
-    const nu = p.supplements || [];
-    return { ...p, supplements: nu.includes(id) ? nu.filter(x => x !== id) : [...nu, id] };
-  });
   const nudge = useMemo(() => {
     const alla = buildNudges({ sessions, foodLog, nutritionTargets });
     return activeNudges(alla, avfärdade)[0] || null;
@@ -423,6 +419,11 @@ export function Atlas2() {
     const ny = typeof uppd === "function" ? uppd(p) : uppd;
     save("profile", ny);
     return ny;
+  });
+
+  const ändraSupp = id => uppdatera(p => {
+    const nu = p.supplements || [];
+    return { ...p, supplements: nu.includes(id) ? nu.filter(x => x !== id) : [...nu, id] };
   });
 
   useEffect(() => {

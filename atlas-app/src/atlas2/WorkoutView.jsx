@@ -432,19 +432,6 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     setByter(false);
   };
 
-  const avsluta = () => {
-    const sets = [];
-    live.items.forEach(x => x.loggade.forEach(l => sets.push({ exerciseId: x.exId, weight: l.vikt, reps: l.reps, ts: l.ts })));
-    if (!sets.length) { onAbort(); return; }
-    const session = buildSession({
-      sets, source: "training", title: live.namn,
-      programId: live.programId, workoutId: live.workoutId, completedAt: Date.now(),
-    });
-    setSessions(s => [...s, session]);
-    save("live", null);
-    onDone({ session, minuter: Math.max(1, passMin) });
-  };
-
   // PASSTIDEN RÄKNAS TILL SISTA LOGGADE SET, INTE TILL NU.
   //
   // Ett pass som startats och lämnats utan att avslutas ligger kvar i
@@ -459,6 +446,19 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     x.loggade.reduce((m, l) => (l.ts && l.ts > m ? l.ts : m), max), 0);
   const passMs = Math.max(0, (sistaSetTs || Date.now()) - live.startad);
   const passMin = Math.round(passMs / 60000);
+
+  const avsluta = () => {
+    const sets = [];
+    live.items.forEach(x => x.loggade.forEach(l => sets.push({ exerciseId: x.exId, weight: l.vikt, reps: l.reps, ts: l.ts })));
+    if (!sets.length) { onAbort(); return; }
+    const session = buildSession({
+      sets, source: "training", title: live.namn,
+      programId: live.programId, workoutId: live.workoutId, completedAt: Date.now(),
+    });
+    setSessions(s => [...s, session]);
+    save("live", null);
+    onDone({ session, minuter: Math.max(1, passMin) });
+  };
 
   // Kom vi hit från "Spara det som loggades" avslutas passet direkt. Effekten
   // ligger efter alla hooks (projektlag) och kör bara en gång.

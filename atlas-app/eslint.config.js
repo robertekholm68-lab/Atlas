@@ -43,4 +43,24 @@ export default [
       "no-undef": "error",
     },
   },
+  // ── TDZ-skyddet: bara det AKTIVA bygget (2.0 + motorerna) ──
+  //
+  // `const` i temporal dead zone kastar "Cannot access before initialization" —
+  // den är alltså inte hoistad till undefined som `var`. Tre gånger på två
+  // paket lade jag en useMemo som läste en const längre ned i komponenten;
+  // varje gång föll tio rendertester på ett fel som inte syns vid läsning,
+  // eftersom App2 är för lång för att deklarationsordningen ska vara överblickbar.
+  //
+  // AVGRÄNSAD MED FLIT. Mot hela kodbasen gav regeln 70 träffar, samtliga
+  // ofarliga: stilkonstanter i modulscope (`bigBtn`, `ghostBtnLg`) som används
+  // inuti komponenter och alltså läses långt efter modulen laddats. Att rätta
+  // 70 harmlösa ställen i gamla appen för att skydda den nya vore att betala
+  // fel pris — och en regel som kräver städning i filer man inte rör blir
+  // avstängd, precis som en lint med tusen åsikter.
+  {
+    files: ["src/atlas2/**/*.{js,jsx}", "src/engines/**/*.js"],
+    rules: {
+      "no-use-before-define": ["error", { functions: false, classes: false, variables: true }],
+    },
+  },
 ];
