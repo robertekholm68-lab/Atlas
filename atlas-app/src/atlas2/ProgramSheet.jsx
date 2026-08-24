@@ -3,12 +3,13 @@
 // Utan den här kan Real Mode inte göra någonting: appen börjar medvetet utan
 // program, och då är det första man måste kunna göra att välja ett.
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { C, hdr, btnText, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { ALL_TEMPLATES, copyProgram } from "../engines/programs.js";
 import { CustomProgram } from "./CustomProgram.jsx";
+import { programförslag, passarAktivtProgram } from "../engines/malprogram.js";
 
-export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onStarta, onClose }) {
+export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId, nästa, onStarta, onClose, mål, profile, readiness = null }) {
   const [vald, setVald] = useState(null);
   const [bygger, setBygger] = useState(false);   // vald familj, null = visa familjelistan
   // Familjerna i den ordning de står i ALL_TEMPLATES — Full Body, Upper/Lower
@@ -20,6 +21,12 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
     setPrograms(ps => [...ps.filter(x => x.id !== kopia.id), kopia]);
     setActiveProgramId(kopia.id);
   };
+
+  // MÅLRESAN STYR FÖRSLAGET. Utan mål eller utan plan är detta null och
+  // väljaren ser ut precis som den alltid gjort — ett mål är ett skäl att lyfta
+  // fram något, aldrig att gömma resten.
+  const rek = useMemo(() => programförslag({ mål, profile, sessions, readiness }), [mål, profile, sessions, readiness]);
+  const passar = useMemo(() => passarAktivtProgram(aktiv, mål, profile), [aktiv, mål, profile]);
 
   const vecka = (() => {
     if (!aktiv) return null;
@@ -63,6 +70,17 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
 
               Ett val ska finnas på ETT ställe. */}
 
+          {/* Avviker programmet från målresan sägs det — men som upplysning,
+              inte tillsägelse. Att köra ett annat upplägg kan vara medvetet. */}
+          {passar && !passar.passar && (
+            <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 12.5, color: C.recovering, lineHeight: 1.55 }}>{passar.text}</div>
+              {passar.avvikelser.map((a, i) => (
+                <div key={i} style={{ fontSize: 11.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{a}</div>
+              ))}
+            </div>
+          )}
+
           <button onClick={() => setActiveProgramId(null)} style={{ width: "100%", marginTop: 9, padding: 11, borderRadius: 999, border: "none", background: "transparent", color: C.muted, fontSize: 12.5, cursor: "pointer" }}>
             Sluta följa programmet
           </button>
@@ -71,6 +89,34 @@ export function ProgramSheet({ aktiv, sessions, setPrograms, setActiveProgramId,
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: "10px 0 16px" }}>
           Inget program valt. Med ett program vet Askr vad som ska komma härnäst
           — utan ett kan appen bara berätta hur kroppen mår, inte vad du ska göra.
+        </div>
+      )}
+
+      {/* FÖRSLAG UR MÅLRESAN. Planen sa tre pass i veckan mot ett fettmål, och
+          väljaren visade ändå samma lista som för alla andra — planen var
+          beskrivande, inte styrande. Skälen står utskrivna: ett förslag som
+          inte kan förklaras är en gissning med snyggare typsnitt.
+          Hela listan står kvar nedanför. */}
+      {rek && !vald && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ ...label(C.lime), marginBottom: 9 }}>Passar din målresa</div>
+          {rek.varning && (
+            <div style={{ fontSize: 12, color: C.recovering, lineHeight: 1.55, marginBottom: 10 }}>{rek.varning}</div>
+          )}
+          {rek.förslag.map(f => (
+            <button key={f.mall.id} onClick={() => välj(f.mall)} style={{
+              ...card, width: "100%", textAlign: "left", cursor: "pointer", color: C.text,
+              display: "block", marginBottom: 8,
+              borderColor: aktiv && aktiv.name === f.mall.name ? C.lime : C.border,
+            }}>
+              <div style={hdr(15)}>{f.mall.name}</div>
+              {f.skäl.length > 0 && (
+                <div style={{ fontSize: 12, color: C.text2, marginTop: 5, lineHeight: 1.55 }}>
+                  {f.skäl.join(" · ")}
+                </div>
+              )}
+            </button>
+          ))}
         </div>
       )}
 

@@ -416,6 +416,7 @@ export function Atlas2() {
     [foodLog, nutritionTargets, profilN, loggTillit.reliable]
   );
 
+
   // Profiländringar från vyerna (t.ex. tonläget i matakuten) skrivs igenom till
   // lagringen med en gång; annars överlever de inte en omladdning.
   const uppdatera = uppd => setProfile(p => {
@@ -577,6 +578,17 @@ export function Atlas2() {
   }, [sheet]);
 
   const activeProgram = programs.find(p => p.id === activeProgramId && !p.archived) || null;
+
+  // EN readiness i hela appen — samma §13-källa som hemvyn och coachen.
+  // Programförslaget läser den för att kunna föredra färre dagar när kroppen
+  // ligger lågt; räknades den lokalt skulle två vyer kunna visa olika tal.
+  //
+  // MÅSTE stå EFTER activeProgram: const i TDZ ger "Cannot access before
+  // initialization", inte undefined. Samma fälla som profilN/nutRec.
+  const readinessNu = useMemo(
+    () => coachFacts({ sessions, activeProgram, nutRec }).kropp.readiness,
+    [sessions.length, activeProgram, nutRec]
+  );
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
@@ -1035,6 +1047,7 @@ export function Atlas2() {
                 setPrograms={setPrograms} setActiveProgramId={setActiveProgramId}
                 nästa={activeProgram ? nästaPass(activeProgram, sessions) : null}
                 onStarta={startaPass}
+                mål={mål} profile={profilN} readiness={readinessNu}
                 onClose={() => setSheet(null)} />
             ) : (
               <>
