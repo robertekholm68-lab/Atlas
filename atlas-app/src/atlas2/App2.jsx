@@ -12,6 +12,8 @@ import { BodyMap2 } from "./BodyMap2.jsx";
 import { BottomNav } from "./Nav.jsx";
 import { CoachView } from "./CoachView.jsx";
 import { coachFacts } from "./facts.js";
+import { normaliseraProfil } from "../engines/profil.js";
+import { ProfileSheet } from "./ProfileSheet.jsx";
 import { ProgressView } from "./ProgressView.jsx";
 import { UtvecklingView } from "./UtvecklingView.jsx";
 import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
@@ -393,13 +395,27 @@ export function Atlas2() {
     return ny;
   });
 
+  // PROFILEN SOM MOTORERNA SER DEN.
+  //
+  // v3 lagrar `sex`, men bodyfat.js och mikronäringsreferenserna läser
+  // `gender` — en kvinna fick därför manliga referensvärden i tysthet
+  // (`profile.gender || "male"`). Normaliseringen är bron, och den sitter HÄR
+  // så att ingen vy kan glömma den: allt nedströms får den härledda formen,
+  // vikten hämtad ur den loggade vikthistoriken.
+  //
+  // MÅSTE stå före nutRec: den läser profilN, och en const i TDZ ger
+  // "Cannot access before initialization" — inte undefined. Ordningen är alltså
+  // inte kosmetisk.
+  const profilN = useMemo(() => normaliseraProfil(profile, { weights }), [profile, weights]);
+
   const loggTillit = useMemo(() => logReliability(foodLog), [foodLog]);
   const nutRec = useMemo(
     () => (loggTillit.reliable
-      ? nutritionRecoveryModifier({ foodLog, nutritionTargets, profile })
+      ? nutritionRecoveryModifier({ foodLog, nutritionTargets, profile: profilN })
       : { mod: 0, factors: [] }),
-    [foodLog, nutritionTargets, profile, loggTillit.reliable]
+    [foodLog, nutritionTargets, profilN, loggTillit.reliable]
   );
+
   // Profiländringar från vyerna (t.ex. tonläget i matakuten) skrivs igenom till
   // lagringen med en gång; annars överlever de inte en omladdning.
   const uppdatera = uppd => setProfile(p => {
@@ -564,7 +580,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
+    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -881,7 +897,7 @@ export function Atlas2() {
     );
     if (flik === "coachen") return (
       <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
-        profile={profile} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
+        profile={profilN} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} setMål={setMål} />
     );
     if (flik === "framsteg") return (
@@ -974,11 +990,14 @@ export function Atlas2() {
                   setKlart({ session: p, minuter: p.minutes });
                 }}
                 onClose={() => setSheet(null)} />
+            ) : sheet === "profil" ? (
+              <ProfileSheet profile={profile} setProfile={uppdatera} weights={weights}
+                onClose={() => setSheet(null)} />
             ) : sheet === "mal" ? (
               <GoalSheet mål={mål} setMål={setMål} sessions={sessions} weights={weights} onClose={() => setSheet(null)} />
             ) : sheet === "kost" ? (
               <NutritionSheet mål={nutritionTargets} setMål={setNutritionTargets}
-                weights={weights} profile={profile} onClose={() => setSheet(null)} />
+                weights={weights} profile={profilN} onClose={() => setSheet(null)} />
             ) : typeof sheet === "string" && sheet.startsWith("muskel:") ? (
               <MuscleSheet regionId={sheet.slice(7)} sessions={sessions} onClose={() => setSheet(null)} />
             ) : typeof sheet === "string" && sheet.startsWith("pass:") ? (
@@ -1002,13 +1021,13 @@ export function Atlas2() {
               <MachineGuide onClose={() => setSheet(null)} />
             ) : sheet === "utveckling" ? (
               <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar}
-                sessions={sessions} profile={profile} onClose={() => setSheet(null)} />
+                sessions={sessions} profile={profilN} onClose={() => setSheet(null)} />
             ) : sheet === "kunskap" ? (
               <KnowledgeView onClose={() => setSheet(null)} />
             ) : sheet === "fordelning" ? (
               <MuscleSplit sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
-              <ImportSheet sessions={sessions} setSessions={setSessions}
+              <ImportSheet profile={profile} onOpenProfil={() => setSheet("profil")} sessions={sessions} setSessions={setSessions}
                 setWeights={setWeights} setFoodLog={setFoodLog}
                 onClose={() => setSheet(null)} />
             ) : sheet === "program" ? (

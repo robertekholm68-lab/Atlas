@@ -199,6 +199,7 @@ jobs:
           - verify-atlas2-mealprep.mjs
           - verify-atlas2-pass.mjs
           - verify-atlas2-passredigering.mjs
+          - verify-atlas2-profil.mjs
           - verify-atlas2-readiness.mjs
           - verify-atlas2-sport.mjs
           - verify-atlas2-tillskott.mjs
