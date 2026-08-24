@@ -194,6 +194,7 @@ jobs:
           - verify-atlas2.mjs
           - verify-atlas2-backup.mjs
           - verify-atlas2-layout.mjs
+          - verify-atlas2-malresa.mjs
           - verify-atlas2-matakut.mjs
           - verify-atlas2-mealprep.mjs
           - verify-atlas2-pass.mjs
