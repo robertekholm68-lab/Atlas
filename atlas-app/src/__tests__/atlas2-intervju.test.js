@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import {
   viktbana, byggIntervjuUnderlag, intervjuMeddelande, tolkaIntervjuSvar,
-  valideraPlan, genereraDelmål, byggMålFrånPlan, SÄKRA_TAKTER, KORTA_PLANEN_INSTRUKTION, INTERVJU_SYSTEMPROMPT,
+  valideraPlan, genereraDelmål, byggMålFrånPlan, SÄKRA_TAKTER, KORTA_PLANEN_INSTRUKTION, intervjuÖppning, INTERVJU_SYSTEMPROMPT,
 } from "../engines/intervju.js";
 import { resa } from "../engines/journey.js";
 
@@ -256,5 +256,61 @@ describe("kapade svar skiljs från trasiga", () => {
   it("instruktionen vid kapning ber om samma plan kortare, inte en ny", () => {
     expect(KORTA_PLANEN_INSTRUKTION).toMatch(/identisk i sak/);
     expect(KORTA_PLANEN_INSTRUKTION).toMatch(/kortare/);
+  });
+});
+
+describe("intervjuÖppning — underlaget ska SYNAS", () => {
+  const DAG2 = 864e5;
+  const fullt = () => byggIntervjuUnderlag({
+    weights: [{ ts: NU - 2 * DAG2, kg: 96.2 }, { ts: NU - 50 * DAG2, kg: 97.6 }],
+    sessions: [
+      ...Array.from({ length: 11 }, (_, i) => ({ completedAt: NU - i * 2 * DAG2, sets: [] })),
+      { completedAt: NU - 5 * DAG2, source: "sport" },
+    ],
+    profile: { sex: "m", gender: "male", age: 57, height: 182, level: "intermediate", injuryNotes: "vänster axel" },
+    activeProgram: { name: "Full Body 3d", daysPerWeek: 3, goal: "General" },
+    readiness: 65,
+    styrketrend: { name: "Bänkpress", delta: 5 },
+    nu: NU,
+  });
+
+  it("räknar upp de konkreta värdena, inte allmänt prat", () => {
+    const ö = intervjuÖppning(fullt());
+    expect(ö.text).toMatch(/96\.2 kg/);
+    expect(ö.text).toMatch(/57 år, 182 cm/);
+    expect(ö.text).toMatch(/11 styrkepass/);
+    expect(ö.text).toMatch(/Full Body 3d/);
+    expect(ö.text).toMatch(/readiness 65/i);
+    expect(ö.text).toMatch(/Bänkpress \+5 kg/);
+  });
+
+  it("viktriktningen över åtta veckor följer med", () => {
+    expect(intervjuÖppning(fullt()).text).toMatch(/ner 1\.4 kg på åtta veckor/);
+  });
+
+  it("SAKNAT REDOVISAS MED SIN FÖLJD — inte med tystnad", () => {
+    const tomt = byggIntervjuUnderlag({ weights: [], sessions: [], profile: {}, nu: NU });
+    const ö = intervjuÖppning(tomt);
+    expect(ö.saknar.length).toBeGreaterThan(0);
+    expect(ö.text).toMatch(/färsk vägning/);
+    expect(ö.text).toMatch(/kaloribehov/);
+    expect(ö.text).toMatch(/Om dig/);
+  });
+
+  it("utan program sägs det, som ett erbjudande snarare än en brist", () => {
+    const u = fullt(); u.aktivtProgram = null;
+    expect(intervjuÖppning(u).text).toMatch(/föreslå ett som passar målet/);
+  });
+
+  it("hittar aldrig på värden som saknas", () => {
+    const u = byggIntervjuUnderlag({ weights: [], sessions: [], profile: {}, nu: NU });
+    const ö = intervjuÖppning(u);
+    expect(ö.text).not.toMatch(/\d+ kg/);
+    expect(ö.text).not.toMatch(/readiness \d/i);
+  });
+
+  it("tål ett tomt underlag utan att krascha", () => {
+    expect(intervjuÖppning(null).text).toBe("");
+    expect(intervjuÖppning({}).text).toMatch(/nästan ingen data/);
   });
 });

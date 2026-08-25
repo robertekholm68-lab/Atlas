@@ -70,6 +70,10 @@ steg.push(`${/sätt ett mål med coachen|planera om målet/i.test(t) ? "OK " : "
 await klick("mål med coachen").catch(() => klick("Planera om målet")); await page.waitForTimeout(400);
 t = await text();
 steg.push(`${/berätta vad du siktar på/i.test(t) ? "OK " : "FEL"} intervjun öppnar med en inbjudan`);
+// UNDERLAGET SKA SYNAS. Att coachen "ser" värden hjälper inte om användaren
+// inte kan se att den gör det — det var precis Roberts invändning.
+steg.push(`${/det här ser jag|nästan ingen data/i.test(t) ? "OK " : "FEL"} öppningen redovisar vad appen vet`);
+steg.push(`${/kg|styrkepass|readiness|saknar/i.test(t) ? "OK " : "FEL"} konkreta värden eller uttalade luckor nämns`);
 steg.push(`${/avbryt intervjun/i.test(t) ? "OK " : "FEL"} intervjun går att avbryta`);
 await klick("Avbryt intervjun"); await page.waitForTimeout(300);
 
