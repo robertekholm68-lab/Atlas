@@ -7,10 +7,11 @@
 // ALLT här kommer ur coachFacts(). Inget skrivs ihop lokalt, ingen text hittar
 // på en siffra. Kan coachen inte belägga något säger den det i stället.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C, HFONT, hdr, label, btnPrimary, card, volt } from "./design.js";
 import { coachFacts, recommendation, målfokus } from "./facts.js";
 import { CoachChat } from "./CoachChat.jsx";
+import { load } from "./store.js";
 import { reasonSignal } from "../engines/post-session.js";
 
 function Rad({ text }) {
@@ -25,7 +26,7 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec, setMål }) {
+export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec, setMål, autoIntervju = false, onAutoIntervjuKvitterad }) {
   // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
   // låtsas. Motorn kräver minst tre svar inom tre veckor: två är ingen tendens.
   // Signalen räknas FÖRE facts eftersom den sänker tilliten till readiness inuti
@@ -43,6 +44,25 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
   // Chatten är en egen syssla, inte något man läser förbi på väg till svaret.
   // Den låg sist i vyn och tog 372 px av 979 — nu ligger den bakom ett tryck.
   const [visaChatt, setVisaChatt] = useState(false);
+
+  // Kom man hit via målradens "Sätt ett mål" ska chatten stå öppen direkt.
+  // Att landa på en coachvy där ingången är hopfälld vore att skicka någon
+  // halvvägs och sedan gömma resten.
+  useEffect(() => { if (autoIntervju) setVisaChatt(true); }, [autoIntervju]);
+
+  // EN PÅGÅENDE INTERVJU ÖPPNAR SIG SJÄLV. Kortet fälls ihop vid varje
+  // flikbyte, och ett samtal man är mitt uppe i får inte ligga dolt bakom en
+  // knapp — då ser det ut som att coachen glömt bort det, vilket var precis
+  // det rapporterade felet. Lagringen läses direkt här: CoachChat monteras
+  // ju inte förrän kortet är öppet, så den kan inte svara på om den behövs.
+  useEffect(() => {
+    let levande = true;
+    (async () => {
+      const i = await load("intervju", null);
+      if (levande && i && i.transkript && i.transkript.length) setVisaChatt(true);
+    })();
+    return () => { levande = false; };
+  }, []);
 
   // Naven är 62 px. 68 ger den luft som behövs utan att äta skärm.
   return (
@@ -196,7 +216,8 @@ export function CoachView({ sessions, activeProgram, weights, profile, foodLog, 
           <div style={{ marginTop: 12 }}>
             <CoachChat sessions={sessions} activeProgram={activeProgram} profile={profile}
               foodLog={foodLog} goal={goal} nutritionTargets={nutritionTargets} weights={weights} onStart={onStart}
-              setMål={setMål} onOpenGoal={onOpenGoal} />
+              setMål={setMål} onOpenGoal={onOpenGoal}
+              autoStart={autoIntervju} onAutoStartKvitterad={onAutoIntervjuKvitterad} />
           </div>
         )}
       </div>

@@ -11,7 +11,7 @@ import { AskrWordmark, AskrLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { BottomNav } from "./Nav.jsx";
 import { CoachView } from "./CoachView.jsx";
-import { coachFacts } from "./facts.js";
+import { coachFacts, målfokus } from "./facts.js";
 import { normaliseraProfil } from "../engines/profil.js";
 import { ProfileSheet } from "./ProfileSheet.jsx";
 import { ProgressView } from "./ProgressView.jsx";
@@ -156,7 +156,7 @@ function ModeChoice({ onPick }) {
 
 /* ══════════ HEM ══════════ */
 
-function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta }) {
+function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta, mål, weights = [], onMål }) {
   const now = Date.now();
   const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
   // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
@@ -186,6 +186,38 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
   // händelse just nu är mer relevant än dagens allmänna besked — och att lägga
   // den som ett EXTRA kort hade brutit hemskärmens scrollfrihet, som ligger på
   // marginalen redan. Samma slot, inget tillägg i höjd.
+  // ── MÅLRADEN ─────────────────────────────────────────────────────────────
+  // Låg med flit: hemvyn är låst till skärmhöjden och kartan är `flex: 1`, så
+  // varje pixel här tas från kroppen. En rad räcker — målet ska synas, inte
+  // förklaras. Utan mål är det en uppmaning, med mål ett läge.
+  //
+  // Den ligger UNDER kartan eftersom kroppen är gränssnittet: målet är vad
+  // kroppen ska bli, och läses därför efter den, inte före.
+  const MålRad = () => {
+    const fokus = mål && mål.plan ? målfokus(coachFacts({ sessions, activeProgram, nutRec, weights, goal: mål }, now)) : null;
+    const nästa = fokus && fokus.rader.length ? fokus.rader[0] : null;
+    return (
+      <button onClick={onMål} style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
+        marginTop: 9, padding: "9px 12px", borderRadius: 12, cursor: "pointer",
+        border: `1px solid ${mål ? C.border : C.lime}`,
+        background: mål ? C.card2 : volt(.05), textAlign: "left",
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: HFONT, fontSize: 11, letterSpacing: .8, textTransform: "uppercase",
+            color: mål ? C.muted : C.lime }}>
+            {mål ? mål.namn : "Sätt ett mål"}
+          </div>
+          <div style={{ fontSize: 12, color: C.text2, marginTop: 2, overflow: "hidden",
+            textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {nästa || (mål ? "Öppna målresan" : "Coachen planerar träning, kost och vila mot ett datum")}
+          </div>
+        </div>
+        <span style={{ color: mål ? C.muted : C.lime, fontSize: 17, flexShrink: 0 }}>→</span>
+      </button>
+    );
+  };
+
   const Besked = () => (nudge ? (
     <div style={{
       display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0,
@@ -277,6 +309,7 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
       <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)}
         fyll kompakt={layout.kompaktNyckel} />
 
+      <MålRad />
       <Besked />
       <Start />
       <Nyckeltal />
@@ -293,6 +326,7 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
         <div>
           <div style={{ ...label(C.lime), marginBottom: 10 }}>Idag</div>
           <div style={{ ...hdr(30), marginBottom: 16, textTransform: "capitalize" }}>{datum}</div>
+          <MålRad />
           <Besked />
           <Start />
           <Nyckeltal />
@@ -335,6 +369,10 @@ export function Atlas2() {
   // Rena UI-tillstånd (lagras inte).
   const [sheet, setSheet] = useState(null);
   const [flik, setFlik] = useState("hem");
+  // Målradens klick: finns ett mål öppnas målresan, annars startas intervjun i
+  // coachvyn. Signalen kvitteras av CoachView så den bara utlöses en gång —
+  // annars skulle intervjun startas om varje gång man återvänder till fliken.
+  const [autoIntervju, setAutoIntervju] = useState(false);
   const [klart, setKlart] = useState(null);
   // Layoutläget är en hook och MÅSTE ligga före de villkorade returerna nedan.
   const layout = useLayout();
@@ -586,6 +624,12 @@ export function Atlas2() {
   //
   // MÅSTE stå EFTER activeProgram: const i TDZ ger "Cannot access before
   // initialization", inte undefined. Samma fälla som profilN/nutRec.
+  const öppnaMål = () => {
+    if (mål) { setSheet("mal"); return; }
+    setAutoIntervju(true);
+    setFlik("coachen");
+  };
+
   const readinessNu = useMemo(
     () => coachFacts({ sessions, activeProgram, nutRec }).kropp.readiness,
     [sessions.length, activeProgram, nutRec]
@@ -906,10 +950,12 @@ export function Atlas2() {
     if (flik === "hem") return (
       <Home sessions={sessions} activeProgram={activeProgram}
         onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec}
-        nudge={nudge} onAvfärda={avfärda} onNudgeCta={() => setFlik("mat")} />
+        nudge={nudge} onAvfärda={avfärda} onNudgeCta={() => setFlik("mat")}
+        mål={mål} weights={weights} onMål={öppnaMål} />
     );
     if (flik === "coachen") return (
-      <CoachView sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
+      <CoachView autoIntervju={autoIntervju} onAutoIntervjuKvitterad={() => setAutoIntervju(false)}
+        sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
         profile={profilN} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} setMål={setMål} />
     );

@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import {
   viktbana, byggIntervjuUnderlag, intervjuMeddelande, tolkaIntervjuSvar,
-  valideraPlan, genereraDelmål, byggMålFrånPlan, SÄKRA_TAKTER,
+  valideraPlan, genereraDelmål, byggMålFrånPlan, SÄKRA_TAKTER, INTERVJU_SYSTEMPROMPT,
 } from "../engines/intervju.js";
 import { resa } from "../engines/journey.js";
 
@@ -171,5 +171,48 @@ describe("byggIntervjuUnderlag", () => {
     const m = intervjuMeddelande({ underlag: { idag: "2026-08-24" }, transkript });
     expect(m).toMatch(/2026-08-24/);
     expect(m).toMatch(/Användaren: Jag väger 96/);
+  });
+});
+
+describe("underlaget bär användarens faktiska värden", () => {
+  it("program, readiness, kostmål, kroppsfett och styrketrend följer med", () => {
+    const u = byggIntervjuUnderlag({
+      weights: [{ ts: NU - 50 * DAG, kg: 98 }, { ts: NU - DAG, kg: 95 }],
+      sessions: [{ completedAt: NU - 3 * DAG, sets: [] }],
+      profile: { sex: "m", gender: "male", age: 57, height: 180, level: "intermediate" },
+      activeProgram: { name: "Upper/Lower", daysPerWeek: 4, goal: "Hypertrophy" },
+      readiness: 65,
+      nutritionTargets: { kcal: 2400, protein: 170 },
+      styrketrend: { name: "Bänkpress", delta: 5 },
+      nu: NU,
+    });
+    expect(u.aktivtProgram.namn).toBe("Upper/Lower");
+    expect(u.aktivtProgram.passPerVecka).toBe(4);
+    expect(u.readinessIdag).toBe(65);
+    expect(u.kostmål).toEqual({ kcal: 2400, proteinG: 170 });
+    expect(u.bästaStyrketrend).toEqual({ övning: "Bänkpress", förändring: 5 });
+    // Viktriktningen åtta veckor tillbaka — vad kroppen FAKTISKT gjort.
+    expect(u.viktförändring8vKg).toBe(-3);
+  });
+
+  it("saknade värden blir null, aldrig nollor — modellen ska se skillnad", () => {
+    const u = byggIntervjuUnderlag({ nu: NU });
+    expect(u.aktivtProgram).toBe(null);
+    expect(u.readinessIdag).toBe(null);
+    expect(u.kostmål).toBe(null);
+    expect(u.bästaStyrketrend).toBe(null);
+    expect(u.viktförändring8vKg).toBe(null);
+    expect(u.kroppsfettProcent).toBe(null);
+  });
+
+  it("en enda vägning ger ingen trend — en punkt är ingen riktning", () => {
+    const u = byggIntervjuUnderlag({ weights: [{ ts: NU - DAG, kg: 95 }], nu: NU });
+    expect(u.senasteViktKg).toBe(95);
+    expect(u.viktförändring8vKg).toBe(null);
+  });
+
+  it("prompten kräver att underlaget används aktivt", () => {
+    expect(INTERVJU_SYSTEMPROMPT).toMatch(/ANVÄND UNDERLAGET AKTIVT/);
+    expect(INTERVJU_SYSTEMPROMPT).toMatch(/generiskt samtal är ett misslyckande/);
   });
 });

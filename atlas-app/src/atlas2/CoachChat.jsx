@@ -12,8 +12,9 @@ import { useState, useRef, useEffect } from "react";
 import { C, HFONT, BFONT, hdr, label, card, volt, btnPrimary, btnGhost } from "./design.js";
 import { coachReply } from "../features/ai-coach/index.jsx";
 import { frågaCoachen } from "../engines/coach-llm.js";
+import { bestStrengthTrend } from "../engines/index.js";
 import { coachFacts } from "../engines/facts.js";
-import { bodyState, nutritionCtx } from "./store.js";
+import { bodyState, nutritionCtx, load, save } from "./store.js";
 import {
   INTERVJU_SYSTEMPROMPT, byggIntervjuUnderlag, intervjuMeddelande,
   tolkaIntervjuSvar, valideraPlan, byggMålFrånPlan, viktbana,
@@ -25,11 +26,11 @@ import {
  */
 const COACH_PROXY = "https://askr-coach.vercel.app/api/coach";
 
-async function hämtaSvar({ system, meddelande }) {
+async function hämtaSvar({ system, meddelande, maxTokens }) {
   const r = await fetch(COACH_PROXY, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ system, meddelande }),
+    body: JSON.stringify({ system, meddelande, maxTokens }),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.fel || "proxyfel");
@@ -44,7 +45,7 @@ const FÖRSLAG = [
   "Bröstet svarar inte",
 ];
 
-export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, weights = [], onStart, setMål, onOpenGoal }) {
+export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nutritionTargets, weights = [], onStart, setMål, onOpenGoal, readiness = null, autoStart = false, onAutoStartKvitterad }) {
   const [rader, setRader] = useState([]);
   const [text, setText] = useState("");
   const [ämne, setÄmne] = useState(null);
@@ -54,8 +55,40 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
   // först när modellen levererat en plan som klarat den deterministiska
   // valideringen; sparandet sker ändå aldrig förrän användaren tryckt på
   // knappen i förhandsvisningen. Människan är sista grinden.
+  //
+  // TILLSTÅNDET MÅSTE ÖVERLEVA AVMONTERING. CoachChat renderas bara när
+  // chattkortet är utfällt — fäller man ihop det, byter flik eller låser
+  // telefonen avmonteras komponenten, och en intervju som bara låg i useState
+  // RADERADES. För användaren såg det ut som att coachen glömde vad som sagts
+  // mitt i samtalet. En intervju är flera minuters arbete och får inte kunna
+  // försvinna för att man tittade på något annat.
   const [intervju, setIntervju] = useState(null);
+  const [hydrerad, setHydrerad] = useState(false);
   const botten = useRef(null);
+
+  // Hydrering EN gång vid montering. Utan `hydrerad`-flaggan skulle den tomma
+  // starten hinna skrivas tillbaka och radera det sparade.
+  useEffect(() => {
+    let levande = true;
+    (async () => {
+      const sparad = await load("intervju", null);
+      if (!levande) return;
+      if (sparad && sparad.transkript && sparad.transkript.length) {
+        setIntervju(sparad);
+        // Transkriptet visas igen så man ser var man var — chattraderna är
+        // härledda ur samtalet, inte en egen sanning.
+        setRader(sparad.transkript.map(r => ({ från: r.från === "du" ? "du" : "coachen", text: r.text, källa: "intervju" })));
+      }
+      setHydrerad(true);
+    })();
+    return () => { levande = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrerad) return;
+    save("intervju", intervju);
+  }, [intervju, hydrerad]);
+
 
   // ROLLA TILL SVARETS ÖVERKANT, INTE TILL SIDANS BOTTEN.
   //
@@ -83,18 +116,38 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
     setRader(r => [...r, { från: "coachen", text: öppning, källa: "intervju" }]);
   };
 
+// Startsignal från målraden på hemvyn. Väntar på hydreringen: fanns en
+  // pågående intervju sparad ska den ÅTERUPPTAS, inte skrivas över — annars
+  // hade knappen raderat ett samtal man var mitt uppe i.
+  useEffect(() => {
+    if (!autoStart || !hydrerad) return;
+    if (!intervju) startaIntervju();
+    if (onAutoStartKvitterad) onAutoStartKvitterad();
+  }, [autoStart, hydrerad]);
+
   const intervjuTur = async f => {
+
     const transkript = [...intervju.transkript, { från: "du", text: f }];
     setIntervju({ ...intervju, transkript });
     setRader(r => [...r, { från: "du", text: f }]);
     setText("");
     setTänker(true);
 
-    const underlag = byggIntervjuUnderlag({ weights, sessions, foodLog, nutritionTargets, profile });
+    // Styrketrenden hämtas HÄR, inte i motorn: engines/index.js drar in
+    // livsmedelsdatabasen och skulle göra intervju.js tung att ladda.
+    let styrketrend = null;
+    try { styrketrend = bestStrengthTrend(sessions) || null; } catch (e) { styrketrend = null; }
+    const underlag = byggIntervjuUnderlag({
+      weights, sessions, foodLog, nutritionTargets, profile,
+      activeProgram, readiness, styrketrend,
+    });
     const körTur = async trans => {
       const svar = await hämtaSvar({
         system: INTERVJU_SYSTEMPROMPT,
         meddelande: intervjuMeddelande({ underlag, transkript: trans }),
+        // Planens JSON med fem dimensioner ligger nära standardtaket på 400.
+        // Ett kapat svar blir oparsbart och ser ut som ett fel i appen.
+        maxTokens: 1200,
       });
       return tolkaIntervjuSvar(svar);
     };

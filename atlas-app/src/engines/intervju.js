@@ -24,6 +24,11 @@
 // eller användarens egna ord — modellen får inte hitta på var någon står idag.
 
 import { MÅLTYPER, skapaMål } from "./journey.js";
+import { derivedBodyFat } from "./bodyfat.js";
+// OBS: styrketrenden tas som PARAMETER, inte via import från engines/index.js.
+// Den filen drar in hela livsmedelsdatabasen (JSON) och skulle göra den här
+// motorn tung att ladda och omöjlig att testa isolerat. Anroparen har redan
+// värdet; motorn ska förbli lätt.
 
 const DAG = 864e5;
 const VECKA = 7 * DAG;
@@ -71,12 +76,24 @@ export function viktbana({ startKg, målKg, målDatum, nu = Date.now() }) {
 
 // ── Underlaget modellen intervjuar utifrån ──────────────────────────────────
 // Allt appen redan VET skickas med, så att coachen aldrig frågar om sådant som
-// står i loggen. Varje tal härleds ur data — inget uppskattas.
-export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = [], nutritionTargets = null, profile = null, nu = Date.now() } = {}) {
+// står i loggen — och så att den kan tala om ANVÄNDAREN i stället för att låta
+// som en broschyr. Ett tunt underlag ger generiska svar: det är inte modellens
+// fel, det är underlagets.
+//
+// Varje tal härleds ur data. Saknas något står det som null, aldrig som en
+// uppskattning — modellen ska kunna se skillnad på "vet inte" och "är noll".
+export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = [], nutritionTargets = null, profile = null, activeProgram = null, readiness = null, styrketrend = null, nu = Date.now() } = {}) {
   const pr = profile || {};
   const w = weights.slice().sort((a, b) => a.ts - b.ts);
   const senasteVikt = w.length ? w[w.length - 1] : null;
   const viktFärsk = senasteVikt ? (nu - senasteVikt.ts) <= 14 * DAG : false;
+
+  // Viktriktningen de senaste åtta veckorna — vad kroppen FAKTISKT gjort, inte
+  // vad någon tror. Coachen ska kunna säga "du har legat still i sex veckor".
+  const åttaV = w.filter(x => nu - x.ts <= 56 * DAG);
+  const viktTrendKg = åttaV.length >= 2
+    ? Math.round((åttaV[åttaV.length - 1].kg - åttaV[0].kg) * 10) / 10
+    : null;
 
   const fyraV = (sessions || []).filter(s => s && s.completedAt && nu - s.completedAt <= 28 * DAG);
   const styrkepass = fyraV.filter(s => s.source !== "sport").length;
@@ -84,6 +101,23 @@ export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = []
 
   const kostdagar = new Set((foodLog || []).filter(e => e && e.ts != null && nu - e.ts <= 28 * DAG)
     .map(e => new Date(e.ts).toDateString())).size;
+
+  // Styrkeläget kommer utifrån (se importkommentaren). Normaliseras här så
+  // formen är densamma oavsett vad anroparen skickar.
+  const trend = styrketrend
+    ? { övning: styrketrend.name || styrketrend.övning || styrketrend.exercise || null,
+        förändring: styrketrend.delta != null ? styrketrend.delta : (styrketrend.förändring != null ? styrketrend.förändring : null) }
+    : null;
+
+  // Kroppsfett räknas bara när måtten finns. Ingen skattning ur vikt och längd —
+  // det vore ett påhittat tal med två decimalers självförtroende.
+  let kroppsfett = null;
+  try {
+    const bf = derivedBodyFat(pr);
+    if (bf && bf.bodyFat != null) kroppsfett = Math.round(bf.bodyFat * 10) / 10;
+  } catch (e) { kroppsfett = null; }
+
+  const nt = nutritionTargets || {};
 
   return {
     idag: new Date(nu).toISOString().slice(0, 10),
@@ -101,16 +135,26 @@ export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = []
     // Användarens egna ord om skador. Coachen ska ta hänsyn men aldrig tolka
     // dem medicinskt — det står i prompten.
     skadorOchBesvär: pr.injuryNotes || null,
+
     // Vikt: senaste mätningen ELLER besked om att den saknas/är gammal. En
     // vikt från i våras är inte ett utgångsläge — då ska coachen fråga.
     senasteViktKg: viktFärsk ? senasteVikt.kg : null,
     viktMätningSaknas: !viktFärsk,
+    viktförändring8vKg: viktTrendKg,
+    kroppsfettProcent: kroppsfett,
+
     // Faktisk träningsrytm senaste fyra veckorna — inte vad någon hoppas.
     styrkepassSenaste4v: styrkepass,
     cardiopassSenaste4v: cardiopass,
     passPerVeckaSnitt: Math.round((styrkepass / 4) * 10) / 10,
+    aktivtProgram: activeProgram ? { namn: activeProgram.name || null, passPerVecka: activeProgram.daysPerWeek || null, inriktning: activeProgram.goal || null } : null,
+    readinessIdag: readiness != null ? readiness : null,
+    bästaStyrketrend: trend,
+
     kostloggadeDagarSenaste4v: kostdagar,
-    harKostmål: !!(nutritionTargets && (nutritionTargets.kcal || nutritionTargets.protein)),
+    harKostmål: !!(nt.kcal || nt.protein),
+    kostmål: (nt.kcal || nt.protein) ? { kcal: nt.kcal || null, proteinG: nt.protein || null } : null,
+
     säkraTakter: SÄKRA_TAKTER,
     måltyper: Object.keys(MÅLTYPER),
   };
@@ -120,7 +164,9 @@ export function byggIntervjuUnderlag({ weights = [], sessions = [], foodLog = []
 export const INTERVJU_SYSTEMPROMPT = `Du är coachen i Askr, en svensk styrketräningsapp, och genomför en MÅLINTERVJU. Användaren vill sätta ett mål (t.ex. ett bröllop, magrutor, en träningsresa) och du ska diskutera dig fram till en komplett plan.
 
 ARBETSSÄTT.
-Ställ EN fråga i taget, kort och konkret. Underlaget innehåller det appen redan vet (vikt, träningsrytm, kostloggning, och profilen: kön, ålder, längd, träningsvana, kosthållning, skador) — fråga ALDRIG om sådant som står där. Står ett fält som null vet appen det inte; fråga bara om det är nödvändigt för just det här målet.
+Ställ EN fråga i taget, kort och konkret. Underlaget innehåller det appen redan vet: vikt och viktförändring, kroppsfett, träningsrytm, aktivt program, readiness, styrketrend, kostloggning, kostmål, och profilen (kön, ålder, längd, träningsvana, kosthållning, skador). Fråga ALDRIG om sådant som står där.
+
+ANVÄND UNDERLAGET AKTIVT. Hänvisa till användarens faktiska siffror i dina frågor — "du har legat på 2,1 pass i veckan senaste månaden, håller tre?" är en bra fråga; "hur ofta tränar du?" är slöseri med någons tid när svaret redan står i underlaget. Ett generiskt samtal är ett misslyckande. Står ett fält som null vet appen det inte; fråga bara om det är nödvändigt för just det här målet.
 
 HÄNSYN TILL SKADOR. Står det något under skadorOchBesvär är det användarens EGNA ord, inte en diagnos. Ta hänsyn till det i planens träningsdel och nämn det, men gör aldrig en medicinsk bedömning och avråd inte från vård. Det du behöver få klart:
 1. Målet i klartext och vilken typ det är (typerna står i underlaget).
