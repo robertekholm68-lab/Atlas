@@ -54,7 +54,7 @@ const flik = async namn => {
   }, namn.toUpperCase());
   if (!ok) throw new Error("saknar flik: " + namn);
 };
-const text = () => page.evaluate(() => document.body.innerText);
+const text = () => page.evaluate(() => document.body.textContent || "");
 const steg = [];
 
 await page.goto("http://localhost:8961/"); await page.waitForTimeout(800);
@@ -155,6 +155,46 @@ await page.reload(); await page.waitForTimeout(1000);
 await flik("Coachen"); await page.waitForTimeout(800);
 const efterOmladdning = await page.evaluate(() => document.body.innerText);
 steg.push(`${/berätta vad du siktar på/i.test(efterOmladdning) ? "OK " : "FEL"} intervjun överlever omladdning`);
+
+// ── 4. FEL SYNS I KLARTEXT ──────────────────────────────────────────────────
+// Tidigare blev varje fel samma intetsägande mening, och i vanliga chatten
+// visades ingenting alls. Här bryts proxyn med flit: orsaken ska stå i chatten.
+await page.route("**/api/coach", r => r.fulfill({
+  status: 503, contentType: "application/json",
+  body: JSON.stringify({ fel: "proxyn är nere för underhåll" }),
+}));
+// Målet rensas: med ett mål satt visar chippen "Planera om målet".
+await page.evaluate(() => { localStorage.removeItem("atlas.v3.goal"); localStorage.removeItem("atlas.v3.intervju"); });
+await page.reload(); await page.waitForTimeout(900);
+await flik("Coachen"); await page.waitForTimeout(600);
+await klick("Fråga coachen"); await page.waitForTimeout(500);
+await klick("Sätt ett mål med coachen"); await page.waitForTimeout(600);
+if (process.env.DEBUG) console.log("EFTER START:", (await text()).includes("Berätta vad du siktar på") ? "intervjun öppnad" : "INTE öppnad");
+await page.evaluate(() => {
+  // Chattfältet saknar type-attribut, så input[type=text] matchar det INTE.
+  const kandidater = [...document.querySelectorAll("input")].filter(x => x.type !== "number" && x.type !== "file");
+  const i = kandidater[kandidater.length - 1];
+  if (!i) return;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+  setter.call(i, "Jag vill gå ner till 75 kilo");
+  i.dispatchEvent(new Event("input", { bubbles: true }));
+});
+await page.waitForTimeout(200);
+// EXAKT matchning: delsträngen "fråga" träffar rubrikknappen "FRÅGA COACHEN"
+// och FÄLLER IHOP kortet i stället för att skicka. Samma fälla som "pass".
+await page.evaluate(() => {
+  const b = [...document.querySelectorAll("button")].find(k => (k.innerText || "").trim() === "Fråga");
+  if (b) b.click();
+});
+await page.waitForTimeout(2500);
+t = await text();
+if (process.env.DEBUG) {
+  console.log("SIDFEL SÅ HÄR LÅNGT:", JSON.stringify(fel));
+  console.log("KNAPPAR:", JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("button")].map(x => x.innerText.trim().slice(0, 26)).filter(Boolean))));
+}
+if (process.env.DEBUG) console.log("--- CHATTEXT ---\n" + t.slice(-900));
+steg.push(`${/underhåll|503|gick inte att nå/i.test(t) ? "OK " : "FEL"} felets ORSAK står i chatten, inte en tom mening`);
+steg.push(`${/samtalet finns kvar/i.test(t) ? "OK " : "FEL"} användaren får veta att samtalet inte gått förlorat`);
 
 await browser.close(); srv.close();
 console.log(steg.join("\n"));

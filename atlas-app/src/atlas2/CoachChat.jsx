@@ -17,7 +17,7 @@ import { coachFacts } from "../engines/facts.js";
 import { bodyState, nutritionCtx, load, save } from "./store.js";
 import {
   INTERVJU_SYSTEMPROMPT, byggIntervjuUnderlag, intervjuMeddelande,
-  tolkaIntervjuSvar, valideraPlan, byggMålFrånPlan, viktbana,
+  tolkaIntervjuSvar, valideraPlan, byggMålFrånPlan, viktbana, KORTA_PLANEN_INSTRUKTION,
 } from "../engines/intervju.js";
 
 /**
@@ -26,15 +26,38 @@ import {
  */
 const COACH_PROXY = "https://askr-coach.vercel.app/api/coach";
 
+// FEL SKA GÅ ATT LÄSA AV SKÄRMEN.
+//
+// Tidigare blev varje fel samma mening i chatten: "Kopplingen till coachen gick
+// inte fram." Proxyn skickar med den verkliga orsaken, men den kastades bort —
+// och då är felet omöjligt att diagnosticera från telefonen. Robert fick
+// beskriva symtom och vi fick gissa oss fram i tre omgångar; orsaken visade sig
+// vara ett gammalt tokentak i en proxy som inte deployats om.
+//
+// Nu bär felet både statuskod och proxyns text. Ful information slår vacker
+// tystnad när något är sönder.
 async function hämtaSvar({ system, meddelande, maxTokens }) {
-  const r = await fetch(COACH_PROXY, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ system, meddelande, maxTokens }),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.fel || "proxyfel");
-  return d.text;
+  let r;
+  try {
+    r = await fetch(COACH_PROXY, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ system, meddelande, maxTokens }),
+    });
+  } catch (e) {
+    // Nätverksfel når aldrig servern — säg det, i stället för något om coachen.
+    const fel = new Error("nätverket svarade inte (" + (e.message || "okänt fel") + ")");
+    fel.nätverk = true;
+    throw fel;
+  }
+  let d = null;
+  try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok) {
+    const fel = new Error((d && d.fel) || `proxyn svarade ${r.status}`);
+    fel.status = r.status;
+    throw fel;
+  }
+  return (d && d.text) || "";
 }
 
 /** Startförslag. Korta, och formulerade som man faktiskt pratar. */
@@ -179,16 +202,41 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
         }
       }
 
+      // KAPAD PLAN — be om den igen, kortare. Planen är inte FEL, den är
+      // avhuggen, och att skicka användaren tillbaka till "formulera om" är
+      // att skylla på hen för något hen inte gjort. Ett försök; håller det
+      // inte heller sägs orsaken rakt ut.
+      if (r.typ === "kapad") {
+        const kortare = [...trans, { från: "coachen", text: KORTA_PLANEN_INSTRUKTION }];
+        r = await körTur(kortare);
+        if (r.typ === "plan") {
+          const v = valideraPlan(r.plan, { underlag, transkript: trans });
+          if (v.ok) {
+            setIntervju({ transkript: trans, plan: r.plan, bana: v.bana });
+            setTänker(false);
+            return;
+          }
+        }
+        setTänker(false);
+        setRader(x => [...x, { från: "coachen", källa: "intervju", text: "Planen blev för lång för att komma fram hel, två gånger. Ditt svar var inget fel. Säg till så försöker vi igen — eller be mig hålla planen kortare." }]);
+        setIntervju({ transkript: trans, plan: null });
+        return;
+      }
+
       setTänker(false);
       if (r.typ === "fråga") {
         setIntervju({ transkript: [...trans, { från: "coachen", text: r.text }], plan: null });
         setRader(x => [...x, { från: "coachen", text: r.text, källa: "intervju" }]);
       } else {
-        setRader(x => [...x, { från: "coachen", källa: "intervju", text: "Jag fick inget användbart svar från modellen. Prova att formulera om, eller avbryt intervjun." }]);
+        // Orsaken följer med. "Formulera om" utan förklaring lägger skulden på
+        // användaren för ett fel som nästan alltid ligger någon annanstans.
+        const orsak = r.fel ? ` (${r.fel})` : "";
+        setRader(x => [...x, { från: "coachen", källa: "intervju", text: `Jag fick inget användbart svar från modellen${orsak}. Prova att formulera om, eller avbryt intervjun.` }]);
       }
     } catch (e) {
       setTänker(false);
-      setRader(x => [...x, { från: "coachen", källa: "intervju", text: "Kopplingen till coachen gick inte fram. Försök igen om en stund." }]);
+      const orsak = e && e.message ? e.message : "okänd orsak";
+      setRader(x => [...x, { från: "coachen", källa: "intervju", text: `Det gick inte att nå coachen: ${orsak}. Samtalet finns kvar — försök igen om en stund.` }]);
     }
   };
 
@@ -261,6 +309,24 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
       });
       setTänker(false);
       if (r.ok) setRader(rad => [...rad, { från: "coachen", text: r.text, källa: "claude" }]);
+      else {
+        // TYST MISSLYCKANDE VAR DET SOM FANNS HÄR FÖRUT: gick anropet inte
+        // igenom visades ingenting alls — chatten slutade bara tänka. För
+        // användaren såg det ut som att appen hängde sig, och orsaken gick inte
+        // att se någonstans. Nu sägs det, med skälet.
+        //
+        // "påhittade-tal" är INTE ett fel utan talkontrollen som gjort sitt
+        // jobb: modellen hittade på en siffra och svaret stoppades. Det ska
+        // formuleras som ett medvetet val, inte som ett krångel.
+        const text = r.skäl === "påhittade-tal"
+          ? "Jag stoppade svaret — modellen tog med siffror som inte finns i din data. Hellre inget svar än ett påhittat."
+          : r.skäl === "ingen-koppling"
+            ? "Ingen koppling till coachen är konfigurerad i den här versionen."
+            : r.skäl === "tomt"
+              ? "Modellen svarade tomt. Prova igen om en stund."
+              : `Det gick inte att nå coachen: ${r.detalj || r.skäl || "okänd orsak"}.`;
+        setRader(rad => [...rad, { från: "coachen", text, källa: "fel" }]);
+      }
     }
   };
 
