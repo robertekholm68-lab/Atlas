@@ -168,6 +168,8 @@ Ställ EN fråga i taget, kort och konkret. Underlaget innehåller det appen red
 
 ANVÄND UNDERLAGET AKTIVT. Hänvisa till användarens faktiska siffror i dina frågor — "du har legat på 2,1 pass i veckan senaste månaden, håller tre?" är en bra fråga; "hur ofta tränar du?" är slöseri med någons tid när svaret redan står i underlaget. Ett generiskt samtal är ett misslyckande. Står ett fält som null vet appen det inte; fråga bara om det är nödvändigt för just det här målet.
 
+ANVÄND UNDERLAGET SYNLIGT. När du föreslår något ska du motivera det med KONKRETA värden ur underlaget — "du tränar redan 3 pass i veckan", "med 96 kg som utgångsläge" — inte med allmänna resonemang. Användaren ska kunna se att du känner hens data. Hitta aldrig på ett värde som inte står i underlaget; saknas något frågar du efter det.
+
 HÄNSYN TILL SKADOR. Står det något under skadorOchBesvär är det användarens EGNA ord, inte en diagnos. Ta hänsyn till det i planens träningsdel och nämn det, men gör aldrig en medicinsk bedömning och avråd inte från vård. Det du behöver få klart:
 1. Målet i klartext och vilken typ det är (typerna står i underlaget).
 2. Ett måldatum. Har användaren inget: föreslå en rimlig horisont i veckor och be om bekräftelse. Planen KRÄVER ett datum.
@@ -184,9 +186,62 @@ Svara då med ENDAST ett JSON-objekt (ingen text före eller efter, inga kodstak
 Varje dimension är 1–2 meningar konkret vägledning för just detta mål. Tal i planen måste komma ur samtalet eller underlaget.`;
 
 /**
- * Bygger meddelandet till modellen: underlag + hela transkriptet. Modellen är
- * tillståndslös mellan anrop — samtalet måste skickas med varje gång.
+ * ÖPPNINGEN: vad appen faktiskt vet om dig, i klartext.
+ *
+ * Robert satte ett mål och upplevde att coachen inte såg hans värden — trots
+ * att de fanns i underlaget. Den slutsatsen var rimlig: ingenting i samtalet
+ * visade vad som kommit fram. Ett underlag användaren inte kan se går inte att
+ * lita på, och i en app som aldrig fejkar datasäkerhet duger det inte.
+ *
+ * Funktionen är REN och deterministisk — inga tal från modellen, bara ur
+ * underlaget. Saknas något sägs det med sin följd, aldrig med tystnad.
+ * Returnerar { ser: [...], saknar: [...], text }.
  */
+export function intervjuÖppning(u) {
+  const ser = [];
+  const saknar = [];
+  if (!u) return { ser, saknar, text: "" };
+
+  if (u.senasteViktKg != null) {
+    const trend = u.viktförändring8vKg;
+    const t = trend == null ? ""
+      : Math.abs(trend) < 0.5 ? ", i stort sett oförändrad på åtta veckor"
+      : `, ${trend < 0 ? "ner" : "upp"} ${Math.abs(trend)} kg på åtta veckor`;
+    ser.push(`du väger ${u.senasteViktKg} kg${t}`);
+  } else if (u.viktMätningSaknas) {
+    saknar.push("en färsk vägning — utan den kan jag inte sätta delmål på vikt");
+  }
+
+  if (u.kroppsfettProcent != null) ser.push(`kroppsfett ${u.kroppsfettProcent} %`);
+  if (u.längdCm != null && u.ålder != null) ser.push(`${u.ålder} år, ${u.längdCm} cm`);
+  else saknar.push("ålder eller längd — de behövs för kaloribehov (fyll i under Om dig)");
+
+  if (u.styrkepassSenaste4v != null) {
+    const c = u.cardiopassSenaste4v ? ` och ${u.cardiopassSenaste4v} konditionspass` : "";
+    ser.push(`${u.styrkepassSenaste4v} styrkepass${c} senaste fyra veckorna`);
+  }
+  if (u.aktivtProgram && u.aktivtProgram.namn) ser.push(`programmet ${u.aktivtProgram.namn}`);
+  else saknar.push("ett aktivt program — jag kan föreslå ett som passar målet sedan");
+
+  if (u.readinessIdag != null) ser.push(`readiness ${u.readinessIdag} idag`);
+  if (u.bästaStyrketrend && u.bästaStyrketrend.övning) {
+    const d = u.bästaStyrketrend.förändring;
+    if (d != null && Math.abs(d) >= 1) ser.push(`${u.bästaStyrketrend.övning} ${d > 0 ? "+" : ""}${d} kg`);
+  }
+  if (u.harKostmål) ser.push("dina näringsmål");
+  if (u.träningsvana) {
+    const n = { beginner: "nybörjare", intermediate: "van", advanced: "erfaren" }[u.träningsvana];
+    if (n) ser.push(`träningsvana: ${n}`);
+  }
+  if (u.skadorOchBesvär) ser.push("det du skrivit om skador");
+
+  const rader = [];
+  if (ser.length) rader.push(`Det här ser jag: ${ser.join(", ")}.`);
+  else rader.push("Jag har nästan ingen data om dig ännu, så jag kommer behöva fråga om det mesta.");
+  if (saknar.length) rader.push(`Jag saknar ${saknar.join("; ")}.`);
+
+  return { ser, saknar, text: rader.join(" ") };
+}
 export function intervjuMeddelande({ underlag, transkript = [] }) {
   const rader = transkript.map(r => `${r.från === "du" ? "Användaren" : "Coachen"}: ${r.text}`).join("\n");
   return `UNDERLAG (det appen vet — fråga inte om detta):\n${JSON.stringify(underlag, null, 1)}\n\nSAMTALET HITTILLS:\n${rader}\n\nFortsätt intervjun enligt reglerna. Är allt klart: svara med enbart JSON-objektet.`;

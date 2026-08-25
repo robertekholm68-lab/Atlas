@@ -18,6 +18,7 @@ import { bodyState, nutritionCtx, load, save } from "./store.js";
 import {
   INTERVJU_SYSTEMPROMPT, byggIntervjuUnderlag, intervjuMeddelande,
   tolkaIntervjuSvar, valideraPlan, byggMålFrånPlan, viktbana, KORTA_PLANEN_INSTRUKTION,
+  intervjuÖppning,
 } from "../engines/intervju.js";
 
 /**
@@ -132,9 +133,26 @@ export function CoachChat({ sessions, activeProgram, profile, foodLog, goal, nut
   // Modellen intervjuar och föreslår; intervju-motorn validerar; delmålen
   // genereras deterministiskt; användaren godkänner. Fyra led, inget hoppas över.
   const startaIntervju = () => {
-    const öppning = goal
+    // ÖPPNINGEN REDOVISAR UNDERLAGET. Robert satte ett mål och upplevde att
+    // coachen inte såg hans värden — trots att de fanns med. Slutsatsen var
+    // rimlig: ingenting i samtalet visade vad som kommit fram. Ett underlag
+    // användaren inte kan se går inte att lita på.
+    //
+    // Raden byggs deterministiskt av motorn, inte av modellen: den ska vara
+    // sann även om modellen skulle vilja säga något annat.
+    let styrketrend = null;
+    try { styrketrend = bestStrengthTrend(sessions) || null; } catch (e) { styrketrend = null; }
+    const underlag = byggIntervjuUnderlag({
+      weights, sessions, foodLog, nutritionTargets, profile,
+      activeProgram, readiness, styrketrend,
+    });
+    const vad = intervjuÖppning(underlag);
+
+    const fråga = goal
       ? "Du har redan en målresa igång — en ny ersätter den. Berätta vad du siktar på, så planerar vi om."
       : "Berätta vad du siktar på — ett bröllop, magrutor, en träningsresa, vad som helst. Så diskuterar vi oss fram till en plan med delmål.";
+    const öppning = vad.text ? `${vad.text}\n\n${fråga}` : fråga;
+
     setIntervju({ transkript: [{ från: "coachen", text: öppning }], plan: null });
     setRader(r => [...r, { från: "coachen", text: öppning, källa: "intervju" }]);
   };
