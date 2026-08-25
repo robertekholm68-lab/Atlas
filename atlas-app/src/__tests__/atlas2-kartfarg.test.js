@@ -16,13 +16,19 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { FIGURER } from "../atlas2/BodyMap2.jsx";
 
 const src = readFileSync(resolve("src/atlas2/BodyMap2.jsx"), "utf8");
+
+// Blandningsläge och opacitet ligger sedan kvinnofiguren kom i FIGURER, per
+// figur — mansfiguren bär fortfarande exakt de uppmätta värdena.
+const [blend, op, opAktiv] = FIGURER.m.lager[0];
 
 describe("färgen ligger i anatomin, inte ovanpå den", () => {
   it("blandningsläget är multiply mot den ljusa figuren", () => {
     // screen ljusnar bara; overlay behåller fotots ljus och skugga.
-    expect(src).toMatch(/mixBlendMode:\s*"multiply"/);
+    expect(FIGURER.m.lager.length).toBe(1);
+    expect(blend).toBe("multiply");
     expect(src).not.toMatch(/mixBlendMode:\s*"screen"/);
   });
 
@@ -30,10 +36,9 @@ describe("färgen ligger i anatomin, inte ovanpå den", () => {
     // Med overlay behövs mindre färg än med screen (0,9/0,72). Taket höjdes
     // när figuren ljusnade till 1,8 — overlay späder ut färgen mot ett ljust
     // underlag, mätt i pixelvärden: grönt tappade 31 % mättnad.
-    const m = src.match(/fillOpacity=\{st \? \(aktiv \? ([\d.]+) : ([\d.]+)\)/);
-    expect(m, "hittade inte fillOpacity").toBeTruthy();
-    expect(Number(m[1])).toBeLessThan(0.9);
-    expect(Number(m[2])).toBeLessThan(0.72);
+    expect(src).toMatch(/fillOpacity=\{st \? \(aktiv \? opAktiv : op\)/);
+    expect(opAktiv).toBeLessThan(0.9);
+    expect(op).toBeLessThan(0.72);
   });
 
   it("kanten är mjuk — en path slutar annars tvärt på en pixel", () => {
@@ -52,7 +57,8 @@ describe("otränade muskler lyser fortfarande inte", () => {
   it("utan underlag ritas ingen färg alls", () => {
     // Ärlighetsregeln: det som lyser är det som har underlag. Anatomibilden
     // under räcker för att visa att muskeln finns.
-    expect(src).toMatch(/: \(aktiv \? 0\.18 : 0\)/);
+    // Bara det första lagret får en svag hover-ton; alla övriga lager är noll.
+    expect(src).toMatch(/: \(aktiv && li === 0 \? 0\.18 : 0\)/);
   });
 });
 

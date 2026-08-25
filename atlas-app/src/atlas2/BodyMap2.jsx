@@ -19,8 +19,33 @@
 import { useState } from "react";
 import { C, HFONT, recoveryColor } from "./design.js";
 import REGIONS from "./body_regions.json";
+import REGIONS_KVINNA from "./body_regions_female.json";
 import figurFram from "../assets/brand/figur-fram.webp";
 import figurBak from "../assets/brand/figur-bak.webp";
+import kvinnaFram from "../assets/brand/figur-kvinna-fram.webp";
+import kvinnaBak from "../assets/brand/figur-kvinna-bak.webp";
+
+// TVÅ FIGURER, SAMMA REGION-ID:N.
+//
+// Profilen bär `sex` ("m"/"f"). Kvinnofiguren är byggd ur egna maskbilder
+// (en bild per muskel i magenta, samma metod som mansfiguren) och har därför
+// egna former och egna basbilder — men regionerna heter likadant, så MAP,
+// NAMN, regionState och MuscleSheet är oförändrade. Saknas `sex` visas mannen,
+// precis som förut.
+//
+// `lager` är hur färgen läggs på just den figuren. Mansfiguren är en LJUS
+// illustration: multiply ger full kulör mot ljust underlag (mätt, se nedan).
+// Kvinnofiguren är ett fotorealistiskt, solbrunt foto — där gjorde multiply
+// grönt till oliv och rött till "lite mörkare hud", och färgen slutade vara
+// data. "color" byter nyansen men behåller fotots ljus och skugga, så muskeln
+// behåller sin volym; det tunna "normal"-lagret finns för att färgen ska synas
+// även över svarta kläder (sätet under shortsen), där color-blend inte kan
+// lägga någon nyans alls. Båda värdena är mätta på skärmbild mot sex varianter.
+const FIGURER = {
+  m: { regions: REGIONS, bild: { front: figurFram, back: figurBak }, lager: [["multiply", 0.62, 0.78]] },
+  f: { regions: REGIONS_KVINNA, bild: { front: kvinnaFram, back: kvinnaBak }, lager: [["color", 0.9, 1], ["normal", 0.28, 0.4]] },
+};
+const figurFör = sex => FIGURER[sex] || FIGURER.m;
 
 // Figurens region → muskel-id:n i 21-taxonomin.
 const MAP = {
@@ -50,7 +75,7 @@ const NAMN = {
   external_obliques: "Sneda bukmuskler", trapezius: "Kappmuskel", quadriceps: "Framsida lår",
   adductors: "Insida lår", tibialis_anterior: "Framsida underben", serratus_anterior: "Sågmuskel",
   latissimus_dorsi: "Breda ryggmuskeln", teres_major: "Ryggen", erector_spinae: "Ryggresare",
-  gluteals: "Säte", hamstrings: "Baksida lår", calves: "Vader",
+  gluteals: "Säte", hamstrings: "Baksida lår", calves: "Vader", rotator_cuff: "Rotatorkuff",
 };
 
 // Otränad muskel: syns som anatomi men läser inte som ett värde.
@@ -65,7 +90,7 @@ const GRUNDTON = "#2E333B";
 // Anatomibilden bäddas IN i bygget (se assetsInlineLimit). Som systerfil hann
 // den aldrig laddas innan kartan ritades, och i en fristående HTML-fil fanns
 // den inte alls — kartan visade då bara färgformerna, utan kroppen under.
-const bildUrl = vy => (vy === "front" ? figurFram : figurBak);
+const bildUrl = (vy, figur = FIGURER.m) => figur.bild[vy];
 
 /** Regionens tillstånd = den av dess muskler som är MINST återhämtad. */
 function regionState(regionId, states) {
@@ -79,8 +104,8 @@ function regionState(regionId, states) {
   return vald;
 }
 
-function Figur({ vy, states, onSelect, rör, setRör }) {
-  const data = REGIONS[vy];
+function Figur({ vy, states, onSelect, rör, setRör, figur = FIGURER.m }) {
+  const data = figur.regions[vy];
   const [bildOk, setBildOk] = useState(true);
   if (!data) return null;
   return (
@@ -88,7 +113,7 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
       {/* Anatomin. Saknas filen faller vyn tillbaka på enbart muskelformerna —
           färre detaljer, men fortfarande läsbar och fortfarande sann. */}
       {bildOk && (
-        <img src={bildUrl(vy)} alt="" onError={() => setBildOk(false)}
+        <img src={bildUrl(vy, figur)} alt="" onError={() => setBildOk(false)}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
             // INGEN UPPLJUSNING AV DEN ANATOMISKA ILLUSTRATIONEN.
@@ -135,8 +160,8 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
             onMouseEnter={() => setRör(r.id)} onMouseLeave={() => setRör(null)}
             onClick={() => onSelect && onSelect(r.id)}>
             <title>{NAMN[r.id] || r.id}{st ? ` — ${Math.round(st.readiness)}%` : " — ingen data"}</title>
-            {r.d.map((d, i) => (
-              <path key={i} d={d} fill={färg}
+            {r.d.map((d, i) => figur.lager.map(([blend, op, opAktiv], li) => (
+              <path key={`${i}-${li}`} d={d} fill={färg}
                 filter={`url(#mjuk-${vy})`}
                 // FÄRGEN SKA LIGGA I ANATOMIN, INTE OVANPÅ DEN.
                 //
@@ -159,8 +184,11 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
                 // färgen mot ett ljust underlag — samma 0,5 som räckte mot ett
                 // mörkt foto ger blek status mot ett ljust. Mätt i pixelvärden,
                 // inte uppskattat.
-                fillOpacity={st ? (aktiv ? 0.78 : 0.62) : (aktiv ? 0.18 : 0)}
-                stroke={aktiv && st ? färg : "none"} strokeWidth={1.5}
+                //
+                // Opaciteterna per lager ligger i FIGURER — mansfiguren har
+                // kvar exakt 0,62/0,78 med multiply; kvinnofiguren sina egna.
+                fillOpacity={st ? (aktiv ? opAktiv : op) : (aktiv && li === 0 ? 0.18 : 0)}
+                stroke={aktiv && st && li === 0 ? färg : "none"} strokeWidth={1.5}
                 // MULTIPLY, INTE OVERLAY, MOT DEN LJUSA FIGUREN.
                 //
                 // "overlay" behåller underlagets ljus och lägger färgen som en
@@ -171,8 +199,8 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
                 // "multiply" mörknar i stället, vilket ger full kulör mot ljust
                 // underlag och samtidigt låter muskelteckningens skuggor lysa
                 // igenom. Mätt på skärmbild, inte uppskattat.
-                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: "multiply" }} />
-            ))}
+                style={{ transition: "fill .5s, fill-opacity .25s", mixBlendMode: blend }} />
+            )))}
           </g>
         );
       })}
@@ -185,8 +213,9 @@ function Figur({ vy, states, onSelect, rör, setRör }) {
  * Fram och bak sida vid sida, som i skisserna. Ingen bakgrund, ingen gloria,
  * ingen platta — figurerna står mot appens svärta.
  */
-export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true, kompakt = false, fyll = false }) {
+export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true, kompakt = false, fyll = false, sex = null }) {
   const [rör, setRör] = useState(null);
+  const figur = figurFör(sex);
   const st = rör ? regionState(rör, muscleStates) : null;
 
   // `fyll` betyder: ta den höjd som finns kvar i föräldern i stället för ett
@@ -206,7 +235,7 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
       <div style={figurer}>
         {["front", "back"].map(v => (
           <div key={v} style={{ flex: 1, maxWidth: "48%", height: "100%" }}>
-            <Figur vy={v} states={muscleStates} onSelect={onSelect} rör={rör} setRör={setRör} />
+            <Figur vy={v} states={muscleStates} onSelect={onSelect} rör={rör} setRör={setRör} figur={figur} />
           </div>
         ))}
       </div>
@@ -236,4 +265,4 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
   );
 }
 
-export { NAMN as REGIONNAMN, MAP as REGION_MAP, regionState };
+export { NAMN as REGIONNAMN, MAP as REGION_MAP, regionState, FIGURER };
