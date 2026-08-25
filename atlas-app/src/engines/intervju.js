@@ -208,14 +208,38 @@ export function tolkaIntervjuSvar(text) {
       try {
         const plan = JSON.parse(utanStaket.slice(i, j + 1));
         if (plan && plan.klar === true) return { typ: "plan", plan };
-      } catch (e) { /* faller igenom till ogiltig */ }
+      } catch (e) { /* faller igenom nedan */ }
     }
-    // Svaret UTGER sig för att vara en plan ("klar": true finns) men går inte
-    // att tolka — det är ett fel att rapportera, inte en fråga att visa.
-    return { typ: "ogiltig", fel: "JSON gick inte att tolka" };
+    // KAPAT ELLER TRASIGT? Skillnaden avgör vad anroparen kan göra åt saken.
+    //
+    // Ett kapat svar slutar mitt i — klamrarna går inte ihop, eller det finns
+    // ingen avslutande } alls. Då är planen inte fel, den är AVHUGGEN, och rätt
+    // åtgärd är att be om den igen kortare. Ett trasigt svar (balanserade
+    // klamrar men ogiltig JSON) hjälper inget omförsök mot.
+    //
+    // Robert råkade ut för exakt det här: proxyn körde ett gammalt tokentak,
+    // planens JSON kapades mitt i, och han fick "formulera om" — trots att
+    // ingenting var fel med det han skrivit.
+    const svans = utanStaket.slice(i);
+    const öppna = (svans.match(/\{/g) || []).length;
+    const stängda = (svans.match(/\}/g) || []).length;
+    if (j < i || öppna > stängda) {
+      return { typ: "kapad", fel: "svaret kapades innan planen var färdig" };
+    }
+    return { typ: "ogiltig", fel: "planen gick inte att tolka som JSON" };
   }
   return { typ: "fråga", text: t };
 }
+
+/**
+ * Instruktion till modellen när planen kapats: leverera samma plan igen, men
+ * kort nog att den ryms. Skickas som en tur i samtalet, inte som en ny prompt —
+ * modellen behöver se vad den redan kommit fram till.
+ */
+export const KORTA_PLANEN_INSTRUKTION =
+  "[Ditt förra svar kapades innan JSON-objektet var färdigt. Leverera planen igen, "
+  + "identisk i sak men kortare: högst en mening per dimension. Enbart JSON-objektet, "
+  + "ingen text runt.]";
 
 // ── Validering — den deterministiska grinden ────────────────────────────────
 const datumMs = s => {

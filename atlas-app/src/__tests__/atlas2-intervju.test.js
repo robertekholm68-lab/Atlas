@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import {
   viktbana, byggIntervjuUnderlag, intervjuMeddelande, tolkaIntervjuSvar,
-  valideraPlan, genereraDelmål, byggMålFrånPlan, SÄKRA_TAKTER, INTERVJU_SYSTEMPROMPT,
+  valideraPlan, genereraDelmål, byggMålFrånPlan, SÄKRA_TAKTER, KORTA_PLANEN_INSTRUKTION, INTERVJU_SYSTEMPROMPT,
 } from "../engines/intervju.js";
 import { resa } from "../engines/journey.js";
 
@@ -53,9 +53,12 @@ describe("tolkaIntervjuSvar", () => {
     expect(r.typ).toBe("plan");
     expect(r.plan.namn).toBe("Bröllop");
   });
-  it("trasig JSON blir ogiltig, inte en krasch", () => {
+  it("ett avhugget svar kraschar inte — det klassas som kapat", () => {
+    // Stod som "ogiltig" innan kapningsdetektionen fanns. Svaret ÄR avhugget
+    // (öppen klammer, ingen stängning), och skillnaden är inte akademisk:
+    // kapat går att be om igen, trasigt gör det inte.
     const r = tolkaIntervjuSvar('{"klar": true, "namn": ');
-    expect(r.typ).toBe("ogiltig");
+    expect(r.typ).toBe("kapad");
   });
   it("tomt svar rapporteras som tomt", () => {
     expect(tolkaIntervjuSvar("").typ).toBe("tomt");
@@ -214,5 +217,44 @@ describe("underlaget bär användarens faktiska värden", () => {
   it("prompten kräver att underlaget används aktivt", () => {
     expect(INTERVJU_SYSTEMPROMPT).toMatch(/ANVÄND UNDERLAGET AKTIVT/);
     expect(INTERVJU_SYSTEMPROMPT).toMatch(/generiskt samtal är ett misslyckande/);
+  });
+});
+
+describe("kapade svar skiljs från trasiga", () => {
+  // Robert råkade ut för exakt det här: proxyn körde ett gammalt tokentak,
+  // planens JSON kapades mitt i, och han fick "formulera om" — trots att
+  // ingenting var fel med det han skrivit.
+  it("ett avhugget plansvar rapporteras som KAPAT, inte ogiltigt", () => {
+    const helt = JSON.stringify(okPlan());
+    const kapat = helt.slice(0, Math.floor(helt.length * 0.7)); // klipp mitt i
+    const r = tolkaIntervjuSvar(kapat);
+    expect(r.typ).toBe("kapad");
+    expect(r.fel).toMatch(/kapades/);
+  });
+
+  it("kapat mitt i en dimension fångas också", () => {
+    const r = tolkaIntervjuSvar('{"klar":true,"namn":"Bröllop","dimensioner":{"träning":"Tre pass i vec');
+    expect(r.typ).toBe("kapad");
+  });
+
+  it("balanserade klamrar men ogiltig JSON är TRASIGT, inte kapat — omförsök hjälper inte", () => {
+    const r = tolkaIntervjuSvar('{"klar":true,"namn":,"typ":"fatloss"}');
+    expect(r.typ).toBe("ogiltig");
+    expect(r.fel).toMatch(/tolka/);
+  });
+
+  it("en hel plan påverkas inte av kapningskontrollen", () => {
+    expect(tolkaIntervjuSvar(JSON.stringify(okPlan())).typ).toBe("plan");
+    // Även med artighet runt, som modeller ibland lägger till.
+    expect(tolkaIntervjuSvar("Här är planen:\n" + JSON.stringify(okPlan()) + "\nSäg till om du vill ändra.").typ).toBe("plan");
+  });
+
+  it("en vanlig fråga är fortfarande en fråga", () => {
+    expect(tolkaIntervjuSvar("Vad väger du idag?").typ).toBe("fråga");
+  });
+
+  it("instruktionen vid kapning ber om samma plan kortare, inte en ny", () => {
+    expect(KORTA_PLANEN_INSTRUKTION).toMatch(/identisk i sak/);
+    expect(KORTA_PLANEN_INSTRUKTION).toMatch(/kortare/);
   });
 });
