@@ -106,7 +106,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1570 i 141 filer |
+| Tester (vitest) | 1571 i 141 filer |
 | DOM-skript | 14 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -187,16 +187,27 @@ i `FIGURER` (`BodyMap2.jsx`): `m` → `body_regions.json` + `figur-{fram,bak}`,
 mannen. `MAP`, `NAMN`, `regionState` och `MuscleSheet` är oförändrade, eftersom
 regionerna heter likadant i båda — det är hela poängen med uppdelningen.
 
-Figurerna har DÄREMOT olika viewBox (mannen 415×1035, kvinnan 487×1243) och
-olika färglager: mannen ett `multiply` 0,62/0,78, kvinnan `color` 0,9/1 plus ett
-tunt `normal` 0,28/0,4. Skälet är att mannen är en ljus illustration medan
-kvinnan är ett fotorealistiskt foto — `multiply` gjorde grönt till oliv mot
-solbrun hud, och `normal`-lagret behövs för att sätet ska synas över svarta
-shorts. Färglagret är alltså en egenskap hos BILDEN, inte hos kartan.
+Figurerna har egna viewBox (mannen 547×1243, kvinnan 487×1243) eftersom
+kropparna är olika breda, men **samma färgrecept**: konstanten `FOTO` i
+`BodyMap2.jsx`, `color` 0,9/1 plus ett tunt `normal` 0,28/0,4.
 
-Kvinnofiguren är spårad ur 24 maskbilder med
-`scripts/masker-till-regioner-kvinna.py` (potrace). Lägg en ny mask och kör om
-skriptet i stället för att handredigera JSON.
+Mannen bar `multiply` 0,62/0,78 så länge han var en ljus illustration. Den
+figuren är utbytt mot ett fotorealistiskt foto av samma sort som kvinnan, och
+receptet följde med: mot solbrun hud gör `multiply` grönt till oliv och rött
+till "lite mörkare hud", varpå färgen slutar vara data. `normal`-lagret finns
+för att sätet ska synas även under svarta shorts, där `color` inte kan lägga
+någon nyans alls. Att BÅDA nu delar recept är poängen — en enda sorts underlag
+betyder att ett färgbeslut gäller hela kartan.
+
+Båda figurerna är spårade ur maskbilder med
+`scripts/masker-till-regioner-kvinna.py` (potrace; könsneutralt trots namnet,
+tredje argumentet `female`/`male` styr utfilernas namn). Maskerna ligger i
+`maskbilder/{man,kvinna}/`. Lägg en ny mask och kör om skriptet i stället för
+att handredigera JSON.
+
+Två arbetsskript hör till: `normalisera-masker.py` (beskär och riktar in en
+omgång masker mot basbilden) och `forhandsvisa-karta.py` (renderar kartan till
+en bild för okulär granskning utan att bygga appen).
 
 Tillkomna i augusti (43 filer totalt): `CustomProgram.jsx` (bygg eget program),
 `CustomRecipe.jsx` (egna recept med beräknad näring), `ExerciseBank.jsx`,
@@ -1142,3 +1153,27 @@ aldrig göms bakom en utvilad.
   `teres_major → latissimus_dorsi`. Ett nytt testfall kräver att varje muskel i
   `REGION_MAP` finns i taxonomin, så nästa glömda post faller i stället för att
   tystna.
+- **En basbild måste komma ur samma batch som sina masker.** Normaliseringen
+  beskär allt efter basens bbox, så en bas från en annan generering placerar
+  varenda mask fel — mätt till 24 % drift och 196 px sidled på mansfigurens
+  framvy. Basbilden byggs nu som MEDIANEN av vyns elva masker: varje pixel är
+  magenta i högst en eller två av dem, så medianen ger ren hud i exakt rätt ram.
+  Drift efter det: 0,8–2,8 %.
+- **Masker utan figuren i bilden går inte att placera.** Två omgångar kom med
+  rätt former (bbox-normaliserad IoU 0,97 mot föregående omgång) men utan
+  kroppen — och utan kropp finns ingen referens för VAR masken sitter. Nio
+  räddades med korskorrelation mot förra omgångens redan placerade masker. De
+  två helt nya, hamstrings och vader, placerades ur den uppmätta
+  exportkonventionen och finjusterades på två oberoende signaler: all magenta
+  innanför silhuetten, och spegelsymmetri kring figurens mittaxel. Utfall 100 %
+  innanför, 96–97 % symmetri. Be alltid om masker MED figuren i bilden.
+- **Ett granskningsverktyg kan ljuga och göra riktiga träffar till falska
+  missar.** `forhandsvisa-karta.py` hade kvinnans viewBox hårdkodad som
+  bildförhållande och sträckte därför mannen 12 % i sidled, vilket gav sex
+  falska missar i träfftestet. Läses nu ur JSON:ens egen viewBox. Samma sort som
+  DOM-skriptet som mätte fel vy: verktyget som ska avslöja fel kan själv vara
+  felkällan, och då pekar det åt fel håll med full auktoritet.
+- **Bbox-mitten ligger inte i formen när formen är tvådelad.** Träfftestet
+  pekade i mitten av varje regions bbox — men en bilateral muskel har sin
+  bbox-mitt MELLAN halvorna, alltså utanför båda. Sex falska missar. Punkten
+  hämtas nu ur distanstransformens max per komponent, vilket alltid ligger inuti.
