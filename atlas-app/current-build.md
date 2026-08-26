@@ -22,7 +22,7 @@
 Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
 den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
 
-*Senast verifierad mot koden: 2026-07-27 (efter matsöket). Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-08-26 (mot `85dfffc`, #142). Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -87,19 +87,35 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-07-27)
+## Aktuella siffror (avlästa 2026-08-26)
 
 | Sak | Antal |
 |---|---|
 | Övningar | 160 |
-| Maskiner | 124 |
+| Maskintyper (`MACHINE_TYPES`) | 43 |
+| Maskinmodeller (`MACHINE_MODELS`) | 67 |
+| Maskinmärken (`MACHINE_BRANDS`) | 14 |
 | Muskler (taxonomi) | 21 |
-| Programmallar | 31 |
-| Livsmedel, SLV-databasen | 2606 |
-| Livsmedel, kuraterade | 69 |
+| Programmallar (`ALL_TEMPLATES`) | 31 (1 kurerad + 30 genererade) |
+| Programfamiljer (`FAMILY_NAMES`) | 10 |
+| Livsmedel, sökbara (`FOOD_INDEX`) | 2679 |
+| — varav SLV-databasen | 2606 |
+| — varav kuraterade | 73 |
 | Recept | 276 |
-| Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 1039 i 100 filer |
+| Recept med bild | 140 av 276 |
+| Övningar med bild (`MED_BILD`) | 3 av 160 |
+| Kunskapsposter | 21 |
+| Kosttillskott | 25 |
+| Tester (vitest) | 1500 i 133 filer |
+
+**"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
+till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
+43 + 67 + 14. Uppdelad ovan, för ett tal ingen kan räkna fram ur koden är
+ett tal ingen kan lita på.
+
+**`FOOD_DB` är metadata, inte livsmedel.** Den bär källnamn, version och licens
+för Livsmedelsverkets databas. Listan som söks är `FOOD_INDEX` — kuraterade
+plus SLV. Att räkna `FOOD_DB` ger 10 och ser ut som ett svar.
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -107,13 +123,21 @@ Sporter med cardio-load: innebandy, Muay Thai.
 ## Struktur
 
 ### `src/engines/` — rena funktioner
-`index.js` (recovery, readiness, rekommendation, nutrition, systemisk fatigue,
-dataConfidence), `session.js`, `programs.js`, `goal.js`, `mission.js`,
-`bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
-samt de som tidigare saknades i dokumentationen: `voice.js`, `post-session.js`,
-`geofence.js`, `nfc.js`, `hr.js`, `platform.js`, `bridge.js`, `backup.js`,
-`cues.js`, `nudges.js` (händelsedrivna påminnelser), `supplements.js`
-(följsamhet för dagliga tillskott).
+34 filer. `index.js` (recovery, readiness, rekommendation, nutrition, systemisk
+fatigue, dataConfidence, formatterarna), `session.js`, `programs.js`, `goal.js`,
+`mission.js`, `bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
+`voice.js`, `post-session.js`, `geofence.js`, `nfc.js`, `hr.js`, `platform.js`,
+`bridge.js`, `backup.js`, `cues.js`, `nudges.js` (händelsedrivna påminnelser),
+`supplements.js` (följsamhet för dagliga tillskott).
+
+Tillkomna i augusti: `facts.js` och `journey.js` (flyttade hit från `atlas2/`),
+`coach-llm.js` (Claude via Vercel-proxy), `aiMat.js` (AI-uppskattning när
+databasen saknar rätten), `fotoMaltid.js` och `fotoMaskin.js` (bild in,
+identifiering ut — motorn räknar, användaren bekräftar), `skafferi.js` (egna
+varor och favoritmat), `mealSuggest.js`, `deklaration.js` (näringsdeklaration
+ur förpackning), `portioner` via `data/portions.js`, `intervju.js` (målintervjun),
+`malplan.js` och `malprogram.js`, `profil.js`, `utveckling.js` (kropp och styrka
+över tid, med Omron-import).
 
 **Varför-svaren får konsekvenser.** `reasonSignal` (ur `post-session.js`, kräver
 ≥3 svar inom 21 dagar) styr två saker — och två saker den INTE gör:
@@ -155,6 +179,14 @@ dvh, navhöjd), `foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent)
 `App2.jsx`, `main2.jsx`, `body_regions.json`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
+
+Tillkomna i augusti (43 filer totalt): `CustomProgram.jsx` (bygg eget program),
+`CustomRecipe.jsx` (egna recept med beräknad näring), `ExerciseBank.jsx`,
+`MachineGuide.jsx`, `SkannaMaskin.jsx`, `MuscleSplit.jsx` (muskelfördelning),
+`muscleIcon.jsx` (kroppssiluett med primärmuskeln markerad — miniatyren för
+alla 160 övningar, till skillnad från fotona i `MED_BILD`), `KnowledgeView.jsx`,
+`ProfileSheet.jsx`, `UtvecklingView.jsx`, `FotoMaltid.jsx`, `Streckkod.jsx`,
+`sokord.js` (mängdord och synonymer i matsöket).
 
 **Två skal, en uppsättning vyer.** Under brytpunkten (`layout.js`) bottennav,
 över den `Shell.jsx` med sidopanel och ark som centrerade modaler. Vyerna
@@ -942,3 +974,18 @@ aldrig göms bakom en utvilad.
 - **Paletten låg på fyra ställen** (`data/tokens.js`, `styles/global.css`,
   mobilens `C`, gradienter i `App.jsx`) och en omfärgning missade två tyst.
   Därför ligger 2.0:s palett samlad i `atlas2/design.js`.
+- **En gren som skiljer sig från main är inte automatiskt omergad.** Vid
+  genomgången 2026-08-26 fanns 76 `claude/moln-*`-grenar kvar på origin. 40 av
+  dem gav diff mot main och såg därför omergade ut. De var det inte: 24 låg
+  inne under sitt eget commit-ämne, och de 17 återstående hade sitt innehåll i
+  main i vidareutvecklad form — grenens rader hade bara flyttat sig. Tre test
+  behövs för att avgöra saken, i den här ordningen: (1) finns commit-ämnet i
+  `git log origin/main`, (2) applicerar diffen omvänt mot main, (3) hur stor
+  andel av grenens tillagda rader hittas med `git grep` i main. Bara det tredje
+  gav rätt svar för de sista 17 — de låg på 88–100 %. `git diff main...gren`
+  ensamt svarar på fel fråga: det mäter avstånd, inte om arbetet är gjort.
+- **Superseded ser ut som saknat.** `moln-ai-okand-mat` låg på 56 % och var den
+  enda gren som verkade ha riktigt innehåll kvar. Den byggde vidare på
+  storleksfrågan ("Ungefär hur stor måltid?") — som `moln-ai-menyval` tog bort
+  med avsikt, och den grenen är inne. De saknade raderna var alltså en spärr vi
+  medvetet skrotat. Läs alltid vad de saknade raderna GÖR innan de merges in.
