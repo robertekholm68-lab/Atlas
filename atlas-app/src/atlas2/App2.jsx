@@ -40,6 +40,7 @@ import { useLayout, UTAN_NAV, MOBIL_MAX, PANEL_BREDD, INNEHÅLL_MAX, FULL_HÖJD 
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { EXERCISES } from "../data/exercises.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
+import { vikterUrMätningar } from "../engines/utveckling.js";
 
 /* ══════════ STARTSIDA ══════════ */
 
@@ -49,8 +50,17 @@ function Start({ onNext }) {
   const bild = k => new URL(`startsida-${k === "m" ? "man" : "kvinna"}.webp`, document.baseURI).href;
   const visa = k => sex === null || sex === k;
 
+  // MAXBREDD PÅ SKRIVBORD.
+  //
+  // Startsidan är komponerad för mobilbredd. Utan tak sträcktes hjälteytan
+  // över hela fönstret — 720×330 px vid 1440, där object-fit: cover beskär bort
+  // allt utom hjässorna — och rubriken hamnade ensam i vänsterkanten. 520 px
+  // ger samma bildutsnitt som på telefon; kroppen syns, inte bara huvudet.
+  // Hem-vyn har en EGEN skrivbordslayout (kartan bredvid besluten); det här är
+  // en startsida man passerar en gång, och där räcker den centrerade kolumnen.
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column",
+      width: "100%", maxWidth: 520, margin: "0 auto" }}>
       <div style={{ padding: "20px 20px 0", display: "flex", justifyContent: "center" }}><AskrLogo höjd={104} /></div>
 
       <div style={{ position: "relative", height: 330, marginTop: 10, display: "flex", justifyContent: "center", overflow: "hidden" }}>
@@ -346,9 +356,15 @@ export function Atlas2() {
   // räknar hooks per render; en useState efter en return ger error #310).
   const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState("start");
-  const [sex, setSex] = useState(null);
   const [mode, setMode] = useState(null);
   const [profile, setProfile] = useState({});
+  // KÖNET LÄSES UR PROFILEN, det lagras inte separat.
+  //
+  // Tidigare fanns ett eget `sex`-state som bara sattes vid hydrering och i
+  // onboardingen. Profilarket skriver `profile.sex` utan att röra det, så den
+  // som bytte kön där fick rätt värde sparat men FEL figur på kartan — ända
+  // tills appen laddades om. Ett värde på två ställen glider isär.
+  const sex = profile.sex || null;
   const [sessions, setSessions] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [activeProgramId, setActiveProgramId] = useState(null);
@@ -360,6 +376,16 @@ export function Atlas2() {
   const sättMätningar = f => setMätningar(xs => {
     const ny = typeof f === "function" ? f(xs) : f;
     save("matningar", ny);
+    // VIKTEN MÅSTE NÅ weights, annars ser resten av appen den aldrig.
+    // `mätningar` bär kg tillsammans med fett och muskel; `weights` är den
+    // enkla formen profilen, coachen, framstegsvyn, målplanen och backupen
+    // läser. Utan den här raden loggade man sin vikt och "Om dig" visade
+    // fortfarande streck.
+    setWeights(w => {
+      const uppd = vikterUrMätningar(w, ny);
+      save("weights", uppd);
+      return uppd;
+    });
     return ny;
   });
   const [live, setLive] = useState(null);   // pågående pass; persisteras av WorkoutView
@@ -518,12 +544,19 @@ export function Atlas2() {
       const idn = await identitet();
       if (!alive) return;
       const migr = migrera({ sessions: sess, weights: w, foodLog: fl, goal: g }, idn);
-      setMode(m); setProfile(p); setSex(p.sex || null);
+      setMode(m); setProfile(p);
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
       setEgnaRecept(Array.isArray(egna) ? egna : []);
       setSkafferi(Array.isArray(skaff) ? skaff : []);
-      setMätningar(Array.isArray(mät) ? mät : []);
-      setWeights(migr.weights); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
+      const mätLista = Array.isArray(mät) ? mät : [];
+      setMätningar(mätLista);
+      // Vägningar som loggades innan de två listorna kopplades ihop ligger bara
+      // i `matningar`. Slås de in här blir de synliga för profilen och coachen
+      // utan att användaren behöver göra om något. Sparas bara när det faktiskt
+      // tillkom något — annars skrivs lagringen vid varje start.
+      const vikter = vikterUrMätningar(migr.weights, mätLista);
+      if (vikter.length !== (migr.weights || []).length) save("weights", vikter);
+      setWeights(vikter); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
 
       // ÖVERGIVET PASS: fråga i stället för att tyst räkna vidare.
       //
@@ -694,7 +727,7 @@ export function Atlas2() {
       <AskrWordmark höjd={30} />
     </div>
   );
-  if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setSex(s); setProfile(p); save("profile", p); setStep("mode"); }} />;
+  if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setProfile(p); save("profile", p); setStep("mode"); }} />;
   if (step === "mode") return <ModeChoice onPick={pickMode} />;
 
   /**

@@ -106,7 +106,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1530 i 136 filer |
+| Tester (vitest) | 1564 i 140 filer |
 | DOM-skript | 14 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1067,3 +1067,38 @@ aldrig göms bakom en utvilad.
   Service workern registrerades i ett inline-skript i `atlas2.html`, där logik
   inte går att testa. Flyttad till `main2.jsx`, och ett testfall kräver att
   `atlas2.html` INTE registrerar — annars smyger den tillbaka.
+- **Ett värde på två ställen glider isär — synka inte, ta bort det ena.**
+  Profilarket skrev `profile.sex` medan `App2` bar ett EGET `sex`-state som
+  bara sattes vid hydrering och i onboardingen. Byte av kön sparade alltså rätt
+  värde och visade fel figur, ända tills appen laddades om. Reproducerat mot
+  bygget: karta MAN medan `profile.sex` var "f". Fixen var inte att hålla de två
+  i takt utan att låta `sex` härledas ur profilen. Två sanningar om samma sak
+  hinner alltid glida isär; det är samma skäl som gör att den här filen är enda
+  källan för siffror.
+- **Talfält får inte klampa medan man skriver.** "Om dig" klampade varje
+  tangenttryckning mot min/max, och ett tal skrivs en siffra i taget: "1" av 180
+  är under minimum 120 och blev 120, så nästa siffra gav "1208" som klampades
+  till 230. Man kunde bokstavligen inte skriva sin egen längd. Ålder likaså: 42
+  blev 100. Fältet äger nu sin text medan man skriver och klampar när det
+  lämnas — och Spara klampar också, annars håller gränsen inte för den som
+  trycker Spara direkt från ett fält som står på 500.
+- **En vägning i appen nådde aldrig `weights`.** Utvecklingsvyn sparar i
+  `matningar`, men profilen, coachen, framstegsvyn, målplanen och backupen läser
+  `weights` — en lista som BARA historikimporten fyllde. Man kunde väga sig och
+  ändå få streck i "Om dig", ingen kroppsfettsberäkning och en målresa mätt mot
+  tom historik. Två lagringsnycklar för samma mätning, precis som könsbuggen
+  ovan: samma mönster, olika vy.
+- **Maskskriptet antog att generatorn ritar likadant varje gång.** Kvinnans
+  bilder stod stilla mellan körningarna (1–3 % silhuettskillnad) så inriktning
+  behövdes aldrig — antagandet var osynligt tills mannens framvy kom, där
+  figuren hamnade upp till ett par tiotal pixlar åt sidan (29 % för
+  adduktorerna). Formen var rätt, bara förskjuten. Skriptet riktar nu in på
+  masscentrum och finjusterar ±8 px; efter det ligger mannens framvy på 3–8 %
+  och bakvyn på 0,7–1,3 %. En rak rutnätssökning provades och var både
+  långsammare och sämre: vid ±14 px slog flera bilder i sitt eget söktak utan
+  att säga till.
+- **En pipeline vars utdata inte går att reproducera slutar man lita på.**
+  `body_regions_female.json` kördes om med inriktningen så att fil och skript
+  stämmer överens igen. Kontrollerat mot föregående version: bara
+  `back/rotator_cuff` ändrades, och banan har samma längd — allt annat är
+  identiskt byte för byte.
