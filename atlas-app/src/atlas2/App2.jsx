@@ -355,9 +355,15 @@ export function Atlas2() {
   // räknar hooks per render; en useState efter en return ger error #310).
   const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState("start");
-  const [sex, setSex] = useState(null);
   const [mode, setMode] = useState(null);
   const [profile, setProfile] = useState({});
+  // KÖNET LÄSES UR PROFILEN, det lagras inte separat.
+  //
+  // Tidigare fanns ett eget `sex`-state som bara sattes vid hydrering och i
+  // onboardingen. Profilarket skriver `profile.sex` utan att röra det, så den
+  // som bytte kön där fick rätt värde sparat men FEL figur på kartan — ända
+  // tills appen laddades om. Ett värde på två ställen glider isär.
+  const sex = profile.sex || null;
   const [sessions, setSessions] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [activeProgramId, setActiveProgramId] = useState(null);
@@ -527,7 +533,7 @@ export function Atlas2() {
       const idn = await identitet();
       if (!alive) return;
       const migr = migrera({ sessions: sess, weights: w, foodLog: fl, goal: g }, idn);
-      setMode(m); setProfile(p); setSex(p.sex || null);
+      setMode(m); setProfile(p);
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
       setEgnaRecept(Array.isArray(egna) ? egna : []);
       setSkafferi(Array.isArray(skaff) ? skaff : []);
@@ -703,7 +709,7 @@ export function Atlas2() {
       <AskrWordmark höjd={30} />
     </div>
   );
-  if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setSex(s); setProfile(p); save("profile", p); setStep("mode"); }} />;
+  if (step === "start") return <Start onNext={(s) => { const p = { ...profile, sex: s }; setProfile(p); save("profile", p); setStep("mode"); }} />;
   if (step === "mode") return <ModeChoice onPick={pickMode} />;
 
   /**
