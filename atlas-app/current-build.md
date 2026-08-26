@@ -106,7 +106,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1520 i 135 filer |
+| Tester (vitest) | 1530 i 136 filer |
 | DOM-skript | 14 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1047,3 +1047,23 @@ aldrig göms bakom en utvilad.
   redan höll, och levererades som "14/14 gröna" — helt sant, eftersom det kördes
   för sig. Krocken syns bara när två skript körs samtidigt, och i CI aldrig alls
   (egna runners). Flyttad till 8969, och de två kördes parallellt som bevis.
+- **Network-first räcker inte för en app på hemskärmen.** 2.0:s service worker
+  hämtar dokumentet med `{ cache: "no-cache" }`, så en KALLSTART får alltid
+  senaste versionen — och slutsatsen "alltså är alla uppdaterade" var fel. En
+  installerad app startas sällan kallt: man växlar till den, den ligger i
+  bakgrunden i dagar, och ingen navigering sker. Då kör den gamla versionen
+  vidare hur många publiceringar som helst. Mobilkompanjonen hade letat efter
+  uppdateringar sedan länge (`reg.update()` vid `visibilitychange`); 2.0 gjorde
+  det inte alls, trots att den är den aktiva appen. Samma mönster nu i
+  `main2.jsx`, plus att appen laddar om SIG SJÄLV när inget pass pågår —
+  testaren ska ligga på utvecklarens version utan att göra något.
+- **En automatisk omladdning måste ha ett undantag.** Att alltid ladda om vore
+  enklare men skulle ta användaren ur ett pågående pass. Passet ligger kvar i
+  `atlas.v3.live` och går inte förlorat, men det KÄNNS som att appen tappade
+  det, och känslan räcker för att en testare ska sluta lita på appen. Därför
+  två utfall av samma händelse: tyst omladdning när inget pass eller kvitto står
+  uppe, annars raden "Ny version av Askr finns" med användaren som beslutar.
+- **Registrering på två ställen betyder att ingen vet vilket som gäller.**
+  Service workern registrerades i ett inline-skript i `atlas2.html`, där logik
+  inte går att testa. Flyttad till `main2.jsx`, och ett testfall kräver att
+  `atlas2.html` INTE registrerar — annars smyger den tillbaka.

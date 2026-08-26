@@ -374,8 +374,44 @@ export function Atlas2() {
   // annars skulle intervjun startas om varje gång man återvänder till fliken.
   const [autoIntervju, setAutoIntervju] = useState(false);
   const [klart, setKlart] = useState(null);
+  // NY VERSION PUBLICERAD — ladda om själv, utom mitt i ett pass.
+  //
+  // Testare ska ligga på samma version som utvecklaren utan att behöva göra
+  // något. Kravet krockar med ett annat: att aldrig kasta bort loggade set. En
+  // omladdning mitt i ett pass tar användaren tillbaka till hemvyn, och även om
+  // passet ligger kvar i atlas.v3.live känns det som att appen tappade det.
+  //
+  // Därför två utfall av samma händelse: pågår inget pass laddas appen om direkt
+  // och tystnaden är hela poängen — testaren märker aldrig att något hände. Står
+  // ett pass eller ett kvitto uppe visas raden i stället och användaren avgör.
+  const [nyVersion, setNyVersion] = useState(false);
+  const [nyVersionRad, setNyVersionRad] = useState(false);
   // Layoutläget är en hook och MÅSTE ligga före de villkorade returerna nedan.
   const layout = useLayout();
+
+  useEffect(() => {
+    const på = () => setNyVersion(true);
+    window.addEventListener("atlas:update-ready", på);
+    return () => window.removeEventListener("atlas:update-ready", på);
+  }, []);
+
+  // Egen effekt, inte inbakad i lyssnaren ovan: lyssnaren registreras en gång
+  // och skulle då läsa `live` och `klart` ur en stängning från första rendret —
+  // alltid null. Beslutet måste tas när händelsen inträffar, med färska värden.
+  useEffect(() => {
+    if (!nyVersion) return;
+    if (live || klart) { setNyVersionRad(true); return; }
+    // SPÄRR MOT OMLADDNINGSSNURRA. Normalt kan den inte uppstå: efter en
+    // omladdning styr den nya versionen och `updatefound` slutar utlösas. Men
+    // om installationen faller om och om igen skulle varje återkomst till
+    // appen ge en ny omladdning, och appen vore obrukbar. En omladdning per
+    // flik räcker; därefter får raden ta över.
+    let redanLaddat = false;
+    try { redanLaddat = sessionStorage.getItem("atlas.uppdaterad") === "1"; } catch (e) { /* privat läge */ }
+    if (redanLaddat) { setNyVersionRad(true); return; }
+    try { sessionStorage.setItem("atlas.uppdaterad", "1"); } catch (e) { /* privat läge */ }
+    window.location.reload();
+  }, [nyVersion, live, klart]);
 
   // Kostens påverkan på readiness. Grindad på loggens tillförlitlighet — med
   // för få loggade dagar går det inte att skilja en vana från en tillfällighet,
@@ -1002,6 +1038,24 @@ export function Atlas2() {
       // Telefonkolumnen gäller bara i mobilläget. På desktop bär Shell ytan.
       maxWidth: desktop ? "none" : MOBIL_MAX, margin: "0 auto",
     }}>
+      {/* Syns BARA när ett pass eller ett kvitto står uppe — i övrigt har appen
+          redan laddat om sig själv och det finns inget att meddela. Raden är
+          alltså inte den vanliga vägen till en ny version, utan undantaget som
+          skyddar loggade set. */}
+      {nyVersionRad && (
+        <div style={{
+          position: "sticky", top: 0, zIndex: 70, display: "flex", alignItems: "center",
+          justifyContent: "space-between", gap: 10, padding: "10px 14px",
+          background: C.lime, color: "#08101c",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Ny version av Askr finns</span>
+          <button onClick={() => window.location.reload()} style={{
+            padding: "6px 14px", borderRadius: 999, border: "none",
+            background: "#08101c", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+            minHeight: 32,
+          }}>Ladda om</button>
+        </div>
+      )}
       {desktop
         ? <Shell aktiv={flik} onChange={setFlik} onMeny={() => setSheet("import")}>{vy()}</Shell>
         : <>{vy()}<BottomNav aktiv={flik} onChange={setFlik} /></>}
