@@ -22,7 +22,7 @@
 Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
 den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
 
-*Senast verifierad mot koden: 2026-07-27 (efter matsöket). Alla siffror nedan är avlästa
+*Senast verifierad mot koden: 2026-08-26 (mot `85dfffc`, #142). Alla siffror nedan är avlästa
 ur källan, inte ihågkomna.*
 
 ## Namnet
@@ -87,19 +87,36 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-07-27)
+## Aktuella siffror (avlästa 2026-08-26)
 
 | Sak | Antal |
 |---|---|
 | Övningar | 160 |
-| Maskiner | 124 |
+| Maskintyper (`MACHINE_TYPES`) | 43 |
+| Maskinmodeller (`MACHINE_MODELS`) | 67 |
+| Maskinmärken (`MACHINE_BRANDS`) | 14 |
 | Muskler (taxonomi) | 21 |
-| Programmallar | 31 |
-| Livsmedel, SLV-databasen | 2606 |
-| Livsmedel, kuraterade | 69 |
+| Programmallar (`ALL_TEMPLATES`) | 31 (1 kurerad + 30 genererade) |
+| Programfamiljer (`FAMILY_NAMES`) | 10 |
+| Livsmedel, sökbara (`FOOD_INDEX`) | 2679 |
+| — varav SLV-databasen | 2606 |
+| — varav kuraterade | 73 |
 | Recept | 276 |
-| Recept med bild | 140 (134 filer + 6 `PHOTO_ALIASES`) |
-| Tester (vitest) | 1039 i 100 filer |
+| Recept med bild | 140 av 276 |
+| Övningar med bild (`MED_BILD`) | 3 av 160 |
+| Kunskapsposter | 21 |
+| Kosttillskott | 25 |
+| Tester (vitest) | 1520 i 135 filer |
+| DOM-skript | 14 |
+
+**"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
+till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
+43 + 67 + 14. Uppdelad ovan, för ett tal ingen kan räkna fram ur koden är
+ett tal ingen kan lita på.
+
+**`FOOD_DB` är metadata, inte livsmedel.** Den bär källnamn, version och licens
+för Livsmedelsverkets databas. Listan som söks är `FOOD_INDEX` — kuraterade
+plus SLV. Att räkna `FOOD_DB` ger 10 och ser ut som ett svar.
 
 Program **genereras**: familj × nivå × mål × utrustning × passlängd.
 Sporter med cardio-load: innebandy, Muay Thai.
@@ -107,13 +124,21 @@ Sporter med cardio-load: innebandy, Muay Thai.
 ## Struktur
 
 ### `src/engines/` — rena funktioner
-`index.js` (recovery, readiness, rekommendation, nutrition, systemisk fatigue,
-dataConfidence), `session.js`, `programs.js`, `goal.js`, `mission.js`,
-`bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
-samt de som tidigare saknades i dokumentationen: `voice.js`, `post-session.js`,
-`geofence.js`, `nfc.js`, `hr.js`, `platform.js`, `bridge.js`, `backup.js`,
-`cues.js`, `nudges.js` (händelsedrivna påminnelser), `supplements.js`
-(följsamhet för dagliga tillskott).
+34 filer. `index.js` (recovery, readiness, rekommendation, nutrition, systemisk
+fatigue, dataConfidence, formatterarna), `session.js`, `programs.js`, `goal.js`,
+`mission.js`, `bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
+`voice.js`, `post-session.js`, `geofence.js`, `nfc.js`, `hr.js`, `platform.js`,
+`bridge.js`, `backup.js`, `cues.js`, `nudges.js` (händelsedrivna påminnelser),
+`supplements.js` (följsamhet för dagliga tillskott).
+
+Tillkomna i augusti: `facts.js` och `journey.js` (flyttade hit från `atlas2/`),
+`coach-llm.js` (Claude via Vercel-proxy), `aiMat.js` (AI-uppskattning när
+databasen saknar rätten), `fotoMaltid.js` och `fotoMaskin.js` (bild in,
+identifiering ut — motorn räknar, användaren bekräftar), `skafferi.js` (egna
+varor och favoritmat), `mealSuggest.js`, `deklaration.js` (näringsdeklaration
+ur förpackning), `portioner` via `data/portions.js`, `intervju.js` (målintervjun),
+`malplan.js` och `malprogram.js`, `profil.js`, `utveckling.js` (kropp och styrka
+över tid, med Omron-import).
 
 **Varför-svaren får konsekvenser.** `reasonSignal` (ur `post-session.js`, kräver
 ≥3 svar inom 21 dagar) styr två saker — och två saker den INTE gör:
@@ -155,6 +180,31 @@ dvh, navhöjd), `foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent)
 `App2.jsx`, `main2.jsx`, `body_regions.json`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
+
+**Två figurer i muskelkartan, samma region-id:n.** Profilens `sex` väljer figur
+i `FIGURER` (`BodyMap2.jsx`): `m` → `body_regions.json` + `figur-{fram,bak}`,
+`f` → `body_regions_female.json` + `figur-kvinna-{fram,bak}`. Saknas `sex` visas
+mannen. `MAP`, `NAMN`, `regionState` och `MuscleSheet` är oförändrade, eftersom
+regionerna heter likadant i båda — det är hela poängen med uppdelningen.
+
+Figurerna har DÄREMOT olika viewBox (mannen 415×1035, kvinnan 487×1243) och
+olika färglager: mannen ett `multiply` 0,62/0,78, kvinnan `color` 0,9/1 plus ett
+tunt `normal` 0,28/0,4. Skälet är att mannen är en ljus illustration medan
+kvinnan är ett fotorealistiskt foto — `multiply` gjorde grönt till oliv mot
+solbrun hud, och `normal`-lagret behövs för att sätet ska synas över svarta
+shorts. Färglagret är alltså en egenskap hos BILDEN, inte hos kartan.
+
+Kvinnofiguren är spårad ur 24 maskbilder med
+`scripts/masker-till-regioner-kvinna.py` (potrace). Lägg en ny mask och kör om
+skriptet i stället för att handredigera JSON.
+
+Tillkomna i augusti (43 filer totalt): `CustomProgram.jsx` (bygg eget program),
+`CustomRecipe.jsx` (egna recept med beräknad näring), `ExerciseBank.jsx`,
+`MachineGuide.jsx`, `SkannaMaskin.jsx`, `MuscleSplit.jsx` (muskelfördelning),
+`muscleIcon.jsx` (kroppssiluett med primärmuskeln markerad — miniatyren för
+alla 160 övningar, till skillnad från fotona i `MED_BILD`), `KnowledgeView.jsx`,
+`ProfileSheet.jsx`, `UtvecklingView.jsx`, `FotoMaltid.jsx`, `Streckkod.jsx`,
+`sokord.js` (mängdord och synonymer i matsöket).
 
 **Två skal, en uppsättning vyer.** Under brytpunkten (`layout.js`) bottennav,
 över den `Shell.jsx` med sidopanel och ark som centrerade modaler. Vyerna
@@ -629,23 +679,29 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TIO stycken, 155 OK-steg** (alla körda 2026-08-11,
-exit 0, inga page errors):
+**Askr 2.0:s DOM-skript — FJORTON stycken** (alla gröna i CI 2026-08-26):
 
-| Skript i `scripts/` | Steg | Täcker |
+| Skript i `scripts/` | Port | Täcker |
 |---|---|---|
-| `verify-atlas2-sport.mjs` | 35 | sportloggning, distans, lagring med id, readiness |
-| `verify-atlas2-layout.mjs` | 24 | tre bredder: SE, iPhone 14, desktop |
-| `verify-atlas2-passredigering.mjs` | 16 | rätta/radera pass, varför-frågan |
-| `verify-atlas2.mjs` | 19 | näringsmål, snabblogg, coachchatten, persistens |
-| `verify-atlas2-tillskott.mjs` | 11 | kryssrutor, streak, följsamhet |
-| `verify-atlas2-matakut.mjs` | 11 | Rädda måltiden |
-| `verify-atlas2-mealprep.mjs` | 10 | veckomeny, inköpslista |
-| `verify-atlas2-readiness.mjs` | 9 | readiness-arket, tunt underlag |
-| `verify-atlas2-pass.mjs` | 14 | röstknappen + viktrastret i pågående pass |
-| `verify-atlas2-backup.mjs` | 6 | v3-backup: export, granska, ersätt |
+| `verify-atlas2-kvinnokarta.mjs` | 8969 | kvinnofiguren: kön × läge, viewBox, 22 regioner |
+| `verify-atlas2-sport.mjs` | 8939 | sportloggning, distans, lagring med id, readiness |
+| `verify-atlas2-layout.mjs` | 8947 | tre bredder: SE, iPhone 14, desktop |
+| `verify-atlas2-passredigering.mjs` | 8935 | rätta/radera pass, varför-frågan |
+| `verify-atlas2.mjs` | 8931 | näringsmål, snabblogg, coachchatten, persistens |
+| `verify-atlas2-tillskott.mjs` | 8963 | kryssrutor, streak, följsamhet |
+| `verify-atlas2-matakut.mjs` | 8955 | Rädda måltiden |
+| `verify-atlas2-mealprep.mjs` | 8956 | veckomeny, inköpslista |
+| `verify-atlas2-readiness.mjs` | 8957 | readiness-arket, tunt underlag |
+| `verify-atlas2-pass.mjs` | 8932 | röstknappen + viktrastret i pågående pass |
+| `verify-atlas2-backup.mjs` | 8934 | v3-backup: export, granska, ersätt |
+| `verify-atlas2-malresa.mjs` | 8961 | målresan |
+| `verify-atlas2-profil.mjs` | 8967 | profilarket |
+| `verify-atlas2-malprogram.mjs` | 8965 | målprogram |
 
-**Kör ALLA tio vid regression, inte ett urval.** `verify-atlas2.mjs` hade
+Steg-antalen som stod här var avlästa 2026-08-11 och gick inte att lita på
+efteråt. Porten är stabil och går att kontrollera; den står i stället.
+
+**Kör ALLA tretton vid regression, inte ett urval.** `verify-atlas2.mjs` hade
 slutat fungera helt (0 OK) utan att någon märkte det: matvyns knapp bytte namn
 från "Logga mat" till "Logga måltid" när matakuten byggdes, och skriptet ingick
 inte i de rundor som kördes. Ett skript som inte körs skyddar ingenting.
@@ -656,11 +712,23 @@ kördes de bara när någon kom ihåg det — och de har fångat sådant som var
 sviten eller bygget ser: passvyn 107 px utanför skärmkanten, och en bild som
 renderades men aldrig laddades (`naturalWidth` 0).
 
-Jobbet är en **matris över de tio skripten**, inte tio steg i rad. Sekventiellt
-tar de 374 s (mätt); skripten binder tio olika portar (8931–8963) och kan därför
-köras samtidigt, vilket ger väggklocka lika med det längsta skriptet (63 s) plus
-uppsättning. `fail-fast: false` — faller ett vill man se de nio andras utfall,
-annars blir felsökningen gissning.
+Jobbet är en **matris över de tretton skripten**, inte tretton steg i rad.
+Sekventiellt tar de 374 s (mätt på tio); skripten binder var sin port
+(8931–8967) och kan därför köras samtidigt, vilket ger väggklocka lika med det
+längsta skriptet plus uppsättning — hela matrisen tog 119 s i CI 2026-08-26.
+`fail-fast: false` — faller ett vill man se de andras utfall, annars blir
+felsökningen gissning.
+
+**Portarna måste vara unika, och CI kan inte se när de inte är det.** Varje
+matrisjobb får en egen runner med egen nätverksstack, så två skript som delar
+port är gröna i CI och trasiga så fort någon kör dem parallellt lokalt — det
+ena dör på `EADDRINUSE`. Det hände: `verify-atlas2-profil.mjs` tog 8963 den
+2026-08-24, en port `verify-atlas2-tillskott.mjs` hållit sedan 2026-08-16, och
+stycket ovan motiverade samtidig körning med att portarna var olika. Påståendet
+var falskt i två dagar utan att någon körning kunde avslöja det. Profilskriptet
+flyttat till 8967, och `src/__tests__/dom-skript-portar.test.js` läser portarna
+ur källan och kräver att de är unika — plus att skriptet surfar till samma port
+som det lyssnar på, för en halv flytt är värre än ingen.
 
 De körs fortfarande inte av `npm test` eller bygget lokalt — de kräver
 `npm i --no-save playwright-core` och en byggd `dist-atlas2/`. Samtliga hittar webbläsaren via
@@ -942,3 +1010,40 @@ aldrig göms bakom en utvilad.
 - **Paletten låg på fyra ställen** (`data/tokens.js`, `styles/global.css`,
   mobilens `C`, gradienter i `App.jsx`) och en omfärgning missade två tyst.
   Därför ligger 2.0:s palett samlad i `atlas2/design.js`.
+- **En gren som skiljer sig från main är inte automatiskt omergad.** Vid
+  genomgången 2026-08-26 fanns 76 `claude/moln-*`-grenar kvar på origin. 40 av
+  dem gav diff mot main och såg därför omergade ut. De var det inte: 24 låg
+  inne under sitt eget commit-ämne, och de 17 återstående hade sitt innehåll i
+  main i vidareutvecklad form — grenens rader hade bara flyttat sig. Tre test
+  behövs för att avgöra saken, i den här ordningen: (1) finns commit-ämnet i
+  `git log origin/main`, (2) applicerar diffen omvänt mot main, (3) hur stor
+  andel av grenens tillagda rader hittas med `git grep` i main. Bara det tredje
+  gav rätt svar för de sista 17 — de låg på 88–100 %. `git diff main...gren`
+  ensamt svarar på fel fråga: det mäter avstånd, inte om arbetet är gjort.
+- **Superseded ser ut som saknat.** `moln-ai-okand-mat` låg på 56 % och var den
+  enda gren som verkade ha riktigt innehåll kvar. Den byggde vidare på
+  storleksfrågan ("Ungefär hur stor måltid?") — som `moln-ai-menyval` tog bort
+  med avsikt, och den grenen är inne. De saknade raderna var alltså en spärr vi
+  medvetet skrotat. Läs alltid vad de saknade raderna GÖR innan de merges in.
+- **Två kartor för samma kropp kan glida isär åt bara ena hållet.**
+  Kvinnofigurens test kontrollerade att hennes region-id:n låg inom mannens
+  uppsättning. Den riktningen är inte den farliga: mannen är referensfiguren och
+  redigeras först, så växer HANS karta med en region saknar kvinnan den tyst och
+  delmängdskontrollen är fortfarande grön — hon har bara blivit en mindre
+  delmängd. Antalet stod dessutom hårdkodat som elva, vilket blir grönt även när
+  mannen fått tolv. Kontrollen kräver nu att mängderna är LIKA, per vy, och
+  läser antalet ur mannens karta i stället för ur en siffra. Verifierad genom
+  att ta bort en region: den faller och namnger vilken.
+- **CI:s DOM-matris är en handhållen lista, och bara den som mergar når den.**
+  Molnets token saknar workflow-scope med avsikt, så när ett molnpaket bär ett
+  nytt DOM-skript finns skriptet i repot men inte i matrisen — det körs aldrig.
+  `verify-atlas2.mjs` hade redan en gång slutat fungera helt (0 OK) av just den
+  anledningen. `dom-skript-portar.test.js` jämför nu matrisen mot katalogen åt
+  båda hållen, plus dubbletter. Fångade sig själv direkt: en radbaserad `sed`
+  raderade `verify-atlas2-layout.mjs` ur matrisen, och testet sa vilken rad som
+  saknades. Redigera listan med sökning-och-ersättning, aldrig med radnummer.
+- **Ett DOM-skript som körs ensamt kan inte upptäcka en portkrock.** Molnets
+  `verify-atlas2-kvinnokarta.mjs` band 8934, som `verify-atlas2-backup.mjs`
+  redan höll, och levererades som "14/14 gröna" — helt sant, eftersom det kördes
+  för sig. Krocken syns bara när två skript körs samtidigt, och i CI aldrig alls
+  (egna runners). Flyttad till 8969, och de två kördes parallellt som bevis.

@@ -156,7 +156,7 @@ function ModeChoice({ onPick }) {
 
 /* ══════════ HEM ══════════ */
 
-function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta, mål, weights = [], onMål }) {
+function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta, mål, weights = [], onMål, sex = null }) {
   const now = Date.now();
   const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
   // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
@@ -306,7 +306,7 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
 
       {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot
           svärtan och det enda som lyser är muskler med faktiskt underlag. */}
-      <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)}
+      <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} sex={sex}
         fyll kompakt={layout.kompaktNyckel} />
 
       <MålRad />
@@ -321,7 +321,7 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
     <div style={{ padding: "8px 0 40px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.05fr) minmax(0,.95fr)", gap: 48, alignItems: "center", minHeight: "72vh" }}>
         <div style={{ display: "flex", flexDirection: "column", height: "76vh", minHeight: 460 }}>
-          <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} fyll />
+          <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} sex={sex} fyll />
         </div>
         <div>
           <div style={{ ...label(C.lime), marginBottom: 10 }}>Idag</div>
@@ -951,7 +951,7 @@ export function Atlas2() {
       <Home sessions={sessions} activeProgram={activeProgram}
         onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec}
         nudge={nudge} onAvfärda={avfärda} onNudgeCta={() => setFlik("mat")}
-        mål={mål} weights={weights} onMål={öppnaMål} />
+        mål={mål} weights={weights} onMål={öppnaMål} sex={sex} />
     );
     if (flik === "coachen") return (
       <CoachView autoIntervju={autoIntervju} onAutoIntervjuKvitterad={() => setAutoIntervju(false)}
