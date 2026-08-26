@@ -106,8 +106,8 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1571 i 141 filer |
-| DOM-skript | 14 |
+| Tester (vitest) | 1644 i 143 filer |
+| DOM-skript | 15 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
 till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
@@ -691,10 +691,11 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — FJORTON stycken** (alla gröna i CI 2026-08-26):
+**Askr 2.0:s DOM-skript — FEMTON stycken** (alla gröna i CI 2026-08-26):
 
 | Skript i `scripts/` | Port | Täcker |
 |---|---|---|
+| `verify-atlas2-kroppsmatt.mjs` | 8971 | mätning, redigering, radering, historik, detaljvy |
 | `verify-atlas2-kvinnokarta.mjs` | 8969 | kvinnofiguren: kön × läge, viewBox, 22 regioner |
 | `verify-atlas2-sport.mjs` | 8939 | sportloggning, distans, lagring med id, readiness |
 | `verify-atlas2-layout.mjs` | 8947 | tre bredder: SE, iPhone 14, desktop |
@@ -1177,3 +1178,60 @@ aldrig göms bakom en utvilad.
   pekade i mitten av varje regions bbox — men en bilateral muskel har sin
   bbox-mitt MELLAN halvorna, alltså utanför båda. Sex falska missar. Punkten
   hämtas nu ur distanstransformens max per komponent, vilket alltid ligger inuti.
+
+## Kroppsmått och kroppssammansättning
+
+En mätning är EN post i `atlas.v3.matningar` — samma lista som vägningarna
+alltid legat i. Kroppsmåtten lades till som ett `matt`-objekt PÅ den posten,
+inte som en egen lista:
+
+```
+{ ts, kg, fat, muscle, visceral, matt: { midja: 91.5, biceps_hoger: 36 }, källa }
+```
+
+**Varför inte en egen lista.** Vikten har fem läsare — profilen, coachen,
+framstegsvyn, målplanen och backupen — via `weights`, som härleds ur
+`matningar`. En parallell modell hade gett två ställen att hämta samma vikt
+från, och det felet har redan kostat en gång: `matningar` fylldes medan
+`weights` förblev tom, och den som vägde sig i appen fick streck i "Om dig".
+
+**Gamla poster är giltiga som de är.** De saknar `matt`, och allt som läser
+dem fortsätter fungera oförändrat. Ingen migrering behövs, ingen data rörs.
+
+**Registret ligger i `data/kroppsmatt.js`.** Ett nytt mått — handled, fotled,
+säte, överarm spänd — är EN rad där. Formuläret, historiken, detaljvyn och
+asymmetrijämförelsen byggs alla ur registret, så inget av dem behöver röras.
+Ett testfall vaktar att listorna inte börjar skrivas för hand igen.
+
+**PROCENTENHETER ÄR INTE PROCENT.** Kroppsfett från 25,5 % till 22,1 % är
+−3,4 pp och −13,3 %. Skillnaden bor i registrets `enhetDiff`, inte i vyerna, så
+den kan inte glida isär mellan skärmar. `procentuellFörändring()` finns separat
+för den som medvetet vill ha det andra talet.
+
+**Enheterna är förberedda, inte påslagna.** `ENHETER` bär omräkningsfaktorerna
+till lb och inch, och `visaEnhet(enhet, system)` är den enda platsen ett byte
+behöver hamna på. Lagringen är alltid metrisk — annars blir en användare som
+byter enhet av med sin historik, eller får den omräknad två gånger.
+
+**`kroppsdata()` är coachens ingång.** Aktuell vikt, viktförändring över en
+period, kroppsfett, muskel och valda mått, färdigräknat. Ingen coachlogik är
+byggd — funktionen lägger bara datan inom räckhåll, som `coachFacts` gör för
+träningen. Allt kan vara null, och en coach som får null ska säga att den inte
+vet.
+- **En rak spread tar med sig den nya postens tomma fält.** `slåIhopMätningar`
+  gjorde `{...befintlig, ...ny}`, vilket var ofarligt så länge varje mätning
+  MÅSTE ha vikt. När mätningar utan vikt tilläts blev det tyst dataförlust: slog
+  man ihop en midjemätning mot en morgonvägning inom samma timme försvann
+  vikten, för den nya posten bar `kg: null`. Regeln är nu att ett ifyllt värde
+  vinner över ett tomt, oavsett vilken post det kom från. Fångat av ett test som
+  skrevs innan koden kördes skarpt.
+- **`byggMätning` krävde vikt, och det var en rest.** Funktionen returnerade
+  null utan `kg`, från när det här bara var en våglogg. En mätning med enbart
+  midja avvisades tyst. Nu räcker ett värde; bara den helt tomma posten avvisas.
+  Det befintliga testet "utan vikt finns ingen mätning" låste fast den gamla
+  regeln och skrevs om — regeln ändrades med avsikt, testet följde efter.
+- **Kravtexters exempel kan vara självmotsägande.** Specen för detaljvyn listar
+  94,0 cm som äldsta midjemätning men säger −7,5 cm sedan start, och 91,5 − 94,0
+  är −2,5. Implementationen räknar ur datan, inte ur exemplet. När ett krav bär
+  två tal som inte går ihop är det talen som ska ifrågasättas, inte koden som ska
+  fås att visa båda.

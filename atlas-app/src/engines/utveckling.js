@@ -9,6 +9,27 @@
 // fettprocent ska inte se ut som en post med 0 % fett. null betyder okänt.
 
 /**
+ * TOLKA ETT INMATAT TAL.
+ *
+ * Komma och punkt är samma decimaltecken — svenskt tangentbord ger komma, ett
+ * numeriskt ger punkt, och användaren ska inte behöva veta vilket appen vill ha.
+ *
+ * TOMT ÄR INTE NOLL. `""`, null och undefined ger null, aldrig 0. En omätt
+ * midja och en midja på 0 cm är olika påståenden, och bara det ena är möjligt.
+ * Ett värde utanför gränserna ger också null: ett uppenbart feltryck ska inte
+ * bli en datapunkt som förstör en kurva i flera månader.
+ */
+export function tolkaTal(v, min, max) {
+  if (v == null || v === "") return null;
+  const n = Number(String(v).replace(",", "."));
+  if (!Number.isFinite(n)) return null;
+  // Negativa mått finns inte. Gränsen fångar dem, men den skrivs ut här också
+  // för att avsikten ska synas: det är ingen avrundningsfråga.
+  if (n < 0) return null;
+  return n >= min && n <= max ? Math.round(n * 10) / 10 : null;
+}
+
+/**
  * En kroppsmätning.
  *
  *   ts        tidpunkt
@@ -16,19 +37,24 @@
  *   fat       kroppsfett i procent      (Omron: "Body Fat")
  *   muscle    skelettmuskel i procent   (Omron: "Skeletal Muscle")
  *   visceral  visceralt fett, nivå 1-59 (Omron: "Visceral Fat")
+ *   matt      omkretsar i cm, { midja: 91.5, biceps_hoger: 36, ... }
  *   källa     "manuell" | "omron" | "import"
+ *
+ * ALLA FÄLT ÄR FRIVILLIGA. En vanlig badrumsvåg ger bara kg; ett måttband ger
+ * bara omkretsar; en morgon mäter man midjan och inget annat. Posten skapas så
+ * länge NÅGOT värde finns — bara den helt tomma avvisas.
+ *
+ * Att vikten var obligatorisk var en begränsning från när det här bara var en
+ * våglogg. En mätning med enbart midja hade då avvisats tyst.
+ *
+ * `matt` utelämnas när det är tomt, så poster utan kroppsmått ser ut precis som
+ * de gjorde före den här funktionen fanns.
  */
-export function byggMätning({ ts, kg, fat, muscle, visceral, källa = "manuell" }) {
-  const tal = (v, min, max) => {
-    if (v == null || v === "") return null;
-    const n = Number(String(v).replace(",", "."));
-    return Number.isFinite(n) && n >= min && n <= max ? Math.round(n * 10) / 10 : null;
-  };
-  const vikt = tal(kg, 20, 400);
-  if (vikt == null) return null;
-  return {
+export function byggMätning({ ts, kg, fat, muscle, visceral, matt, källa = "manuell" }) {
+  const tal = tolkaTal;
+  const post = {
     ts: ts || Date.now(),
-    kg: vikt,
+    kg: tal(kg, 20, 400),
     // Gränserna avvisar uppenbart fel: under 3 % kroppsfett är dödligt, över
     // 70 % finns inte. En felskrivning ska inte bli en datapunkt.
     fat: tal(fat, 3, 70),
@@ -37,6 +63,21 @@ export function byggMätning({ ts, kg, fat, muscle, visceral, källa = "manuell"
     visceral: tal(visceral, 1, 59),
     källa,
   };
+
+  // Omkretsar: 1-300 cm rymmer allt från en handled till ett bröst, och
+  // avvisar ett tappat kommatecken. Tomma fält faller bort helt i stället för
+  // att sparas som null — en nyckel som finns men är tom ser ut som en mätning
+  // som gjordes och gav ingenting.
+  const m = {};
+  for (const [id, v] of Object.entries(matt || {})) {
+    const n = tal(v, 1, 300);
+    if (n != null) m[id] = n;
+  }
+  if (Object.keys(m).length) post.matt = m;
+
+  const harNågot = post.kg != null || post.fat != null || post.muscle != null
+    || post.visceral != null || post.matt != null;
+  return harNågot ? post : null;
 }
 
 /**
@@ -144,10 +185,174 @@ export function slåIhopMätningar(befintliga, nya) {
   const ut = [...(befintliga || [])];
   for (const n of nya || []) {
     const i = ut.findIndex(m => m && Math.abs(m.ts - n.ts) < 36e5);
-    if (i >= 0) ut[i] = { ...ut[i], ...n };
-    else ut.push(n);
+    if (i >= 0) {
+      // NULL FÅR ALDRIG SKRIVA ÖVER ETT VÄRDE.
+      //
+      // En rak spread (`{...ut[i], ...n}`) tog med sig den nya postens tomma
+      // fält. Slog man ihop en mätning med bara midja mot en morgonvägning
+      // försvann vikten, för den nya posten bar `kg: null`. Tyst dataförlust —
+      // och den blev möjlig först när mätningar utan vikt tilläts.
+      //
+      // Regeln är att ett ifyllt värde vinner över ett tomt, oavsett vilken
+      // post det kom från. Den nya vinner bara där den faktiskt mätt något.
+      const sammanslagen = { ...ut[i] };
+      for (const [k, v] of Object.entries(n)) {
+        if (k === "matt") continue;
+        if (v != null) sammanslagen[k] = v;
+      }
+      // `matt` slås ihop nyckel för nyckel av samma skäl: en post med bara
+      // midja ska inte radera bröstet och biceparna från samma morgon.
+      const matt = { ...(ut[i].matt || {}), ...(n.matt || {}) };
+      if (Object.keys(matt).length) sammanslagen.matt = matt;
+      ut[i] = sammanslagen;
+    } else ut.push(n);
   }
   return ut.sort((a, b) => a.ts - b.ts);
+}
+
+/**
+ * Värdet för ETT mått ur en post, oavsett var det bor.
+ *
+ * Kroppssammansättningen ligger som egna fält (`kg`, `fat`, `muscle`) sedan
+ * innan; omkretsarna ligger i `matt`. Den skillnaden är historisk och ska inte
+ * spilla ut i vyerna — de frågar efter ett id och får ett tal eller null.
+ */
+export function mätvärde(post, id) {
+  if (!post) return null;
+  if (id in post && post[id] != null) return post[id];
+  return (post.matt && post.matt[id] != null) ? post.matt[id] : null;
+}
+
+/** Tidsserie för ett mått: alla poster som HAR värdet, äldst först. */
+export function serie(mätningar, id) {
+  return (mätningar || [])
+    .filter(m => m && mätvärde(m, id) != null)
+    .sort((a, b) => a.ts - b.ts)
+    .map(m => ({ ts: m.ts, v: mätvärde(m, id), id: m.id }));
+}
+
+/**
+ * Förändring för ett mått: sedan start och sedan förra mätningen.
+ *
+ * `null` när underlaget saknas, aldrig 0. Med en enda mätning HAR ingenting
+ * förändrats — men det är inte samma sak som att förändringen är noll, och en
+ * nolla på skärmen påstår att vi vet något vi inte vet.
+ *
+ * Enheten för diffen kommer från registret, inte härifrån: för procenttal är
+ * den `pp`, inte `%`. Se KROPPSSAMMANSATTNING.
+ */
+export function förändring(mätningar, id) {
+  const s = serie(mätningar, id);
+  if (!s.length) return null;
+  const nu = s[s.length - 1];
+  const rund = v => Math.round(v * 10) / 10;
+  return {
+    värde: nu.v,
+    ts: nu.ts,
+    punkter: s.length,
+    sedanStart: s.length >= 2 ? rund(nu.v - s[0].v) : null,
+    startTs: s.length >= 2 ? s[0].ts : null,
+    sedanSenaste: s.length >= 2 ? rund(nu.v - s[s.length - 2].v) : null,
+    föregåendeTs: s.length >= 2 ? s[s.length - 2].ts : null,
+  };
+}
+
+/**
+ * PROCENTUELL förändring — medvetet skild från `sedanStart`.
+ *
+ * Finns som egen funktion för att skillnaden ska vara omöjlig att slarva bort:
+ * 24,3 % kroppsfett som blir 22,5 % är −1,8 PROCENTENHETER och −7,4 PROCENT.
+ * Gränssnittet visar procentenheter för fett och muskel; den här funktionen är
+ * till för den som medvetet vill ha det andra talet.
+ */
+export function procentuellFörändring(mätningar, id) {
+  const s = serie(mätningar, id);
+  if (s.length < 2 || !s[0].v) return null;
+  return Math.round(((s[s.length - 1].v - s[0].v) / s[0].v) * 1000) / 10;
+}
+
+/**
+ * Skillnad mellan vänster och höger, ur den senaste posten som har BÅDA.
+ *
+ * Kräver båda i SAMMA mätning. Att jämföra en vänsterarm från juli med en
+ * högerarm från augusti vore att kalla två månaders utveckling för asymmetri.
+ *
+ * Redovisas neutralt: ett tal och vilken sida som är större. Ingen bedömning,
+ * ingen varning — skillnader mellan sidor är normala.
+ */
+export function asymmetri(mätningar, vänsterId, högerId) {
+  const post = (mätningar || [])
+    .filter(m => m && mätvärde(m, vänsterId) != null && mätvärde(m, högerId) != null)
+    .sort((a, b) => a.ts - b.ts)
+    .pop();
+  if (!post) return null;
+  const v = mätvärde(post, vänsterId), h = mätvärde(post, högerId);
+  const diff = Math.round(Math.abs(h - v) * 10) / 10;
+  return { vänster: v, höger: h, diff, större: diff === 0 ? null : (h > v ? "höger" : "vänster"), ts: post.ts };
+}
+
+/** Mått som har minst ett värde i historiken — de enda värda att visa. */
+export function mättMått(mätningar, ids) {
+  return (ids || []).filter(id => (mätningar || []).some(m => mätvärde(m, id) != null));
+}
+
+/**
+ * Ersätter en mätning. Matchar på `ts`, som är postens identitet.
+ *
+ * Redigering är en ERSÄTTNING, inte en sammanslagning: rensar man ett fält i
+ * formuläret ska värdet försvinna. Med `slåIhopMätningar` hade det gamla
+ * värdet legat kvar, och fältet gått att ändra men inte att tömma.
+ */
+export function ändraMätning(mätningar, ts, ny) {
+  const ut = (mätningar || []).map(m => (m && m.ts === ts ? ny : m)).filter(Boolean);
+  return ut.sort((a, b) => a.ts - b.ts);
+}
+
+/** Tar bort en mätning. */
+export function raderaMätning(mätningar, ts) {
+  return (mätningar || []).filter(m => m && m.ts !== ts);
+}
+
+/**
+ * KROPPSDATA FÖR COACHEN.
+ *
+ * Ett samlat, färdigräknat underlag så att coachen slipper känna till
+ * lagringsformen. Byggs INTE in i något coachsvar här — det här steget lägger
+ * bara datan inom räckhåll, som `coachFacts` redan gör för träningen.
+ *
+ * Allt kan vara null. En coach som får null ska säga att den inte vet, inte
+ * gissa — samma ärlighetsregel som gäller readiness.
+ */
+export function kroppsdata(mätningar, { dagar = 30, mattIds = [] } = {}, nu = Date.now()) {
+  const sedan = (id, d) => {
+    const s = serie(mätningar, id);
+    if (s.length < 2) return null;
+    const gräns = nu - d * 864e5;
+    // Närmaste punkt FÖRE fönstret, annars den äldsta inom det. Utan
+    // fallbacken ger en historik som börjar inom fönstret alltid null, trots
+    // att förändringen går att räkna.
+    const före = s.filter(p => p.ts <= gräns).pop() || s[0];
+    const nuP = s[s.length - 1];
+    if (före.ts === nuP.ts) return null;
+    return Math.round((nuP.v - före.v) * 10) / 10;
+  };
+  const f = id => förändring(mätningar, id);
+  const kropp = {};
+  for (const id of mattIds) {
+    const ä = f(id);
+    if (ä) kropp[id] = { värde: ä.värde, ts: ä.ts, sedanStart: ä.sedanStart, sedanSenaste: ä.sedanSenaste };
+  }
+  return {
+    vikt: f("kg"),
+    viktFörändringPeriod: sedan("kg", dagar),
+    kroppsfett: f("fat"),
+    kroppsfettFörändringPeriod: sedan("fat", dagar),
+    muskel: f("muscle"),
+    muskelFörändringPeriod: sedan("muscle", dagar),
+    mått: kropp,
+    dagar,
+    antalMätningar: (mätningar || []).length,
+  };
 }
 
 /**
