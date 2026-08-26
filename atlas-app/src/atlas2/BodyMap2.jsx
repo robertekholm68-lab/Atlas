@@ -11,7 +11,8 @@
 //
 // KÄND BEGRÄNSNING: figurens regioner är grövre än taxonomin på tre ställen —
 // "deltoids" är EN form medan motorn skiljer på främre, sidre och bakre axel,
-// och external_obliques/teres_major motsvarar obliques respektive del av ryggen.
+// och teres_major respektive rotator_cuff saknar egen post i taxonomin och
+// visar därför latsens och bakre axelns återhämtning.
 // En region färgas efter den av sina muskler som är MINST återhämtad, så en
 // trött delmuskel aldrig göms bakom en utvilad. Riktig uppdelning kräver
 // per-muskel-SVG som vi inte har.
@@ -55,7 +56,7 @@ const MAP = {
   triceps_brachii: ["triceps_brachii"],
   forearms: ["forearms"],
   rectus_abdominis: ["rectus_abdominis"],
-  external_obliques: ["obliques"],
+  obliques: ["obliques"],
   trapezius: ["trapezius"],
   quadriceps: ["quadriceps"],
   adductors: ["adductors"],
@@ -63,6 +64,16 @@ const MAP = {
   serratus_anterior: ["serratus_anterior"],
   latissimus_dorsi: ["latissimus_dorsi"],
   teres_major: ["latissimus_dorsi"],
+  // Rotatorkuffen är fyra små muskler på skulderbladet och finns INTE i
+  // 21-taxonomin — den är för liten att logga separat och tränas aldrig för
+  // sig. Utan post här föll den på `MAP[id] || [id]` och sökte ett
+  // muskel-id som inte finns, vilket gav null varje gång: regionen ritades,
+  // gick att peka på, och färgades aldrig oavsett hur man tränat.
+  //
+  // Bakre deltoiden, inte alla tre: kuffen ligger bakom axeln och belastas av
+  // samma drag och utåtrotationer. Samma resonemang som teres major ovan, som
+  // visar latsens återhämtning eftersom den arbetar med den.
+  rotator_cuff: ["deltoid_posterior"],
   erector_spinae: ["erector_spinae"],
   gluteals: ["gluteals"],
   hamstrings: ["hamstrings"],
@@ -72,7 +83,7 @@ const MAP = {
 const NAMN = {
   pectoralis_major: "Bröst", deltoids: "Axlar", biceps_brachii: "Biceps",
   triceps_brachii: "Triceps", forearms: "Underarmar", rectus_abdominis: "Mage",
-  external_obliques: "Sneda bukmuskler", trapezius: "Kappmuskel", quadriceps: "Framsida lår",
+  obliques: "Sneda bukmuskler", trapezius: "Kappmuskel", quadriceps: "Framsida lår",
   adductors: "Insida lår", tibialis_anterior: "Framsida underben", serratus_anterior: "Sågmuskel",
   latissimus_dorsi: "Breda ryggmuskeln", teres_major: "Ryggen", erector_spinae: "Ryggresare",
   gluteals: "Säte", hamstrings: "Baksida lår", calves: "Vader", rotator_cuff: "Rotatorkuff",

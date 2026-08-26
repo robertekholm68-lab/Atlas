@@ -106,7 +106,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1569 i 141 filer |
+| Tester (vitest) | 1570 i 141 filer |
 | DOM-skript | 14 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1124,3 +1124,21 @@ aldrig göms bakom en utvilad.
   sina egna förutsättningar i samma andetag: 22 regioner ska finnas och sidan
   ska ha text, OCH namnet ska saknas. Utan det hade kontrollen blivit grön av
   precis det fel den skulle fånga.
+- **Ett skydd som jämför två listor mot varandra kan vara grönt medan båda är
+  fel.** `atlas2.test.js` krävde att varje nyckel i `REGION_MAP` hade ett namn i
+  `REGIONNAMN`. Båda bar `external_obliques` — men regionen i
+  `body_regions*.json` heter `obliques`. Listorna stämde alltså perfekt med
+  varandra och båda pekade förbi verkligheten, i månader, medan muskelarket
+  skrev "obliques" i stället för "Sneda bukmuskler". Kontrollen är nu förankrad
+  i region-id:na ur JSON-filerna, och kräver dessutom att ingen post pekar på en
+  region som inte finns: en död nyckel ser ut som täckning och är det inte.
+- **`MAP[id] || [id]` döljer en saknad post.** Fallbacken är rätt för de
+  regioner som heter som sin muskel, men den gör också en glömd post osynlig.
+  `rotator_cuff` saknades helt i `MAP` och föll därför tillbaka på att söka
+  `rotator_cuff` i taxonomin — som har 21 muskler och inte den. `regionState`
+  gav null varje gång, så regionen ritades, gick att peka på, och färgades
+  aldrig oavsett hur man tränat. Den pekar nu på `deltoid_posterior`: kuffen
+  ligger bakom axeln och belastas av samma drag, samma resonemang som
+  `teres_major → latissimus_dorsi`. Ett nytt testfall kräver att varje muskel i
+  `REGION_MAP` finns i taxonomin, så nästa glömda post faller i stället för att
+  tystna.
