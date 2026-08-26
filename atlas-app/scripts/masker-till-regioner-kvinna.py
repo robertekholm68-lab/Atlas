@@ -14,7 +14,7 @@ Utdata (out/):
   masks/<vy>_<id>.png        – de städade maskerna (för granskning)
   report.json                – pixelyta, komponenter, drift per region
 
-Kör:  python3 scripts/masker-till-regioner-kvinna.py <maskmapp> <utmapp>
+Kör:  python3 scripts/masker-till-regioner-kvinna.py <maskmapp> <utmapp> [female|male]
 Kräver: pillow, numpy, scipy, potracer
 """
 import glob, json, os, sys
@@ -25,6 +25,10 @@ import potrace
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else "kvinnokarta/src"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "kvinnokarta/out"
+# Skriptet är könsneutralt trots namnet — prefixet styr vad utfilerna heter.
+# "female" är kvar som förval så gamla anrop ger samma filer som förut.
+KON = sys.argv[3] if len(sys.argv) > 3 else "female"
+FIGURNAMN = {"female": "kvinna", "male": "man"}.get(KON, KON)
 os.makedirs(f"{OUT}/masks", exist_ok=True)
 
 # ── Parametrar ───────────────────────────────────────────────────────────────
@@ -52,6 +56,40 @@ def body(a):
     # transparent, men magentan ligger ibland över svarta kläder — därför
     # räcker alfa som kroppsmask för båda.
     return a[..., 3] > 10
+
+
+def registrera(figur, basfigur, fin=8):
+    """Hur många pixlar måste maskbilden flyttas för att ligga på basen?
+
+    Kvinnobilderna behövde inte det här — figuren stod stilla mellan
+    körningarna (1–3 % silhuettskillnad). Mannens FRAMVY gjorde inte det:
+    generatorn ritade om figuren varje gång och den hamnade upp till ett par
+    tiotal pixlar åt sidan, vilket syntes som 30 % skillnad. Formen var
+    densamma, bara förskjuten — en ren translation räcker.
+
+    Grovinriktningen sker på masscentrum (en beräkning, ingen sökning) och
+    finjusteringen söker ±`fin` px runt den. En ren rutnätssökning över hela
+    det tänkbara området vore 6 000 IoU-beräkningar per bild och skulle
+    dessutom tysta träffa sitt eget söktak — vilket den gjorde vid ±14.
+
+    Returnerar (dy, dx) att flytta masken med, plus IoU före och efter.
+    """
+    def iou(a, b):
+        u = (a | b).sum()
+        return (a & b).sum() / u if u else 0.0
+
+    fore = iou(figur, basfigur)
+    cy, cx = ndimage.center_of_mass(figur)
+    by, bx = ndimage.center_of_mass(basfigur)
+    gy, gx = int(round(by - cy)), int(round(bx - cx))
+
+    bast, bdy, bdx = fore, 0, 0
+    for dy in range(gy - fin, gy + fin + 1):
+        for dx in range(gx - fin, gx + fin + 1):
+            v = iou(np.roll(np.roll(figur, dy, 0), dx, 1), basfigur)
+            if v > bast:
+                bast, bdy, bdx = v, dy, dx
+    return bdy, bdx, fore, bast
 
 
 def clean(m):
@@ -104,8 +142,8 @@ print(f"ram: x {x0}..{x1}, y {y0}..{y1}  → viewBox {viewBox}")
 
 for v, namn in (("front", "fram"), ("back", "bak")):
     im = Image.open(f"{SRC}/{v}_base.png").convert("RGBA").crop((x0, y0, x1, y1))
-    im.save(f"{OUT}/figur-kvinna-{namn}.webp", "WEBP", quality=82, method=6)
-    print(f"  figur-kvinna-{namn}.webp  {os.path.getsize(f'{OUT}/figur-kvinna-{namn}.webp')//1024} kB  {im.size}")
+    im.save(f"{OUT}/figur-{FIGURNAMN}-{namn}.webp", "WEBP", quality=82, method=6)
+    print(f"  figur-{FIGURNAMN}-{namn}.webp  {os.path.getsize(f'{OUT}/figur-{FIGURNAMN}-{namn}.webp')//1024} kB  {im.size}")
 
 # ── 2. Masker → paths ────────────────────────────────────────────────────────
 regions = {"front": {"viewBox": viewBox, "regions": []}, "back": {"viewBox": viewBox, "regions": []}}
@@ -118,13 +156,23 @@ for p in sorted(glob.glob(f"{SRC}/*.png")):
     a = load(p)
     raw = magenta(a)
     m, ncomp = clean(raw)
-    drift = 1 - ((body(a) & body(bases[vy])).sum() / (body(a) | body(bases[vy])).sum())
+    # Rikta in maskbilden mot basen INNAN den spåras. Flyttas den inte hamnar
+    # muskeln bredvid sin egen kropp i appen.
+    dy, dx, fore, efter = registrera(body(a), body(bases[vy]))
+    if (dy, dx) != (0, 0):
+        m = np.roll(np.roll(m, dy, 0), dx, 1)
+    drift = 1 - efter
     d = trace(m, x0, y0)
     regions[vy]["regions"].append({"id": rid, "d": d, "area": int(m.sum())})
     Image.fromarray((m * 255).astype(np.uint8)).save(f"{OUT}/masks/{vy}_{rid}.png")
     report[f"{vy}/{rid}"] = {"area_px": int(m.sum()), "components": int(ncomp), "paths": len(d),
-                             "silhouette_drift": round(float(drift), 4)}
-    print(f"  {vy:5s} {rid:20s} yta {int(m.sum()):6d} px  komp {ncomp}  paths {len(d)}  drift {drift:.3f}")
+                             "silhouette_drift": round(float(drift), 4),
+                             "registrering": {"dy": int(dy), "dx": int(dx),
+                                              "iou_fore": round(float(fore), 4),
+                                              "iou_efter": round(float(efter), 4)}}
+    flytt = f"flyttad {dx:+d},{dy:+d}px" if (dy, dx) != (0, 0) else "i läge"
+    print(f"  {vy:5s} {rid:20s} yta {int(m.sum()):6d} px  komp {ncomp}  paths {len(d)}  "
+          f"drift {drift:.3f}  {flytt}")
 
 # Ritordning: fallande yta, så små regioner hamnar överst och går att klicka
 # inuti större (erector ovanpå lats, teres ovanpå lats).
@@ -133,8 +181,8 @@ for v in regions:
     for r in regions[v]["regions"]:
         del r["area"]
 
-with open(f"{OUT}/body_regions_female.json", "w") as fh:
+with open(f"{OUT}/body_regions_{KON}.json", "w") as fh:
     json.dump(regions, fh, separators=(",", ":"))
 with open(f"{OUT}/report.json", "w") as fh:
     json.dump({"crop": [int(x0), int(y0), int(x1), int(y1)], "viewBox": viewBox, "regions": report}, fh, indent=1)
-print(f"\nbody_regions_female.json: {os.path.getsize(f'{OUT}/body_regions_female.json')//1024} kB")
+print(f"\nbody_regions_{KON}.json: {os.path.getsize(f'{OUT}/body_regions_{KON}.json')//1024} kB")
