@@ -49,8 +49,17 @@ function Start({ onNext }) {
   const bild = k => new URL(`startsida-${k === "m" ? "man" : "kvinna"}.webp`, document.baseURI).href;
   const visa = k => sex === null || sex === k;
 
+  // MAXBREDD PÅ SKRIVBORD.
+  //
+  // Startsidan är komponerad för mobilbredd. Utan tak sträcktes hjälteytan
+  // över hela fönstret — 720×330 px vid 1440, där object-fit: cover beskär bort
+  // allt utom hjässorna — och rubriken hamnade ensam i vänsterkanten. 520 px
+  // ger samma bildutsnitt som på telefon; kroppen syns, inte bara huvudet.
+  // Hem-vyn har en EGEN skrivbordslayout (kartan bredvid besluten); det här är
+  // en startsida man passerar en gång, och där räcker den centrerade kolumnen.
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column",
+      width: "100%", maxWidth: 520, margin: "0 auto" }}>
       <div style={{ padding: "20px 20px 0", display: "flex", justifyContent: "center" }}><AskrLogo höjd={104} /></div>
 
       <div style={{ position: "relative", height: 330, marginTop: 10, display: "flex", justifyContent: "center", overflow: "hidden" }}>
