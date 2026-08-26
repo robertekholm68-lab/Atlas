@@ -20,13 +20,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 </head>
 <body><div id="root"></div>
-<script>
-  // Registreras bara på http(s). På file:// avvisas den ändå, och felet i
-  // konsolen ser ut som ett riktigt problem fast det inte är det.
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw-atlas2.js").catch(function () {});
-    });
-  }
-</script><script type="module" src="/src/atlas2/main2.jsx"></script></body>
+<!-- Service workern registreras i src/atlas2/main2.jsx, inte här. Den behöver
+     leta efter nya versioner också, inte bara registreras en gång, och den
+     logiken hör hemma där den går att testa. -->
+<script type="module" src="/src/atlas2/main2.jsx"></script></body>
 </html>
