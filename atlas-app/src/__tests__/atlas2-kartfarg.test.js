@@ -21,24 +21,33 @@ import { FIGURER } from "../atlas2/BodyMap2.jsx";
 const src = readFileSync(resolve("src/atlas2/BodyMap2.jsx"), "utf8");
 
 // Blandningsläge och opacitet ligger sedan kvinnofiguren kom i FIGURER, per
-// figur — mansfiguren bär fortfarande exakt de uppmätta värdena.
+// figur. Mansfiguren bar multiply 0,62 så länge han var en ljus illustration;
+// sedan han byttes mot ett fotorealistiskt foto delar båda figurerna recept.
 const [blend, op, opAktiv] = FIGURER.m.lager[0];
 
 describe("färgen ligger i anatomin, inte ovanpå den", () => {
-  it("blandningsläget är multiply mot den ljusa figuren", () => {
-    // screen ljusnar bara; overlay behåller fotots ljus och skugga.
-    expect(FIGURER.m.lager.length).toBe(1);
-    expect(blend).toBe("multiply");
+  it("blandningsläget är color mot de fotorealistiska figurerna", () => {
+    // screen ljusnar bara; multiply mot solbränd hud gör grönt till oliv.
+    // color byter nyansen och lämnar fotots ljus och skugga i fred.
+    expect(FIGURER.m.lager.length).toBe(2);
+    expect(blend).toBe("color");
     expect(src).not.toMatch(/mixBlendMode:\s*"screen"/);
+    expect(src).not.toMatch(/mixBlendMode:\s*"multiply"/);
   });
 
-  it("opaciteten lämnar plats åt anatomin under", () => {
-    // Med overlay behövs mindre färg än med screen (0,9/0,72). Taket höjdes
-    // när figuren ljusnade till 1,8 — overlay späder ut färgen mot ett ljust
-    // underlag, mätt i pixelvärden: grönt tappade 31 % mättnad.
+  it("andra lagret är tunt — det finns bara för de svarta kläderna", () => {
+    // color-blend kan inte lägga någon nyans alls på svart, så sätet under
+    // shortsen skulle vara ofärgat utan ett normal-lager. Tunt, annars döljer
+    // det anatomin där huden är bar.
+    const [blend2, op2, opAktiv2] = FIGURER.m.lager[1];
+    expect(blend2).toBe("normal");
+    expect(op2).toBeLessThan(0.35);
+    expect(opAktiv2).toBeLessThan(0.5);
+  });
+
+  it("opaciteten kopplas till om regionen har underlag", () => {
     expect(src).toMatch(/fillOpacity=\{st \? \(aktiv \? opAktiv : op\)/);
-    expect(opAktiv).toBeLessThan(0.9);
-    expect(op).toBeLessThan(0.72);
+    expect(opAktiv).toBeGreaterThanOrEqual(op);
   });
 
   it("kanten är mjuk — en path slutar annars tvärt på en pixel", () => {

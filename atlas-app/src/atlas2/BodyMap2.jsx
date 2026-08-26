@@ -11,7 +11,8 @@
 //
 // KÄND BEGRÄNSNING: figurens regioner är grövre än taxonomin på tre ställen —
 // "deltoids" är EN form medan motorn skiljer på främre, sidre och bakre axel,
-// och external_obliques/teres_major motsvarar obliques respektive del av ryggen.
+// och teres_major respektive rotator_cuff saknar egen post i taxonomin och
+// visar därför latsens och bakre axelns återhämtning.
 // En region färgas efter den av sina muskler som är MINST återhämtad, så en
 // trött delmuskel aldrig göms bakom en utvilad. Riktig uppdelning kräver
 // per-muskel-SVG som vi inte har.
@@ -33,17 +34,20 @@ import kvinnaBak from "../assets/brand/figur-kvinna-bak.webp";
 // NAMN, regionState och MuscleSheet är oförändrade. Saknas `sex` visas mannen,
 // precis som förut.
 //
-// `lager` är hur färgen läggs på just den figuren. Mansfiguren är en LJUS
-// illustration: multiply ger full kulör mot ljust underlag (mätt, se nedan).
-// Kvinnofiguren är ett fotorealistiskt, solbrunt foto — där gjorde multiply
-// grönt till oliv och rött till "lite mörkare hud", och färgen slutade vara
-// data. "color" byter nyansen men behåller fotots ljus och skugga, så muskeln
-// behåller sin volym; det tunna "normal"-lagret finns för att färgen ska synas
-// även över svarta kläder (sätet under shortsen), där color-blend inte kan
-// lägga någon nyans alls. Båda värdena är mätta på skärmbild mot sex varianter.
+// `lager` är hur färgen läggs på just den figuren. BÅDA figurerna är numera
+// fotorealistiska, solbruna foton — och där gör multiply grönt till oliv och
+// rött till "lite mörkare hud", varpå färgen slutar vara data. "color" byter
+// nyansen men behåller fotots ljus och skugga, så muskeln behåller sin volym;
+// det tunna "normal"-lagret finns för att färgen ska synas även över svarta
+// kläder (sätet under shortsen), där color-blend inte kan lägga någon nyans
+// alls. Värdena är mätta på skärmbild mot sex varianter.
+//
+// Mannen bar multiply 0.62 så länge han var en ljus illustration. Den figuren
+// är utbytt; receptet följde med.
+const FOTO = [["color", 0.9, 1], ["normal", 0.28, 0.4]];
 const FIGURER = {
-  m: { regions: REGIONS, bild: { front: figurFram, back: figurBak }, lager: [["multiply", 0.62, 0.78]] },
-  f: { regions: REGIONS_KVINNA, bild: { front: kvinnaFram, back: kvinnaBak }, lager: [["color", 0.9, 1], ["normal", 0.28, 0.4]] },
+  m: { regions: REGIONS, bild: { front: figurFram, back: figurBak }, lager: FOTO },
+  f: { regions: REGIONS_KVINNA, bild: { front: kvinnaFram, back: kvinnaBak }, lager: FOTO },
 };
 const figurFör = sex => FIGURER[sex] || FIGURER.m;
 
@@ -55,7 +59,7 @@ const MAP = {
   triceps_brachii: ["triceps_brachii"],
   forearms: ["forearms"],
   rectus_abdominis: ["rectus_abdominis"],
-  external_obliques: ["obliques"],
+  obliques: ["obliques"],
   trapezius: ["trapezius"],
   quadriceps: ["quadriceps"],
   adductors: ["adductors"],
@@ -63,6 +67,16 @@ const MAP = {
   serratus_anterior: ["serratus_anterior"],
   latissimus_dorsi: ["latissimus_dorsi"],
   teres_major: ["latissimus_dorsi"],
+  // Rotatorkuffen är fyra små muskler på skulderbladet och finns INTE i
+  // 21-taxonomin — den är för liten att logga separat och tränas aldrig för
+  // sig. Utan post här föll den på `MAP[id] || [id]` och sökte ett
+  // muskel-id som inte finns, vilket gav null varje gång: regionen ritades,
+  // gick att peka på, och färgades aldrig oavsett hur man tränat.
+  //
+  // Bakre deltoiden, inte alla tre: kuffen ligger bakom axeln och belastas av
+  // samma drag och utåtrotationer. Samma resonemang som teres major ovan, som
+  // visar latsens återhämtning eftersom den arbetar med den.
+  rotator_cuff: ["deltoid_posterior"],
   erector_spinae: ["erector_spinae"],
   gluteals: ["gluteals"],
   hamstrings: ["hamstrings"],
@@ -72,7 +86,7 @@ const MAP = {
 const NAMN = {
   pectoralis_major: "Bröst", deltoids: "Axlar", biceps_brachii: "Biceps",
   triceps_brachii: "Triceps", forearms: "Underarmar", rectus_abdominis: "Mage",
-  external_obliques: "Sneda bukmuskler", trapezius: "Kappmuskel", quadriceps: "Framsida lår",
+  obliques: "Sneda bukmuskler", trapezius: "Kappmuskel", quadriceps: "Framsida lår",
   adductors: "Insida lår", tibialis_anterior: "Framsida underben", serratus_anterior: "Sågmuskel",
   latissimus_dorsi: "Breda ryggmuskeln", teres_major: "Ryggen", erector_spinae: "Ryggresare",
   gluteals: "Säte", hamstrings: "Baksida lår", calves: "Vader", rotator_cuff: "Rotatorkuff",

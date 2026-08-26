@@ -314,10 +314,44 @@ describe("Askr 2.0 — muskeldetalj", () => {
   });
 
   it("varje regionnamn är på svenska", async () => {
+    // FÖRANKRAT I REGIONERNA, inte i REGION_MAP.
+    //
+    // Den här kontrollen läste tidigare REGION_MAP:s nycklar och krävde att
+    // REGIONNAMN hade var och en. Två listor jämförda mot varandra — och båda
+    // bar `external_obliques` medan regionen i kartorna heter `obliques`. Den
+    // var alltså grön i månader medan muskelarket visade "obliques" i stället
+    // för "Sneda bukmuskler", och `rotator_cuff` saknades i båda listorna utan
+    // att någon kontroll kunde säga det.
+    //
+    // Sanningen är region-id:na i body_regions*.json. Allt annat mäts mot dem.
     const { REGIONNAMN, REGION_MAP } = await import("../atlas2/BodyMap2.jsx");
-    Object.keys(REGION_MAP).forEach(id => {
+    const MAN = (await import("../atlas2/body_regions.json")).default;
+    const KVINNA = (await import("../atlas2/body_regions_female.json")).default;
+    const regioner = [...new Set(
+      [MAN, KVINNA].flatMap(k => ["front", "back"].flatMap(v => k[v].regions.map(r => r.id)))
+    )];
+    expect(regioner.length).toBeGreaterThanOrEqual(11);
+    regioner.forEach(id => {
       expect(REGIONNAMN[id], `${id} saknar svenskt namn`).toBeTruthy();
+      expect(REGION_MAP[id], `${id} saknar post i REGION_MAP`).toBeTruthy();
     });
+    // Ingen post får peka på en region som inte finns — en död nyckel ser ut
+    // som täckning och är det inte.
+    expect(Object.keys(REGION_MAP).filter(k => !regioner.includes(k))).toEqual([]);
+    expect(Object.keys(REGIONNAMN).filter(k => !regioner.includes(k))).toEqual([]);
+  });
+
+  it("varje muskel i REGION_MAP finns i 21-taxonomin", async () => {
+    // Utan det här kan en post peka på ett muskel-id som inte finns, och
+    // regionState returnerar då null för alltid: regionen ritas, går att peka
+    // på, och färgas aldrig. Precis vad `rotator_cuff` gjorde innan den fick
+    // sin post — den föll på `MAP[id] || [id]` och sökte sig själv.
+    const { REGION_MAP } = await import("../atlas2/BodyMap2.jsx");
+    const { MUSCLES } = await import("../data/muscles.js");
+    const ids = Array.isArray(MUSCLES) ? MUSCLES.map(m => m.id || m) : Object.keys(MUSCLES);
+    const okända = Object.entries(REGION_MAP)
+      .flatMap(([region, muskler]) => muskler.filter(m => !ids.includes(m)).map(m => `${region} → ${m}`));
+    expect(okända).toEqual([]);
   });
 });
 

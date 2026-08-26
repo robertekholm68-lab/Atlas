@@ -102,13 +102,17 @@ const läsKarta = (page) => page.evaluate(() => {
   await page.close();
 }
 
-// ── Man + demo: oförändrad ───────────────────────────────────────────────────
+// ── Man + demo ───────────────────────────────────────────────────────────────
 {
   const page = await starta("Man", "Demo");
   const k = await läsKarta(page);
   await kolla("man: mansfigurens viewBox", k.viewBox.every(v => v === MAN.front.viewBox));
   await kolla("man: 22 regioner", k.regioner.length === 22);
-  await kolla("man: multiply, ett lager", k.lägen.length === 1 && k.lägen[0] === "multiply");
+  await kolla("man: vader och baksida lår finns bakifrån", ["calves", "hamstrings", "gluteals", "erector_spinae"].every(id => k.regioner.includes(id)));
+  // Mansfiguren är numera samma sorts foto som kvinnan — multiply gjorde grönt
+  // till oliv mot solbränd hud.
+  await kolla("man: color + normal, inte multiply", k.lägen.includes("color") && k.lägen.includes("normal") && !k.lägen.includes("multiply"));
+  await page.screenshot({ path: "dist-atlas2/verify-manskarta-mobil.png" });
   await page.close();
 }
 
