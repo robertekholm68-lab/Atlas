@@ -27,7 +27,7 @@ function chromiumBin() {
 
 const html = readFileSync("dist-atlas2/atlas2.html", "utf8");
 const srv = http.createServer((q, s) => { s.setHeader("Content-Type", "text/html"); s.end(html); });
-await new Promise(r => srv.listen(8963, r));
+await new Promise(r => srv.listen(8967, r));
 const browser = await chromium.launch({ executablePath: chromiumBin(), headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
@@ -47,7 +47,7 @@ const öppnaMeny = async () => {
 const text = () => page.evaluate(() => document.body.innerText);
 const steg = [];
 
-await page.goto("http://localhost:8963/"); await page.waitForTimeout(800);
+await page.goto("http://localhost:8967/"); await page.waitForTimeout(800);
 await klick("Kom igång"); await page.waitForTimeout(300);
 await klick("Demo"); await page.waitForTimeout(900);
 

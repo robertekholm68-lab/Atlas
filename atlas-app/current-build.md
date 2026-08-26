@@ -106,7 +106,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1500 i 133 filer |
+| Tester (vitest) | 1504 i 134 filer |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
 till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
@@ -661,23 +661,28 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TIO stycken, 155 OK-steg** (alla körda 2026-08-11,
-exit 0, inga page errors):
+**Askr 2.0:s DOM-skript — TRETTON stycken** (alla gröna i CI 2026-08-26):
 
-| Skript i `scripts/` | Steg | Täcker |
+| Skript i `scripts/` | Port | Täcker |
 |---|---|---|
-| `verify-atlas2-sport.mjs` | 35 | sportloggning, distans, lagring med id, readiness |
-| `verify-atlas2-layout.mjs` | 24 | tre bredder: SE, iPhone 14, desktop |
-| `verify-atlas2-passredigering.mjs` | 16 | rätta/radera pass, varför-frågan |
-| `verify-atlas2.mjs` | 19 | näringsmål, snabblogg, coachchatten, persistens |
-| `verify-atlas2-tillskott.mjs` | 11 | kryssrutor, streak, följsamhet |
-| `verify-atlas2-matakut.mjs` | 11 | Rädda måltiden |
-| `verify-atlas2-mealprep.mjs` | 10 | veckomeny, inköpslista |
-| `verify-atlas2-readiness.mjs` | 9 | readiness-arket, tunt underlag |
-| `verify-atlas2-pass.mjs` | 14 | röstknappen + viktrastret i pågående pass |
-| `verify-atlas2-backup.mjs` | 6 | v3-backup: export, granska, ersätt |
+| `verify-atlas2-sport.mjs` | 8939 | sportloggning, distans, lagring med id, readiness |
+| `verify-atlas2-layout.mjs` | 8947 | tre bredder: SE, iPhone 14, desktop |
+| `verify-atlas2-passredigering.mjs` | 8935 | rätta/radera pass, varför-frågan |
+| `verify-atlas2.mjs` | 8931 | näringsmål, snabblogg, coachchatten, persistens |
+| `verify-atlas2-tillskott.mjs` | 8963 | kryssrutor, streak, följsamhet |
+| `verify-atlas2-matakut.mjs` | 8955 | Rädda måltiden |
+| `verify-atlas2-mealprep.mjs` | 8956 | veckomeny, inköpslista |
+| `verify-atlas2-readiness.mjs` | 8957 | readiness-arket, tunt underlag |
+| `verify-atlas2-pass.mjs` | 8932 | röstknappen + viktrastret i pågående pass |
+| `verify-atlas2-backup.mjs` | 8934 | v3-backup: export, granska, ersätt |
+| `verify-atlas2-malresa.mjs` | 8961 | målresan |
+| `verify-atlas2-profil.mjs` | 8967 | profilarket |
+| `verify-atlas2-malprogram.mjs` | 8965 | målprogram |
 
-**Kör ALLA tio vid regression, inte ett urval.** `verify-atlas2.mjs` hade
+Steg-antalen som stod här var avlästa 2026-08-11 och gick inte att lita på
+efteråt. Porten är stabil och går att kontrollera; den står i stället.
+
+**Kör ALLA tretton vid regression, inte ett urval.** `verify-atlas2.mjs` hade
 slutat fungera helt (0 OK) utan att någon märkte det: matvyns knapp bytte namn
 från "Logga mat" till "Logga måltid" när matakuten byggdes, och skriptet ingick
 inte i de rundor som kördes. Ett skript som inte körs skyddar ingenting.
@@ -688,11 +693,23 @@ kördes de bara när någon kom ihåg det — och de har fångat sådant som var
 sviten eller bygget ser: passvyn 107 px utanför skärmkanten, och en bild som
 renderades men aldrig laddades (`naturalWidth` 0).
 
-Jobbet är en **matris över de tio skripten**, inte tio steg i rad. Sekventiellt
-tar de 374 s (mätt); skripten binder tio olika portar (8931–8963) och kan därför
-köras samtidigt, vilket ger väggklocka lika med det längsta skriptet (63 s) plus
-uppsättning. `fail-fast: false` — faller ett vill man se de nio andras utfall,
-annars blir felsökningen gissning.
+Jobbet är en **matris över de tretton skripten**, inte tretton steg i rad.
+Sekventiellt tar de 374 s (mätt på tio); skripten binder var sin port
+(8931–8967) och kan därför köras samtidigt, vilket ger väggklocka lika med det
+längsta skriptet plus uppsättning — hela matrisen tog 119 s i CI 2026-08-26.
+`fail-fast: false` — faller ett vill man se de andras utfall, annars blir
+felsökningen gissning.
+
+**Portarna måste vara unika, och CI kan inte se när de inte är det.** Varje
+matrisjobb får en egen runner med egen nätverksstack, så två skript som delar
+port är gröna i CI och trasiga så fort någon kör dem parallellt lokalt — det
+ena dör på `EADDRINUSE`. Det hände: `verify-atlas2-profil.mjs` tog 8963 den
+2026-08-24, en port `verify-atlas2-tillskott.mjs` hållit sedan 2026-08-16, och
+stycket ovan motiverade samtidig körning med att portarna var olika. Påståendet
+var falskt i två dagar utan att någon körning kunde avslöja det. Profilskriptet
+flyttat till 8967, och `src/__tests__/dom-skript-portar.test.js` läser portarna
+ur källan och kräver att de är unika — plus att skriptet surfar till samma port
+som det lyssnar på, för en halv flytt är värre än ingen.
 
 De körs fortfarande inte av `npm test` eller bygget lokalt — de kräver
 `npm i --no-save playwright-core` och en byggd `dist-atlas2/`. Samtliga hittar webbläsaren via

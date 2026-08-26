@@ -1,5 +1,5 @@
 {
   "_kommentar": "Golv för testskyddet. Kontrolleras av scripts/kontrollera-testskydd.mjs i CI. Sänks BARA i samma commit som en avsiktlig borttagning, med skäl i commit-texten — poängen är inte att förbjuda borttagning utan att en minskning aldrig ska kunna passera obemärkt. Höjs fritt när skyddet växer.",
-  "testfall": 1392,
-  "filer": 127
+  "testfall": 1493,
+  "filer": 134
 }
