@@ -193,6 +193,7 @@ jobs:
         skript:
           - verify-atlas2.mjs
           - verify-atlas2-backup.mjs
+          - verify-atlas2-kvinnokarta.mjs
           - verify-atlas2-layout.mjs
           - verify-atlas2-malprogram.mjs
           - verify-atlas2-malresa.mjs

@@ -53,6 +53,26 @@ describe("DOM-skriptens portar", () => {
     expect(krockar).toEqual([]);
   });
 
+  it("varje skript står i CI:s matris", () => {
+    // Matrisen i deploy-pages.yml är en handhållen lista. Ett skript som läggs
+    // till men inte skrivs in där körs aldrig — och "ett skript som inte körs
+    // skyddar ingenting" har redan hänt en gång: verify-atlas2.mjs hade slutat
+    // fungera helt (0 OK) utan att någon märkte det.
+    //
+    // Workflow-filen kan bara jag som mergar röra (molnets token saknar
+    // workflow-scope), så glappet uppstår just när ett molnpaket bär ett nytt
+    // skript. Då ska det falla här, inte upptäckas en månad senare.
+    const yml = readFileSync(join(process.cwd(), "..", ".github", "workflows", "deploy-pages.yml"), "utf8");
+    const rader = [...yml.matchAll(/^\s*-\s*(verify-atlas2[\w-]*\.mjs)\s*$/gm)].map(m => m[1]);
+    const iMatris = new Set(rader);
+    const saknas = SKRIPT.filter(f => !iMatris.has(f));
+    const spöken = [...iMatris].filter(f => !SKRIPT.includes(f));
+    // Dubbletter: en Set sväljer dem tyst, och matrisen kör då samma skript två
+    // gånger. Ofarligt men slarvigt — och det hände direkt vid införandet.
+    const dubbletter = rader.filter((f, i) => rader.indexOf(f) !== i);
+    expect({ saknas, spöken, dubbletter }).toEqual({ saknas: [], spöken: [], dubbletter: [] });
+  });
+
   it("skriptet surfar till samma port som det lyssnar på", () => {
     // En halv flytt är värre än ingen: servern på ny port, webbläsaren på den
     // gamla. Då står skriptet och väntar på en sida som aldrig kommer.

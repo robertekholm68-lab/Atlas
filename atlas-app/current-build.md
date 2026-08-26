@@ -106,7 +106,8 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1504 i 134 filer |
+| Tester (vitest) | 1520 i 135 filer |
+| DOM-skript | 14 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
 till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
@@ -179,6 +180,23 @@ dvh, navhöjd), `foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent)
 `App2.jsx`, `main2.jsx`, `body_regions.json`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
+
+**Två figurer i muskelkartan, samma region-id:n.** Profilens `sex` väljer figur
+i `FIGURER` (`BodyMap2.jsx`): `m` → `body_regions.json` + `figur-{fram,bak}`,
+`f` → `body_regions_female.json` + `figur-kvinna-{fram,bak}`. Saknas `sex` visas
+mannen. `MAP`, `NAMN`, `regionState` och `MuscleSheet` är oförändrade, eftersom
+regionerna heter likadant i båda — det är hela poängen med uppdelningen.
+
+Figurerna har DÄREMOT olika viewBox (mannen 415×1035, kvinnan 487×1243) och
+olika färglager: mannen ett `multiply` 0,62/0,78, kvinnan `color` 0,9/1 plus ett
+tunt `normal` 0,28/0,4. Skälet är att mannen är en ljus illustration medan
+kvinnan är ett fotorealistiskt foto — `multiply` gjorde grönt till oliv mot
+solbrun hud, och `normal`-lagret behövs för att sätet ska synas över svarta
+shorts. Färglagret är alltså en egenskap hos BILDEN, inte hos kartan.
+
+Kvinnofiguren är spårad ur 24 maskbilder med
+`scripts/masker-till-regioner-kvinna.py` (potrace). Lägg en ny mask och kör om
+skriptet i stället för att handredigera JSON.
 
 Tillkomna i augusti (43 filer totalt): `CustomProgram.jsx` (bygg eget program),
 `CustomRecipe.jsx` (egna recept med beräknad näring), `ExerciseBank.jsx`,
@@ -661,10 +679,11 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — TRETTON stycken** (alla gröna i CI 2026-08-26):
+**Askr 2.0:s DOM-skript — FJORTON stycken** (alla gröna i CI 2026-08-26):
 
 | Skript i `scripts/` | Port | Täcker |
 |---|---|---|
+| `verify-atlas2-kvinnokarta.mjs` | 8969 | kvinnofiguren: kön × läge, viewBox, 22 regioner |
 | `verify-atlas2-sport.mjs` | 8939 | sportloggning, distans, lagring med id, readiness |
 | `verify-atlas2-layout.mjs` | 8947 | tre bredder: SE, iPhone 14, desktop |
 | `verify-atlas2-passredigering.mjs` | 8935 | rätta/radera pass, varför-frågan |
@@ -1006,3 +1025,25 @@ aldrig göms bakom en utvilad.
   storleksfrågan ("Ungefär hur stor måltid?") — som `moln-ai-menyval` tog bort
   med avsikt, och den grenen är inne. De saknade raderna var alltså en spärr vi
   medvetet skrotat. Läs alltid vad de saknade raderna GÖR innan de merges in.
+- **Två kartor för samma kropp kan glida isär åt bara ena hållet.**
+  Kvinnofigurens test kontrollerade att hennes region-id:n låg inom mannens
+  uppsättning. Den riktningen är inte den farliga: mannen är referensfiguren och
+  redigeras först, så växer HANS karta med en region saknar kvinnan den tyst och
+  delmängdskontrollen är fortfarande grön — hon har bara blivit en mindre
+  delmängd. Antalet stod dessutom hårdkodat som elva, vilket blir grönt även när
+  mannen fått tolv. Kontrollen kräver nu att mängderna är LIKA, per vy, och
+  läser antalet ur mannens karta i stället för ur en siffra. Verifierad genom
+  att ta bort en region: den faller och namnger vilken.
+- **CI:s DOM-matris är en handhållen lista, och bara den som mergar når den.**
+  Molnets token saknar workflow-scope med avsikt, så när ett molnpaket bär ett
+  nytt DOM-skript finns skriptet i repot men inte i matrisen — det körs aldrig.
+  `verify-atlas2.mjs` hade redan en gång slutat fungera helt (0 OK) av just den
+  anledningen. `dom-skript-portar.test.js` jämför nu matrisen mot katalogen åt
+  båda hållen, plus dubbletter. Fångade sig själv direkt: en radbaserad `sed`
+  raderade `verify-atlas2-layout.mjs` ur matrisen, och testet sa vilken rad som
+  saknades. Redigera listan med sökning-och-ersättning, aldrig med radnummer.
+- **Ett DOM-skript som körs ensamt kan inte upptäcka en portkrock.** Molnets
+  `verify-atlas2-kvinnokarta.mjs` band 8934, som `verify-atlas2-backup.mjs`
+  redan höll, och levererades som "14/14 gröna" — helt sant, eftersom det kördes
+  för sig. Krocken syns bara när två skript körs samtidigt, och i CI aldrig alls
+  (egna runners). Flyttad till 8969, och de två kördes parallellt som bevis.

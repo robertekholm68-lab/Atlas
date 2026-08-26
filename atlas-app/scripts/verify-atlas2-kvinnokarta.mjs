@@ -26,7 +26,7 @@ const KVINNA = JSON.parse(readFileSync("src/atlas2/body_regions_female.json", "u
 const MAN = JSON.parse(readFileSync("src/atlas2/body_regions.json", "utf8"));
 const html = readFileSync("dist-atlas2/atlas2.html", "utf8");
 const srv = http.createServer((req, res) => { res.setHeader("Content-Type", "text/html"); res.end(html); });
-await new Promise(r => srv.listen(8934, r));
+await new Promise(r => srv.listen(8969, r));
 
 const browser = await chromium.launch({ executablePath: chromiumBin(), headless: true });
 const fel = [];
@@ -36,7 +36,7 @@ const kolla = async (namn, v) => steg.push(`${(await v) ? "OK " : "FEL"} ${namn}
 async function starta(kön, läge, bredd = 390) {
   const page = await browser.newPage({ viewport: { width: bredd, height: 844 } });
   page.on("pageerror", e => fel.push("pageerror: " + e.message));
-  await page.goto("http://localhost:8934/");
+  await page.goto("http://localhost:8969/");
   await page.waitForTimeout(600);
   const klickText = async (t) => {
     const ok = await page.evaluate((txt) => {

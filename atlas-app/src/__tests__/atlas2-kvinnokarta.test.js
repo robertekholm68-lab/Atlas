@@ -50,6 +50,20 @@ describe("kvinnofigurens regioner", () => {
     }
   });
 
+  it("figurerna bär EXAKT samma regioner, per vy", () => {
+    // Delmängd i en riktning räcker inte. Mannen är referensfiguren och
+    // redigeras först: växer hans karta med en region saknar kvinnan den tyst,
+    // och kontrollen ovan är fortfarande grön eftersom kvinnan bara blivit en
+    // mindre delmängd. Då tappar kvinnofiguren en muskel utan att något faller.
+    // Antalet står inte hårdkodat här heller, av samma skäl: en hårdkodad elva
+    // blir grön när mannen fått tolv.
+    for (const vy of ["front", "back"]) {
+      const kvinna = KVINNA[vy].regions.map(r => r.id).sort();
+      const man = MAN[vy].regions.map(r => r.id).sort();
+      expect(kvinna, `${vy}: kvinnan saknar ${man.filter(id => !kvinna.includes(id)).join(",") || "inget"}`).toEqual(man);
+    }
+  });
+
   it("inga tomma former, absoluta koordinater", () => {
     for (const vy of ["front", "back"]) {
       for (const r of KVINNA[vy].regions) {
