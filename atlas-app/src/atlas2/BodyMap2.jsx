@@ -34,17 +34,20 @@ import kvinnaBak from "../assets/brand/figur-kvinna-bak.webp";
 // NAMN, regionState och MuscleSheet är oförändrade. Saknas `sex` visas mannen,
 // precis som förut.
 //
-// `lager` är hur färgen läggs på just den figuren. Mansfiguren är en LJUS
-// illustration: multiply ger full kulör mot ljust underlag (mätt, se nedan).
-// Kvinnofiguren är ett fotorealistiskt, solbrunt foto — där gjorde multiply
-// grönt till oliv och rött till "lite mörkare hud", och färgen slutade vara
-// data. "color" byter nyansen men behåller fotots ljus och skugga, så muskeln
-// behåller sin volym; det tunna "normal"-lagret finns för att färgen ska synas
-// även över svarta kläder (sätet under shortsen), där color-blend inte kan
-// lägga någon nyans alls. Båda värdena är mätta på skärmbild mot sex varianter.
+// `lager` är hur färgen läggs på just den figuren. BÅDA figurerna är numera
+// fotorealistiska, solbruna foton — och där gör multiply grönt till oliv och
+// rött till "lite mörkare hud", varpå färgen slutar vara data. "color" byter
+// nyansen men behåller fotots ljus och skugga, så muskeln behåller sin volym;
+// det tunna "normal"-lagret finns för att färgen ska synas även över svarta
+// kläder (sätet under shortsen), där color-blend inte kan lägga någon nyans
+// alls. Värdena är mätta på skärmbild mot sex varianter.
+//
+// Mannen bar multiply 0.62 så länge han var en ljus illustration. Den figuren
+// är utbytt; receptet följde med.
+const FOTO = [["color", 0.9, 1], ["normal", 0.28, 0.4]];
 const FIGURER = {
-  m: { regions: REGIONS, bild: { front: figurFram, back: figurBak }, lager: [["multiply", 0.62, 0.78]] },
-  f: { regions: REGIONS_KVINNA, bild: { front: kvinnaFram, back: kvinnaBak }, lager: [["color", 0.9, 1], ["normal", 0.28, 0.4]] },
+  m: { regions: REGIONS, bild: { front: figurFram, back: figurBak }, lager: FOTO },
+  f: { regions: REGIONS_KVINNA, bild: { front: kvinnaFram, back: kvinnaBak }, lager: FOTO },
 };
 const figurFör = sex => FIGURER[sex] || FIGURER.m;
 

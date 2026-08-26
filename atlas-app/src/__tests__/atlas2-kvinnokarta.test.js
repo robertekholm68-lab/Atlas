@@ -109,13 +109,19 @@ describe("figurvalet", () => {
     expect(FIGURER.f.bild.back).not.toBe(FIGURER.m.bild.back);
   });
 
-  it("mansfiguren ritas exakt som förut: ett multiply-lager, 0,62/0,78", () => {
-    expect(FIGURER.m.lager).toEqual([["multiply", 0.62, 0.78]]);
+  it("båda figurerna färgas med foto-receptet", () => {
+    // Mannen bar multiply 0,62 så länge han var en ljus illustration. Han är
+    // numera samma sorts fotorealistiska, solbruna figur som kvinnan, och
+    // multiply mot brun hud gör grönt till oliv — då slutar färgen vara data.
+    for (const kön of ["m", "f"]) {
+      expect(FIGURER[kön].lager, kön).toEqual([["color", 0.9, 1], ["normal", 0.28, 0.4]]);
+    }
   });
 
-  it("kvinnofiguren har ett normal-lager så färgen syns över svarta kläder", () => {
-    const lägen = FIGURER.f.lager.map(l => l[0]);
-    expect(lägen).toContain("normal");
+  it("båda figurerna har ett normal-lager så färgen syns över svarta kläder", () => {
+    for (const kön of ["m", "f"]) {
+      expect(FIGURER[kön].lager.map(l => l[0]), kön).toContain("normal");
+    }
   });
 
   it("App2 skickar profilens sex till kartan", () => {
@@ -150,13 +156,13 @@ describe("rendering", () => {
     expect(bilder[1]).toBe(FIGURER.f.bild.back);
   });
 
-  it("utan sex ritas mannen, precis som förut", () => {
+  it("utan sex ritas mannen", () => {
     act(() => root.render(createElement(BodyMap2, { muscleStates: states, legend: false })));
     expect(host.querySelector("svg").getAttribute("viewBox")).toBe(MAN.front.viewBox);
     expect(host.querySelectorAll("g[data-region]").length).toBe(22);
-    // Ett path-element per form — inget extra lager för mannen.
+    // Två lager per form, samma recept som kvinnan.
     const quads = host.querySelector('g[data-region="quadriceps"]');
-    expect(quads.querySelectorAll("path").length).toBe(MAN.front.regions.find(r => r.id === "quadriceps").d.length);
+    expect(quads.querySelectorAll("path").length).toBe(MAN.front.regions.find(r => r.id === "quadriceps").d.length * 2);
   });
 
   it("kvinnofiguren: två lager per form, ofärgad muskel är osynlig i båda", () => {
