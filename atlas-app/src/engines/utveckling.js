@@ -151,6 +151,37 @@ export function slåIhopMätningar(befintliga, nya) {
 }
 
 /**
+ * Vikthistoriken (`weights`) uppdaterad med kg ur kroppsmätningarna.
+ *
+ * DE VAR TVÅ LISTOR SOM ALDRIG MÖTTES. `mätningar` fylls när man väger sig i
+ * Utveckling och bär kg, fett, muskel och visceralt. `weights` är den enklare
+ * formen `{ts, kg}` som profilen, coachen, framstegsvyn, målplanen och backupen
+ * läser — och den fylldes BARA av historikimporten. Den som vägde sig i appen
+ * fick alltså sin vikt sparad utan att något annat i appen kunde se den:
+ * "Om dig" visade streck, kroppsfett och kaloribehov gick inte att räkna, och
+ * målresan bedömdes mot en tom vikthistorik. Reproducerat mot bygget —
+ * matningar fick posten, weights förblev [].
+ *
+ * Riktningen är enkelriktad med flit: mätningarna är den rikare källan och
+ * vikten härleds ur dem. Att skriva åt andra hållet hade gett två ställen att
+ * ändra samma tal på, vilket är just det profilvyn varnar för.
+ *
+ * Samma tidsfönster som `slåIhopMätningar` (en timme) avgör vad som är samma
+ * vägning, så en importerad och en manuell post om samma morgon inte blir två.
+ */
+export function vikterUrMätningar(weights, mätningar) {
+  const ut = [...(weights || [])];
+  for (const m of mätningar || []) {
+    if (!m || m.kg == null || !Number.isFinite(Number(m.kg))) continue;
+    const post = { ts: m.ts, kg: Number(m.kg) };
+    const i = ut.findIndex(w => w && Math.abs(w.ts - post.ts) < 36e5);
+    if (i >= 0) ut[i] = { ...ut[i], ...post };
+    else ut.push(post);
+  }
+  return ut.sort((a, b) => a.ts - b.ts);
+}
+
+/**
  * Bästa uppskattade 1RM per övning, med tidpunkt.
  *
  * Epley: vikt × (1 + reps/30). Uppskattningen blir sämre ju fler reps — vid 15

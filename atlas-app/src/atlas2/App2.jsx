@@ -40,6 +40,7 @@ import { useLayout, UTAN_NAV, MOBIL_MAX, PANEL_BREDD, INNEHÅLL_MAX, FULL_HÖJD 
 import { nextWorkout as nästaPass } from "../engines/programs.js";
 import { EXERCISES } from "../data/exercises.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
+import { vikterUrMätningar } from "../engines/utveckling.js";
 
 /* ══════════ STARTSIDA ══════════ */
 
@@ -375,6 +376,16 @@ export function Atlas2() {
   const sättMätningar = f => setMätningar(xs => {
     const ny = typeof f === "function" ? f(xs) : f;
     save("matningar", ny);
+    // VIKTEN MÅSTE NÅ weights, annars ser resten av appen den aldrig.
+    // `mätningar` bär kg tillsammans med fett och muskel; `weights` är den
+    // enkla formen profilen, coachen, framstegsvyn, målplanen och backupen
+    // läser. Utan den här raden loggade man sin vikt och "Om dig" visade
+    // fortfarande streck.
+    setWeights(w => {
+      const uppd = vikterUrMätningar(w, ny);
+      save("weights", uppd);
+      return uppd;
+    });
     return ny;
   });
   const [live, setLive] = useState(null);   // pågående pass; persisteras av WorkoutView
@@ -537,8 +548,15 @@ export function Atlas2() {
       setSessions(migr.sessions); setPrograms(progs); setActiveProgramId(apid);
       setEgnaRecept(Array.isArray(egna) ? egna : []);
       setSkafferi(Array.isArray(skaff) ? skaff : []);
-      setMätningar(Array.isArray(mät) ? mät : []);
-      setWeights(migr.weights); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
+      const mätLista = Array.isArray(mät) ? mät : [];
+      setMätningar(mätLista);
+      // Vägningar som loggades innan de två listorna kopplades ihop ligger bara
+      // i `matningar`. Slås de in här blir de synliga för profilen och coachen
+      // utan att användaren behöver göra om något. Sparas bara när det faktiskt
+      // tillkom något — annars skrivs lagringen vid varje start.
+      const vikter = vikterUrMätningar(migr.weights, mätLista);
+      if (vikter.length !== (migr.weights || []).length) save("weights", vikter);
+      setWeights(vikter); setFoodLog(migr.foodLog); setMål(migr.goal); setNutritionTargets(nt);
 
       // ÖVERGIVET PASS: fråga i stället för att tyst räkna vidare.
       //

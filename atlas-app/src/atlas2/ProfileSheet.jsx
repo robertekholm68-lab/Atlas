@@ -8,7 +8,7 @@
 // fullständighet för sin egen skull: varje fält redovisar VAD DET LÅSER UPP,
 // och saknas det sägs det rakt ut i stället för att appen låtsas veta.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, card, volt, DASH } from "./design.js";
 import { FÄLT, KOSTHÅLLNINGAR, KOSTUPPLÄGG, NIVÅER, profilLuckor, sammanfogaProfil } from "../engines/profil.js";
 
@@ -45,7 +45,34 @@ function Val({ etikett, hjälp, val, aktiv, onVälj, kompakt }) {
   );
 }
 
+/** Klampar bara FÄRDIGA tal — se kommentaren i Tal om varför det dröjer. */
+export function klampa(v, min, max) {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(min, Math.min(max, n));
+}
+
 function Tal({ etikett, hjälp, värde, enhet, min, max, onÄndra }) {
+  // FÄLTET ÄGER SIN EGEN TEXT MEDAN MAN SKRIVER.
+  //
+  // Tidigare klampades varje tangenttryckning direkt mot min/max, och ett tal
+  // skrivs en siffra i taget: "1" av 180 är under minimum 120 och blev 120, så
+  // nästa siffra skrev "1208" som klampades till 230. Man KUNDE inte skriva
+  // sin längd. Samma sak för ålder: "42" blev 100, eftersom "4" först blev 13.
+  // Reproducerat mot bygget innan fixen.
+  //
+  // Nu hålls råtexten lokalt och klampningen sker när fältet lämnas. Under
+  // skrivandet rapporteras talet oklampat uppåt, så ett värde aldrig går
+  // förlorat om man trycker Spara utan att lämna fältet — Spara klampar också.
+  const [text, setText] = useState(värde != null ? String(värde) : "");
+  const [rör, setRör] = useState(false);
+  // Ändras värdet utifrån (återställning, ny profil) medan fältet inte är i
+  // fokus ska texten följa med.
+  useEffect(() => {
+    if (!rör) setText(värde != null ? String(värde) : "");
+  }, [värde, rör]);
+
   return (
     <>
       <div style={label()}>{etikett}</div>
@@ -53,12 +80,20 @@ function Tal({ etikett, hjälp, värde, enhet, min, max, onÄndra }) {
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 8 }}>
         <input
           type="number" inputMode="numeric" min={min} max={max}
-          value={värde != null ? värde : ""}
+          value={text}
+          onFocus={() => setRör(true)}
           onChange={e => {
             const v = e.target.value;
+            setText(v);
             // Tomt fält betyder "vet inte", inte noll. En nolla hade varit ett
             // påstående — och 0 cm lång är ett sämre svar än inget svar.
-            onÄndra(v === "" ? null : Math.max(min, Math.min(max, Number(v))));
+            onÄndra(v === "" ? null : Number(v));
+          }}
+          onBlur={() => {
+            setRör(false);
+            const n = klampa(text, min, max);
+            setText(n != null ? String(n) : "");
+            onÄndra(n);
           }}
           placeholder="—"
           style={{
@@ -83,8 +118,17 @@ export function ProfileSheet({ profile = {}, setProfile, weights = [], onClose }
     ? weights.slice().sort((a, b) => a.ts - b.ts)[weights.length - 1].kg
     : null;
 
+  // GRÄNSERNA GÄLLER ÄVEN OM MAN ALDRIG LÄMNAR FÄLTET.
+  //
+  // Talfälten klampar när de tappar fokus, men Spara kan tryckas direkt från
+  // ett fält som står på 500. Samma gränser som fälten bär, på ett ställe.
+  const GRÄNSER = { age: [13, 100], height: [120, 230] };
   const spara = () => {
-    setProfile(p => sammanfogaProfil(p, utkast));
+    const rent = { ...utkast };
+    for (const [fält, [min, max]] of Object.entries(GRÄNSER)) {
+      if (rent[fält] != null) rent[fält] = klampa(rent[fält], min, max);
+    }
+    setProfile(p => sammanfogaProfil(p, rent));
     onClose();
   };
 
