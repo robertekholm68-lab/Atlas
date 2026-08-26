@@ -17,7 +17,7 @@
 // per-muskel-SVG som vi inte har.
 
 import { useState } from "react";
-import { C, HFONT, recoveryColor } from "./design.js";
+import { C, recoveryColor } from "./design.js";
 import REGIONS from "./body_regions.json";
 import REGIONS_KVINNA from "./body_regions_female.json";
 import figurFram from "../assets/brand/figur-fram.webp";
@@ -159,7 +159,14 @@ function Figur({ vy, states, onSelect, rör, setRör, figur = FIGURER.m }) {
             style={{ cursor: onSelect ? "pointer" : "default" }}
             onMouseEnter={() => setRör(r.id)} onMouseLeave={() => setRör(null)}
             onClick={() => onSelect && onSelect(r.id)}>
-            <title>{NAMN[r.id] || r.id}{st ? ` — ${Math.round(st.readiness)}%` : " — ingen data"}</title>
+            {/* INGEN <title>. Den gav webbläsarens gula ruta vid hovring, och
+                namnet på muskeln är inte det man är där för — färgen är
+                avläsningen, och vill man veta mer öppnar man arket.
+
+                Den kostar heller ingenting för skärmläsare: svg:n ovanför bär
+                role="img", vilket gör hela kartan till EN grafik i
+                tillgänglighetsträdet. Barnen exponeras inte, så titlarna lästes
+                aldrig upp — de var enbart en muspekarruta. */}
             {r.d.map((d, i) => figur.lager.map(([blend, op, opAktiv], li) => (
               <path key={`${i}-${li}`} d={d} fill={färg}
                 filter={`url(#mjuk-${vy})`}
@@ -214,9 +221,11 @@ function Figur({ vy, states, onSelect, rör, setRör, figur = FIGURER.m }) {
  * ingen platta — figurerna står mot appens svärta.
  */
 export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true, kompakt = false, fyll = false, sex = null }) {
+  // `rör` lever kvar trots att namnraden är borta: den markerar formen man
+  // pekar på genom att höja opaciteten (`opAktiv` i Figur). Det är återkoppling
+  // på att regionen går att klicka, inte en etikett.
   const [rör, setRör] = useState(null);
   const figur = figurFör(sex);
-  const st = rör ? regionState(rör, muscleStates) : null;
 
   // `fyll` betyder: ta den höjd som finns kvar i föräldern i stället för ett
   // bestämt antal pixlar. Föräldern är då en flex-kolumn, och kartan är den som
@@ -240,11 +249,15 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
         ))}
       </div>
 
-      {/* Namnet på muskeln man rör vid, med dess faktiska siffra. Utan underlag
-          sägs det rakt ut i stället för att visa en nolla. */}
-      <div style={{ textAlign: "center", minHeight: kompakt ? 16 : 20, marginTop: kompakt ? 5 : 8, flexShrink: 0, fontFamily: HFONT, fontSize: kompakt ? 11.5 : 12.5, letterSpacing: 1.2, textTransform: "uppercase", color: rör ? C.text : "transparent" }}>
-        {rör ? `${NAMN[rör] || rör}${st ? ` · ${Math.round(st.readiness)}%` : " · ingen data"}` : "·"}
-      </div>
+      {/* HÄR STOD MUSKELNAMNET man rörde vid, med sin readiness-siffra. Borta
+          på Roberts begäran: kartan ska läsas som en bild, inte som en lista
+          med etiketter, och den som vill ha siffran öppnar arket.
+
+          Raden bar dessutom en dold kostnad. Den reserverade höjd även när
+          ingenting hovrades (minHeight plus marginTop, tom text i transparent
+          färg) för att figuren inte skulle hoppa när texten dök upp. På en
+          liten telefon var det ~25 px som kartan nu får i stället — och kartan
+          är det kroppen ska mätas på. */}
 
       {/* Färgnyckeln får ALDRIG tas bort för att spara höjd: färgerna är
           avläsningen, och en karta man inte kan läsa är dekoration. Däremot får

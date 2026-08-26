@@ -106,7 +106,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med bild (`MED_BILD`) | 3 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1564 i 140 filer |
+| Tester (vitest) | 1569 i 141 filer |
 | DOM-skript | 14 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -211,8 +211,9 @@ alla 160 övningar, till skillnad från fotona i `MED_BILD`), `KnowledgeView.jsx
 forkas INTE — de får veta hur brett de har och möblerar därefter. `FLIKAR`
 bryts ut ur `Nav.jsx` och läses av båda skalen, så navigeringen inte kan glida
 isär. Kartan har ingen fast höjd: vyerna är flex-kolumner där kartan är
-`flex: 1` med `minHeight: 0`, så webbläsaren räknar. Mätt 299 px på iPhone SE,
-638 på desktop — kroppen är gränssnittet, alltså får kroppen ytan som blir
+`flex: 1` med `minHeight: 0`, så webbläsaren räknar. Mätt 2026-08-26: 245 px på
+iPhone SE, 422 på iPhone 14, 666 på desktop — kroppen är gränssnittet, alltså
+får kroppen ytan som blir
 över. `100dvh`, inte `100vh`: `vh` räknar in iOS adressfält.
 
 **Ett hopfällbart avsnitt fälls ut OCH in, och säger vilket.** Coachvyns chatt
@@ -1102,3 +1103,24 @@ aldrig göms bakom en utvilad.
   stämmer överens igen. Kontrollerat mot föregående version: bara
   `back/rotator_cuff` ändrades, och banan har samma längd — allt annat är
   identiskt byte för byte.
+- **Muskelkartan skriver inga namn — och det är ett beslut, inte ett
+  förbiseende.** Kartan hade två namnvisningar: en `<title>` per region
+  (webbläsarens gula ruta) och en textrad under figuren med muskelns namn och
+  readiness-siffra. Båda borttagna 2026-08-26 på Roberts begäran; kartan ska
+  läsas som en bild, och siffran hämtas i muskelarket. Namnet är lätt att lägga
+  tillbaka av misstag — en `<title>` ser ut som ett tillgänglighetsgrepp någon
+  glömt — därför låser `atlas2-kartnamn.test.jsx` fast frånvaron.
+  `<title>` kostade heller ingenting för skärmläsare: svg:n bär `role="img"`,
+  vilket gör hela kartan till EN grafik i tillgänglighetsträdet, så barnen
+  exponerades aldrig. Titlarna var enbart en muspekarruta.
+- **En rad som reserverar höjd kostar även när den är tom.** Namnraden bar
+  `minHeight` plus `marginTop` med transparent text när ingenting hovrades, för
+  att figuren inte skulle hoppa när namnet dök upp. Borttagen växte kartan
+  mätbart: iPhone SE 224 → 245 px, iPhone 14 401 → 422, desktop 638 → 666.
+  Kartan är en flex-kolumn där figuren är `flex: 1`, så allt som slutar ta höjd
+  hamnar automatiskt hos kroppen.
+- **Ett negativt påstående måste kunna falla.** "Namnet syns inte" är sant även
+  på en sida som aldrig laddade. Både DOM-steget och enhetstestet mäter därför
+  sina egna förutsättningar i samma andetag: 22 regioner ska finnas och sidan
+  ska ha text, OCH namnet ska saknas. Utan det hade kontrollen blivit grön av
+  precis det fel den skulle fånga.

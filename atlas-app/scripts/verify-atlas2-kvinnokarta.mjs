@@ -70,13 +70,25 @@ const läsKarta = (page) => page.evaluate(() => {
   await kolla("kvinna: lats, teres och ryggresare finns bakifrån", ["latissimus_dorsi", "teres_major", "erector_spinae", "rotator_cuff", "forearms"].every(id => k.regioner.includes(id)));
   await kolla("kvinna: demo ger färgade former", k.färgade > 0);
   await kolla("kvinna: color + normal, inte multiply", k.lägen.includes("color") && k.lägen.includes("normal") && !k.lägen.includes("multiply"));
-  // Hover på en färgad region visar namn + tal, inte en nolla.
+  // Hover ska INTE ge något muskelnamn. Raden under figuren är borttagen och
+  // <title> likaså — kartan läses som en bild, siffran hämtas i arket.
+  //
   // Riktig muspekare, inte ett syntetiskt mouseenter — React lyssnar på
-  // mouseover/mouseout och reagerar inte på ett dispatchat mouseenter.
+  // mouseover/mouseout och reagerar inte på ett dispatchat mouseenter. Utan
+  // det hovrar man aldrig på riktigt och kontrollen blir grön av tomhet.
   await page.locator('g[data-region="quadriceps"] path').first().hover({ force: true });
   await page.waitForTimeout(200);
-  const namn = await page.evaluate(() => document.body.innerText);
-  await kolla("kvinna: hover på framsida lår ger namn och procent", /FRAMSIDA LÅR · \d+%/i.test(namn));
+  // ETT NEGATIVT PÅSTÅENDE MÅSTE KUNNA FALLA. "Namnet syns inte" är sant även
+  // på en tom sida, så mätningen bär med sig sina egna förutsättningar:
+  // regionerna ska finnas, sidan ska ha text, och den texten ska sakna namnet.
+  const h = await page.evaluate(() => ({
+    regioner: document.querySelectorAll("g[data-region]").length,
+    titlar: document.querySelectorAll("g[data-region] title").length,
+    text: document.body.innerText,
+  }));
+  await kolla("kvinna: hover ger INGET muskelnamn",
+    h.regioner === 22 && h.text.length > 50 && !/FRAMSIDA LÅR/i.test(h.text));
+  await kolla("kvinna: regionerna har ingen <title>", h.regioner === 22 && h.titlar === 0);
   await page.screenshot({ path: "dist-atlas2/verify-kvinnokarta-mobil.png" });
   await page.close();
 }
