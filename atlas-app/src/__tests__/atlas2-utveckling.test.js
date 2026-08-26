@@ -44,8 +44,20 @@ describe("mätningen tar emot Omrons fält", () => {
     expect(byggMätning({ kg: 5 })).toBe(null);
   });
 
-  it("utan vikt finns ingen mätning", () => {
-    expect(byggMätning({ fat: 18 })).toBe(null);
+  it("utan NÅGOT värde finns ingen mätning", () => {
+    // REGELN ÄNDRADES när kroppsmåtten kom. Förut krävdes vikt: `byggMätning`
+    // returnerade null utan kg, och en mätning med bara midja eller bara
+    // kroppsfett avvisades tyst. Det var en rest från när det här bara var en
+    // våglogg.
+    //
+    // Nu räcker ett värde. Det som fortfarande avvisas är den helt tomma
+    // posten — den betyder att användaren tryckte Spara utan att fylla i
+    // något, och då finns ingenting att spara.
+    expect(byggMätning({})).toBe(null);
+    expect(byggMätning({ kg: "", fat: "", muscle: "" })).toBe(null);
+    expect(byggMätning({ fat: 18 })).toBeTruthy();
+    expect(byggMätning({ fat: 18 }).kg).toBe(null);
+    expect(byggMätning({ matt: { midja: 91.5 } })).toBeTruthy();
   });
 });
 

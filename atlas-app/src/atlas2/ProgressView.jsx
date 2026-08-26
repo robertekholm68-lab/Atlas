@@ -6,12 +6,14 @@
 // brus, inte utveckling, och en linje mellan dem påstår en riktning som inte
 // finns. Under tröskeln visas en tom ram som säger hur mycket som saknas.
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { C, btnText, HFONT, hdr, label, card, statRow, statCell, orDash, DASH } from "./design.js";
 import { coachFacts } from "./facts.js";
 import { weekSessions, sessionVolume } from "./store.js";
 import { EXERCISES } from "../data/exercises.js";
 import { formatKg, formatWeight, formatVolume } from "../engines/index.js";
+import { mättMått } from "../engines/utveckling.js";
+import { Nyckeltal } from "./Kroppsmatt.jsx";
 
 const VECKA = 6048e5;
 const TRÖSKEL = 3;
@@ -20,8 +22,24 @@ const TRÖSKEL = 3;
 // men vyn ska inte bli en oändlig logg — de senaste veckorna är det man rättar.
 const LISTA_STEG = 8;
 
-export function ProgressView({ sessions = [], weights = [], activeProgram, nutRec, onOpenSession, onOpenFordelning, onOpenUtveckling }) {
+export function ProgressView({ sessions = [], weights = [], mätningar = [], activeProgram, nutRec, onOpenSession, onOpenFordelning, onOpenUtveckling }) {
   const now = Date.now();
+
+  /**
+   * VILKA FYRA NYCKELTAL som visas.
+   *
+   * Vikt, kroppsfett och muskel först — de är kroppssammansättningen och det de
+   * flesta registrerar. Fjärdeplatsen går till midjan när den mätts, annars till
+   * det kroppsmått som faktiskt finns. Listan filtreras på vad som HAR ett
+   * värde, så en användare som bara väger sig ser ett kort och inte fyra streck.
+   *
+   * Midjan prioriteras bland omkretsarna av ett skäl: den rör sig tydligast med
+   * kroppssammansättningen, och är det mått folk oftast följer.
+   */
+  const nyckelMått = useMemo(() => {
+    const kandidater = ["kg", "fat", "muscle", "midja", "mage", "brost", "hoft"];
+    return mättMått(mätningar, kandidater).slice(0, 4);
+  }, [mätningar]);
   const done = sessions.filter(s => s && s.completedAt);
   const facts = coachFacts({ sessions, activeProgram, weights, nutRec }, now);
 
@@ -83,13 +101,37 @@ export function ProgressView({ sessions = [], weights = [], activeProgram, nutRe
         </button>
       )}
 
+      {/* KROPPEN, HÖGST UPP.
+          Fyra nyckeltal med förändring sedan start. Vilka fyra beror på vad som
+          faktiskt mätts: midjan visas bara för den som mätt midjan, och den som
+          bara väger sig får ett kort i stället för fyra tomma. Ett tryck öppnar
+          måttets detaljvy i Utveckling.
+
+          Medvetet FYRA, inte femton. Kroppsmåtten bor i Utveckling; det här är
+          översikten. */}
+      {nyckelMått.length > 0 && (
+        <div style={{ marginTop: 4, marginBottom: 4 }}>
+          {[nyckelMått.slice(0, 2), nyckelMått.slice(2, 4)].map((rad, i) => (
+            rad.length ? (
+              <div key={i} style={{ display: "flex", gap: 8, marginTop: i ? 8 : 0 }}>
+                {rad.map(id => (
+                  <Nyckeltal key={id} id={id} mätningar={mätningar}
+                    onClick={onOpenUtveckling ? () => onOpenUtveckling(id) : undefined} />
+                ))}
+                {rad.length === 1 && <div style={{ flex: 1 }} />}
+              </div>
+            ) : null
+          ))}
+        </div>
+      )}
+
       {/* UTVECKLING. Den här vyn svarar på "har jag tränat?"; utvecklingsvyn på
           "har det gett något?". Alltid synlig — den är också vägen in för att
           logga sin första mätning. */}
       {onOpenUtveckling && (
-        <button onClick={onOpenUtveckling} data-utveckling="1"
+        <button onClick={() => onOpenUtveckling()} data-utveckling="1"
           style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
-          Utveckling — vikt, kropp och styrka →
+          {mätningar.length ? "Utveckling — kropp, mått och styrka →" : "Utveckling — logga din första mätning →"}
         </button>
       )}
 

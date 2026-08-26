@@ -1029,8 +1029,12 @@ export function Atlas2() {
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} setMål={setMål} />
     );
     if (flik === "framsteg") return (
-      <ProgressView sessions={sessions} weights={weights} activeProgram={activeProgram} nutRec={nutRec}
-        onOpenUtveckling={() => setSheet("utveckling")}
+      // Ett nyckeltal öppnar sin egen detaljvy; knappen längst ned öppnar
+      // Utveckling utan valt mått. Id:t åker med i arknamnet så vyn kan hydrera
+      // rätt skärm direkt i stället för att användaren får leta rätt på måttet.
+      <ProgressView sessions={sessions} weights={weights} mätningar={mätningar}
+        activeProgram={activeProgram} nutRec={nutRec}
+        onOpenUtveckling={id => setSheet(id ? "utveckling:" + id : "utveckling")}
         onOpenSession={id => setSheet("pass:" + id)}
         onOpenFordelning={() => setSheet("fordelning")} />
     );
@@ -1165,8 +1169,9 @@ export function Atlas2() {
                 iPågåendePass={!!live} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
-            ) : sheet === "utveckling" ? (
+            ) : (sheet === "utveckling" || String(sheet).startsWith("utveckling:")) ? (
               <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar}
+                startDetalj={String(sheet).startsWith("utveckling:") ? String(sheet).slice(11) : null}
                 sessions={sessions} profile={profilN} onClose={() => setSheet(null)} />
             ) : sheet === "kunskap" ? (
               <KnowledgeView onClose={() => setSheet(null)} />

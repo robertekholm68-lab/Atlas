@@ -1,10 +1,14 @@
 import { useState, useMemo } from "react";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import {
-  byggMätning, massor, trend, tolkaOmronCsv, slåIhopMätningar,
-  styrkeKurva, övningarMedKurva, bästa1RM,
+  byggMätning, massor, trend, tolkaOmronCsv, slåIhopMätningar, förändring,
+  styrkeKurva, övningarMedKurva, bästa1RM, ändraMätning, raderaMätning,
 } from "../engines/utveckling.js";
 import { EXERCISES } from "../data/exercises.js";
+import { KROPPSMATT, KROPPSSAMMANSATTNING, GRUPPER, mattIGrupp, ALLA_INDEX } from "../data/kroppsmatt.js";
+import {
+  NyMatning, MattDetalj, Historik, Nyckeltal, Asymmetri, useMättaMått, fmt, fmtDiff,
+} from "./Kroppsmatt.jsx";
 
 /**
  * UTVECKLING — kropp och styrka över tid.
@@ -85,13 +89,113 @@ function Mätkort({ etikett, värde, enhet, t, bra = "ner", färg }) {
   );
 }
 
-export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], profile, onClose }) {
+/**
+ * KROPPSMÅTTEN, grupperade.
+ *
+ * VISAR BARA DET SOM MÄTTS. En lista med fjorton streck ser ut som ett
+ * misslyckande; en lista med de tre man faktiskt mätt ser ut som en början.
+ * Omätta mått nås via "+ Ny mätning", inte genom att stå och vara tomma.
+ *
+ * Grupperna och deras innehåll kommer ur registret, så ett nytt mått hamnar
+ * här av sig självt.
+ */
+function MattFlik({ mätningar, mätta, onValj, onNy }) {
+  const harNågot = mätta.length > 0;
+  return (
+    <div data-mattflik="1">
+      {!harNågot ? (
+        <div style={{ ...card, padding: 18 }}>
+          <div style={{ ...hdr(15), marginBottom: 7 }}>Inga kroppsmått än</div>
+          <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
+            Ta måttbandet en gång så finns en utgångspunkt. Du behöver inte mäta
+            allt — midjan ensam säger mer över tid än vågen gör.
+          </div>
+          <button onClick={onNy} style={{ ...btnGhost, marginTop: 14 }}>Mät nu</button>
+        </div>
+      ) : (
+        <>
+          {GRUPPER.map(g => {
+            const rader = mattIGrupp(g.id).filter(m => mätta.includes(m.id));
+            if (!rader.length) return null;
+            return (
+              <div key={g.id} style={{ ...card, padding: 0, marginTop: 8, overflow: "hidden" }}>
+                <div style={{ ...label(), padding: "15px 16px 4px" }}>{g.namn}</div>
+                {rader.map((mt, i) => {
+                  const f = förändring(mätningar, mt.id);
+                  return (
+                    <button key={mt.id} onClick={() => onValj(mt.id)} data-matt-rad={mt.id}
+                      style={{
+                        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                        width: "100%", padding: "13px 16px", minHeight: 44, cursor: "pointer",
+                        background: "none", border: "none", color: C.text, font: "inherit",
+                        borderTop: i ? `1px solid ${C.hairline}` : "none", textAlign: "left",
+                      }}>
+                      <span style={{ fontSize: 13.5 }}>{mt.namn}</span>
+                      <span style={{ display: "inline-flex", alignItems: "baseline", gap: 10 }}>
+                        {f.sedanStart != null && (
+                          <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>
+                            {fmtDiff(f.sedanStart, "cm")}
+                          </span>
+                        )}
+                        <span style={{ fontFamily: MONO, fontSize: 14 }}>{fmt(f.värde)} cm</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+          <Asymmetri mätningar={mätningar} onValj={onValj} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// Undervyerna. "Kropp" är förvalet — vikt och sammansättning är det de flesta
+// öppnar vyn för. Kroppsmåtten och historiken är egna flikar i stället för mer
+// innehåll på samma skärm; femton omkretsar under fyra nyckeltal blir en vägg.
+const FLIKAR = [
+  { id: "kropp", namn: "Kropp" },
+  { id: "matt", namn: "Mått" },
+  { id: "styrka", namn: "Styrka" },
+  { id: "historik", namn: "Historik" },
+];
+
+export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], profile, startDetalj = null, onClose }) {
   const [period, setPeriod] = useState(90);
-  const [läggTill, setLäggTill] = useState(false);
-  const [ny, setNy] = useState({ kg: "", fat: "", muscle: "", visceral: "" });
+  const [flik, setFlik] = useState("kropp");
+  // null = ingen, {} = ny mätning, post = redigera den posten
+  const [formulär, setFormulär] = useState(null);
+  // `startDetalj` gör att ett tryck på ett nyckeltal i Framsteg landar direkt i
+  // rätt detaljvy. Som INITIALVÄRDE, inte som en effekt: stänger man detaljen
+  // ska man hamna i översikten, inte kastas tillbaka av en synkronisering.
+  const [detalj, setDetalj] = useState(startDetalj);
   const [importFel, setImportFel] = useState("");
   const [importKlart, setImportKlart] = useState(null);
   const [valdÖvning, setValdÖvning] = useState(null);
+
+  const mätta = useMättaMått(mätningar);
+
+  /**
+   * Sparar en ny eller ändrad mätning.
+   *
+   * `ändraTs` skiljer fallen: vid redigering ERSÄTTS posten, så ett rensat fält
+   * faktiskt försvinner. En ny post slås ihop med en befintlig inom en timme —
+   * samma regel som Omron-importen, så en manuell och en importerad vägning
+   * samma morgon inte blir två rader.
+   */
+  const sparaMätning = (post, ändraTs) => {
+    setMätningar(x => (ändraTs != null
+      ? ändraMätning(x, ändraTs, post)
+      : slåIhopMätningar(x, [post])));
+    setFormulär(null);
+  };
+
+  const taBort = ts => {
+    setMätningar(x => raderaMätning(x, ts));
+    setFormulär(null);
+  };
 
   const serie = useMemo(() => {
     const från = Date.now() - period * 864e5;
@@ -116,14 +220,6 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
     fontSize: 14, fontFamily: MONO,
   };
 
-  const spara = () => {
-    const post = byggMätning({ ...ny, källa: "manuell" });
-    if (!post) { setImportFel("Vikten måste fyllas i."); return; }
-    setMätningar(x => slåIhopMätningar(x, [post]));
-    setNy({ kg: "", fat: "", muscle: "", visceral: "" });
-    setLäggTill(false); setImportFel("");
-  };
-
   const läsCsv = async fil => {
     if (!fil) return;
     setImportFel(""); setImportKlart(null);
@@ -138,6 +234,29 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
     }
   };
 
+  // Detaljvyn och formuläret tar hela ytan. En modal ovanpå en lista med
+  // femton mått blir trång på telefon, och det här är skärmar man gör EN sak i.
+  if (detalj) {
+    return (
+      <div style={{ padding: "4px 0 24px" }}>
+        <MattDetalj id={detalj} mätningar={mätningar} onStäng={() => setDetalj(null)} />
+      </div>
+    );
+  }
+  if (formulär) {
+    return (
+      <div style={{ padding: "4px 0 24px" }}>
+        <NyMatning
+          mätningar={mätningar}
+          befintlig={formulär.ts ? formulär : null}
+          onSpara={sparaMätning}
+          onAvbryt={() => setFormulär(null)}
+          onRadera={taBort}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "4px 0 24px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -149,7 +268,38 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
         eller muskel — det gör fettfri massa.
       </div>
 
-      <div style={{ display: "flex", gap: 7, margin: "14px 0 12px" }}>
+      {/* EN primär CTA per vy, enligt guiden. Det här är den. */}
+      <button onClick={() => setFormulär({})} data-ny-matning="1"
+        style={{ ...btnPrimary, marginTop: 14 }}>
+        + Ny mätning
+      </button>
+
+      <div style={{ display: "flex", gap: 7, margin: "14px 0 12px", overflowX: "auto" }}>
+        {FLIKAR.map(f => (
+          <button key={f.id} onClick={() => setFlik(f.id)} data-flik={f.id}
+            aria-pressed={flik === f.id}
+            style={{
+              padding: "8px 14px", minHeight: 40, borderRadius: 999, cursor: "pointer", fontSize: 12.5,
+              flexShrink: 0,
+              border: `1px solid ${flik === f.id ? C.lime : C.border}`,
+              color: flik === f.id ? C.lime : C.muted,
+              background: flik === f.id ? volt(.08) : C.card2,
+            }}>{f.namn}</button>
+        ))}
+      </div>
+
+      {flik === "matt" && (
+        <MattFlik mätningar={mätningar} mätta={mätta} onValj={setDetalj}
+          onNy={() => setFormulär({})} />
+      )}
+
+      {flik === "historik" && (
+        <Historik mätningar={mätningar} onValj={setDetalj} onÄndra={setFormulär} />
+      )}
+
+      {flik === "kropp" && (
+      <>
+      <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
         {DAGAR.map(d => (
           <button key={d.id} onClick={() => setPeriod(d.id)} data-period={d.id}
             style={{
@@ -173,19 +323,24 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
         </div>
       ) : (
         <>
+          {/* NYCKELTALEN ÄR INGÅNGAR, inte bara siffror. Ett tryck öppnar
+              måttets egen detaljvy med kurva och alla mätpunkter — samma
+              komponent som för midjan och biceparna. Förändringen som visas är
+              sedan START, inte sedan periodvalet: "hur långt har jag kommit" är
+              frågan man ställer, och den ändras inte av vilket spann grafen
+              råkar visa. */}
           <div style={{ display: "flex", gap: 8 }}>
-            <Mätkort etikett="Vikt" värde={senaste.kg} enhet="kg"
-              t={trend(mätningar, "kg", period)} bra="ner" />
-            <Mätkort etikett="Kroppsfett" värde={senaste.fat} enhet="%"
-              t={trend(mätningar, "fat", period)} bra="ner" />
+            <Nyckeltal id="kg" mätningar={mätningar} onClick={setDetalj} />
+            <Nyckeltal id="fat" mätningar={mätningar} onClick={setDetalj} />
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <Nyckeltal id="muscle" mätningar={mätningar} onClick={setDetalj} />
             {/* FETTFRI MASSA ÄR NYCKELTALET vid en deff: står den still medan
-                vikten går ner har man tappat rätt saker. */}
+                vikten går ner har man tappat rätt saker. Den är HÄRLEDD ur vikt
+                och fettprocent, inte mätt, och har därför ingen egen detaljvy —
+                det finns ingen serie att rita som inte redan är de två andra. */}
             <Mätkort etikett="Fettfri massa" värde={m && m.fettfriMassa} enhet="kg"
               t={null} bra="upp" />
-            <Mätkort etikett="Muskel" värde={senaste.muscle} enhet="%"
-              t={trend(mätningar, "muscle", period)} bra="upp" />
           </div>
           {senaste.visceral != null && (
             <div style={{ ...card, padding: 13, marginTop: 8 }}>
@@ -215,38 +370,13 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
           )}
         </>
       )}
-
-      <button onClick={() => setLäggTill(v => !v)} data-lagg-till-matning="1"
-        aria-expanded={läggTill} style={{ ...btnGhost, marginTop: 12 }}>
-        {läggTill ? "Avbryt" : "Lägg till mätning"}
-      </button>
-
-      {läggTill && (
-        <div style={{ ...card, padding: 15, marginTop: 8 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {[["kg", "Vikt (kg)"], ["fat", "Kroppsfett (%)"],
-              ["muscle", "Muskel (%)"], ["visceral", "Visceralt fett"]].map(([k, etikett]) => (
-              <label key={k} style={{ fontSize: 11, color: C.muted }}>
-                {etikett}
-                <input value={ny[k]} inputMode="decimal" data-matning={k} aria-label={etikett}
-                  onChange={e => setNy(n => ({ ...n, [k]: e.target.value }))}
-                  style={{ ...fältStil, marginTop: 3 }} />
-              </label>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 9, lineHeight: 1.45 }}>
-            Bara vikten krävs. Lämna resten tomt om vågen inte mäter dem — ett
-            tomt fält är ärligare än en nolla.
-          </div>
-          <button onClick={spara} data-spara-matning="1" style={{ ...btnPrimary, marginTop: 12 }}>
-            Spara mätning
-          </button>
-        </div>
+      </>
       )}
 
       {/* OMRON-IMPORT. Direktkoppling kräver partneravtal med Omron; CSV-export
           finns i deras app och är den väg som faktiskt är öppen. Datan lämnar
           aldrig telefonen. */}
+      {flik === "kropp" && (
       <div style={{ ...card, padding: 14, marginTop: 10 }}>
         <div style={{ ...label(), color: C.muted, marginBottom: 6 }}>Importera från vågen</div>
         <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.55 }}>
@@ -270,10 +400,12 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
           </div>
         )}
       </div>
+      )}
 
       {/* STYRKA. Uppskattat 1RM ur Epley, med set över 12 reps bortsorterade —
           vid många reps mäter man uthållighet, inte maxstyrka. */}
-      <div style={{ ...label(), color: C.muted, margin: "22px 0 8px" }}>Styrka</div>
+      {flik === "styrka" && (
+      <>
       {!övningar.length ? (
         <div style={{ ...card, padding: 16, fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>
           Logga samma övning två gånger med vikt och reps, så ritas kurvan här.
@@ -313,6 +445,8 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
             )}
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   );
