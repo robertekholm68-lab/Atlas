@@ -38,7 +38,7 @@ import { SessionSheet } from "./SessionSheet.jsx";
 import { replaceSession, removeSession } from "../engines/session.js";
 import { backAction } from "./backnav.js";
 import { useLayout, UTAN_NAV, MOBIL_MAX, PANEL_BREDD, INNEHÅLL_MAX, FULL_HÖJD } from "./layout.js";
-import { nextWorkout as nästaPass } from "../engines/programs.js";
+import { nextWorkout as nästaPass, passetÄndrat, sparaPassTillProgram, ärInbyggt, kopieraSomEget } from "../engines/programs.js";
 import { EXERCISES } from "../data/exercises.js";
 import { DEMO_SESSIONS, DEMO_PROGRAMS, DEMO_PROGRAM } from "../data/demo.js";
 import { vikterUrMätningar } from "../engines/utveckling.js";
@@ -833,7 +833,24 @@ export function Atlas2() {
         // Svaret på varför-frågan sparas på passet självt. replaceSession bumpar
         // updatedAt men behåller id — synken ska se en ÄNDRING, inte en ny post.
         onReason={uppdaterat => setSessions(s => replaceSession(s, uppdaterat))}
-        onHome={() => { setKlart(null); setFlik("hem"); }} />
+        onHome={() => { setKlart(null); setFlik("hem"); }}
+        // SPARA ÄNDRADE ÖVNINGAR. Ett inbyggt program rörs aldrig — det
+        // kopieras till ett eget som blir aktivt. Historiken pekar på
+        // programId + workoutId, och kopian får nya id:n, så progressionen
+        // startar om för den. Det är priset för att inte skriva över ett
+        // program andra också använder.
+        ändrat={!!(klart && klart.live && activeProgram && passetÄndrat(klart.live, activeProgram))}
+        passnamn={klart && klart.live ? klart.live.namn : ""}
+        onSparaÄndring={() => {
+          if (!klart || !klart.live || !activeProgram) return;
+          if (ärInbyggt(activeProgram)) {
+            const kopia = sparaPassTillProgram(klart.live, kopieraSomEget(activeProgram));
+            setPrograms(ps => [...ps, kopia]);
+            setActiveProgramId(kopia.id);
+          } else {
+            setPrograms(ps => ps.map(x => x.id === activeProgram.id ? sparaPassTillProgram(klart.live, x) : x));
+          }
+        }} />
     );
     if (flik === "pass") {
       // ÖVERGIVET PASS — fråga innan något händer.

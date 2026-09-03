@@ -365,3 +365,73 @@ export function alternativesFor(exId, allowedEquip, limit = 6) {
   return EXERCISES.filter(x => x.id !== exId && x.group === e.group && (!allowedEquip || !allowedEquip.length || allowedEquip.includes(x.equipment)))
     .sort((a, b) => (isCompound(b) === isCompound(e) ? 1 : 0) - (isCompound(a) === isCompound(e) ? 1 : 0)).slice(0, limit);
 }
+
+/**
+ * HAR PASSET ÄNDRATS JÄMFÖRT MED PROGRAMMET?
+ *
+ * Robert: "jag kör helkropp två pass i veckan A och B. jag vill ha andra
+ * övningar än det som ligger i det färdiga passet. jag stuvar om och sparar
+ * som eget A och B."
+ *
+ * Bytet under passet ändrade bara live-passet — nästa gång var originalet
+ * tillbaka, och man fick byta igen. Att kunna spara ändringen kräver att man
+ * vet OM något ändrats, och det avgörs här.
+ *
+ * Jämför övnings-id:n i ordning. Set och reps ignoreras: de justeras ändå per
+ * pass av progressionen, och en användare som bytt övning har inte
+ * nödvändigtvis ändrat setantalet.
+ */
+export function passetÄndrat(live, program) {
+  if (!live || !program || !live.workoutId) return false;
+  const w = (program.workouts || []).find(x => x.id === live.workoutId);
+  if (!w) return false;
+  const orig = (w.exercises || []).map(x => x.exId);
+  const nu = (live.items || []).map(x => x.exId);
+  if (orig.length !== nu.length) return true;
+  return orig.some((id, i) => id !== nu[i]);
+}
+
+/**
+ * SPARAR LIVE-PASSETS ÖVNINGAR TILLBAKA TILL PROGRAMMET.
+ *
+ * Skriver in i det aktiva programmet via applyChange, så ändringen är
+ * versionerad och går att ångra. Set, reps och vila för en övning som redan
+ * fanns behålls; för en ny övning används live-passets värden.
+ *
+ * Programmet BYTER INTE ID. Historiken pekar på programId + workoutId, och
+ * ett nytt id skulle klippa av progressionen — förra veckans knäböj skulle
+ * inte längre räknas som samma pass.
+ *
+ * Är programmet ett inbyggt (readonly) skapas i stället en egen kopia med
+ * samma pass, och den blir aktiv. Inbyggda program rörs aldrig.
+ */
+export function sparaPassTillProgram(live, program) {
+  if (!live || !program || !live.workoutId) return program;
+  const mutate = p => {
+    const w = (p.workouts || []).find(x => x.id === live.workoutId);
+    if (!w) return;
+    const gamla = new Map((w.exercises || []).map(x => [x.exId, x]));
+    w.exercises = (live.items || []).map(it => {
+      const g = gamla.get(it.exId);
+      if (g) return g;
+      return { exId: it.exId, sets: it.set || 3, repMin: it.repMin || 6, repMax: it.repMax || 12, restSec: it.vila || 90 };
+    });
+  };
+  const w = (program.workouts || []).find(x => x.id === live.workoutId);
+  const namn = w ? w.name : "pass";
+  return applyChange(program, mutate, `Ändrade övningar i ${namn}`);
+}
+
+/** Inbyggda program får inte ändras — de kopieras till ett eget först. */
+export function ärInbyggt(program) {
+  return !!(program && (program.builtin || program.readonly || String(program.id || "").startsWith("builtin_")));
+}
+
+export function kopieraSomEget(program) {
+  const kopia = JSON.parse(JSON.stringify({ ...program, history: undefined, builtin: undefined, readonly: undefined }));
+  kopia.id = `own_${Date.now().toString(36)}`;
+  kopia.name = /\(egen\)$/i.test(program.name) ? program.name : `${program.name} (egen)`;
+  kopia.version = 1;
+  kopia.createdAt = Date.now();
+  return kopia;
+}
