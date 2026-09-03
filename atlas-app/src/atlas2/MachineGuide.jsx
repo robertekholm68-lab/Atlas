@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { C, HFONT, hdr, label, btnText, card, volt } from "./design.js";
+import { ersättandeÖvningar } from "../engines/machines.js";
+import { EXERCISES } from "../data/exercises.js";
 import { MACHINE_TYPES, MACHINE_MODELS, RESISTANCE_TYPES } from "../data/machines.js";
 import { MUSCLES } from "../data/muscles.js";
 import { SkannaMaskin } from "./SkannaMaskin.jsx";
@@ -215,14 +217,33 @@ export function MachineGuide({ onClose }) {
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {m.alternatives.map(id => {
                         const alt = MACHINE_TYPES.find(x => x.id === id);
+                        // VILKEN ÖVNING PÅ MASKINEN SOM FAKTISKT ERSÄTTER.
+                        //
+                        // Latsdraget listade "Assisterad dip / chin". Maskinen
+                        // är rätt — samma stativ gör båda — men namnet säger
+                        // dips, och dips tränar bröst och triceps, inte rygg.
+                        // Utan preciseringen får man gissa, och gissar man fel
+                        // tränar man fel muskel.
+                        const ers = alt ? ersättandeÖvningar(m.id, id, EXERCISES) : null;
+                        const övningsnamn = (ers || []).slice(0, 2)
+                          .map(x => (EXERCISES.find(e => e.id === x) || {}).name)
+                          .filter(Boolean);
                         return (
                           <button key={id} onClick={() => alt && setÖppen(id)} data-alt="1"
                             disabled={!alt}
                             style={{
                               fontSize: 11.5, color: alt ? C.text2 : C.muted, minHeight: 36,
+                              textAlign: "left", lineHeight: 1.35,
                               border: `1px solid ${C.border}`, background: C.card2,
-                              borderRadius: 999, padding: "6px 12px", cursor: alt ? "pointer" : "default",
-                            }}>{alt ? alt.name : id}</button>
+                              borderRadius: 14, padding: "7px 12px", cursor: alt ? "pointer" : "default",
+                            }}>
+                            {alt ? alt.name : id}
+                            {övningsnamn.length > 0 && (
+                              <span style={{ display: "block", fontSize: 10.5, color: C.muted, marginTop: 2 }}>
+                                {övningsnamn.join(" eller ")}
+                              </span>
+                            )}
+                          </button>
                         );
                       })}
                     </div>
