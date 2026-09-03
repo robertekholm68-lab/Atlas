@@ -457,7 +457,9 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     });
     setSessions(s => [...s, session]);
     save("live", null);
-    onDone({ session, minuter: Math.max(1, passMin) });
+    // Live-passet följer med: kvittot behöver det för att kunna erbjuda
+    // "spara ändrade övningar till programmet".
+    onDone({ session, minuter: Math.max(1, passMin), live });
   };
 
   // Kom vi hit från "Spara det som loggades" avslutas passet direkt. Effekten
@@ -787,7 +789,9 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
  * reasonSignal kan dra en slutsats när det finns ett mönster — inte efter ett
  * enstaka svar.
  */
-export function DoneView({ resultat, sessions = [], onReason, onHome }) {
+export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = false, onSparaÄndring, passnamn = "" }) {
+  const [sparat, setSparat] = useState(false);
+  const [sparadeTill, setSparadeTill] = useState(false);
   const { session, minuter } = resultat;
   // Passet självt jämförs mot HISTORIKEN, inte mot sig självt. Motorn lägger
   // tillbaka det där volymen räknas (medPasset), så filtret här är rätt.
@@ -909,6 +913,38 @@ export function DoneView({ resultat, sessions = [], onReason, onHome }) {
           </div>
         ))}
 
+      {/* SPARA ÄNDRADE ÖVNINGAR TILL PROGRAMMET.
+          Robert: "jag stuvar om och sparar som eget A och B". Bytet under
+          passet ändrade bara live-passet — nästa gång var originalet tillbaka
+          och man fick byta igen.
+
+          Frågan ställs HÄR, på kvittot, inte under passet: då är man klar,
+          ser vad man faktiskt körde, och kan avgöra om det var ett engångs-
+          byte (maskinen upptagen) eller ett nytt upplägg. Under passet vore
+          det ett avbrott i något man just håller på med. */}
+      {ändrat && onSparaÄndring && !sparat && (
+        <div style={{ ...card, padding: 15, marginTop: 18, borderColor: C.lime }}>
+          <div style={{ ...label(C.lime), marginBottom: 6 }}>Du bytte övningar</div>
+          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.55 }}>
+            Vill du att {passnamn || "passet"} ska se ut så här nästa gång också?
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button onClick={() => { onSparaÄndring(); setSparadeTill(true); setSparat(true); }} data-spara-pass="1"
+              style={{ ...btnPrimary, flex: 1, marginTop: 0 }}>Ja, spara</button>
+            <button onClick={() => setSparat(true)} data-spara-pass-nej="1"
+              style={{ ...btnGhost, flex: 1, marginTop: 0 }}>Bara idag</button>
+          </div>
+        </div>
+      )}
+      {/* Bekräftelsen villkoras INTE på `ändrat`: så fort programmet
+          uppdaterats matchar passet igen och ändrat blir false — då försvann
+          texten i samma ögonblick den skulle visas. Mätt: programmet fick
+          version 2 men kvittot visade ingen bekräftelse. */}
+      {sparat && (
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 14, textAlign: "center" }}>
+          {sparadeTill ? `Sparat — ${passnamn || "passet"} är uppdaterat.` : "Ändringen gällde bara idag."}
+        </div>
+      )}
       <button onClick={onHome} style={{ ...btnPrimary, marginTop: 20 }}>Tillbaka till hem <span style={{ fontSize: 19 }}>→</span></button>
     </div>
   );
