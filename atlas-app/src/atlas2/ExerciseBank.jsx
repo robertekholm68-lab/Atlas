@@ -1,7 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { C, hdr, label, btnText, btnPrimary, card, volt } from "./design.js";
 import { EXERCISES } from "../data/exercises.js";
-import { MUSCLES, GROUP_SV } from "../data/muscles.js";
+import { MUSCLES } from "../data/muscles.js";
+
+/** Övningsbankens grupper på svenska. Samma nio som muskelgruppsvyn. */
+const BANK_GRUPP_SV = {
+  Chest: "Bröst", Back: "Rygg", Shoulders: "Axlar", Biceps: "Biceps",
+  Triceps: "Triceps", Core: "Mage", Legs: "Ben", Glutes: "Säte", Calves: "Vader",
+};
 import { sökordFör } from "./sokord.js";
 import { bildFör } from "../data/exerciseImages.js";
 import { MuskelIkon } from "./muscleIcon.jsx";
@@ -72,26 +78,39 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
   const [valda, setValda] = useState([]);
   const [sök, setSök] = useState("");
   // startGrupp: kommer man från muskelgruppsvyn är gruppen redan vald.
+  //
+  // useState läser bara INITIALVÄRDET. Är banken redan monterad ignorerades
+  // propen, så ett nytt gruppval från muskelgruppsvyn slog inte igenom.
   const [grupp, setGrupp] = useState(startGrupp);
+  useEffect(() => { setGrupp(startGrupp); }, [startGrupp]);
   const [öppen, setÖppen] = useState(null);
 
-  // Grupperna i den ordning de står i taxonomin, med antal.
+  // ÖVNINGENS EGEN GRUPP, INTE MUSKELNS.
+  //
+  // Knapparna byggdes ur MUSCLES[...].group medan muskelgruppsvyn skickar
+  // bankens id ("Back"). Två taxonomier i samma vy: MUSCLES har gemener och
+  // slår ihop biceps/triceps till "arms", banken har nio grupper med versal.
+  // Ett gruppval från muskelgruppsvyn matchade därför ingenting, och hela
+  // listan visades.
+  //
+  // Nu är det en taxonomi: e.group, samma som muskelgruppsvyn.
   const grupper = useMemo(() => {
     const räkning = {};
-    EXERCISES.forEach(e => {
-      const g = (MUSCLES[(e.activation || [])[0]?.muscleId] || {}).group;
-      if (g) räkning[g] = (räkning[g] || 0) + 1;
-    });
-    return Object.keys(GROUP_SV).filter(g => räkning[g]).map(g => ({ id: g, namn: GROUP_SV[g], antal: räkning[g] }));
+    EXERCISES.forEach(e => { if (e.group) räkning[e.group] = (räkning[e.group] || 0) + 1; });
+    return Object.keys(räkning).map(g => ({ id: g, namn: BANK_GRUPP_SV[g] || g, antal: räkning[g] }));
   }, []);
 
   const träffar = useMemo(() => {
     const q = sök.trim().toLowerCase();
     return EXERCISES.filter(e => {
-      if (grupp) {
-        const g = (MUSCLES[(e.activation || [])[0]?.muscleId] || {}).group;
-        if (g !== grupp) return false;
-      }
+      // ÖVNINGENS EGEN GRUPP, inte muskelns.
+      //
+      // Filtret matchade MUSCLES[...].group, som är en ANNAN taxonomi:
+      // gemener och biceps/triceps ihopslagna till "arms". Muskelgruppsvyn
+      // skickar bankens id ("Back"), och det gav NOLL träffar — därför visades
+      // hela listan oavsett vad man valt. Mätt: "Back" via MUSCLES gav 0
+      // övningar, via e.group 27.
+      if (grupp && e.group !== grupp) return false;
       if (!q) return true;
       // Sök på namn, utrustning och muskel — man letar lika ofta efter
       // "hantlar" eller "biceps" som efter ett övningsnamn.

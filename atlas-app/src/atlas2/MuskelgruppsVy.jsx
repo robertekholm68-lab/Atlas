@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { C, HFONT, MONO, hdr, label, card, recoveryColor } from "./design.js";
+import { C, HFONT, MONO, hdr, label, card } from "./design.js";
 import REGIONS from "./body_regions.json";
 import figurFram from "../assets/brand/figur-fram.webp";
 import figurBak from "../assets/brand/figur-bak.webp";
@@ -42,18 +42,6 @@ export const GRUPPER = [
   { id: "Calves", namn: "Vader", regioner: { front: ["tibialis_anterior"], back: ["calves"] } },
 ];
 
-/** Regionernas readiness → en siffra för gruppen: snittet av dem som har data. */
-function gruppReadiness(grupp, muscleStates, regionState) {
-  const värden = [];
-  for (const vy of ["front", "back"]) {
-    for (const rid of grupp.regioner[vy] || []) {
-      const st = regionState(rid, muscleStates);
-      if (st && st.readiness != null) värden.push(st.readiness);
-    }
-  }
-  if (!värden.length) return null;
-  return Math.round(värden.reduce((a, b) => a + b, 0) / värden.length);
-}
 
 /**
  * En figur med gruppens regioner färgade. Samma SVG-teknik som BodyMap2, men
@@ -63,7 +51,7 @@ function gruppReadiness(grupp, muscleStates, regionState) {
  * INGEN INTERAKTION PÅ REGIONNIVÅ här; hela kortet är knappen. Vid 100 px hög
  * figur går enskilda muskler inte att träffa med ett finger ändå.
  */
-function Figur({ vy, regionIds, muscleStates, regionState, höjd }) {
+function Figur({ vy, regionIds, höjd }) {
   const data = REGIONS[vy];
   return (
     <div style={{ position: "relative", height: höjd, aspectRatio: "415 / 1035" }}>
@@ -71,18 +59,18 @@ function Figur({ vy, regionIds, muscleStates, regionState, höjd }) {
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain",
           filter: "contrast(1.12)" }} />
       <svg viewBox={data.viewBox} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-        {data.regions.filter(r => regionIds.includes(r.id)).map(r => {
-          const st = regionState(r.id, muscleStates);
-          const färg = st ? recoveryColor(st.readiness) : null;
-          // Otränad = ofärgad, samma regel som kartan. Men kortet måste ändå
-          // visa VAR gruppen sitter, så en svag kontur ritas alltid.
-          return r.d.map((d, i) => (
-            <path key={r.id + i} d={d}
-              fill={färg || "none"} fillOpacity={färg ? 0.62 : 0}
-              stroke={färg || C.muted} strokeWidth={färg ? 0 : 4} strokeOpacity={0.55}
-              style={{ mixBlendMode: färg ? "multiply" : "normal" }} />
-          ));
-        })}
+        {/* FÄRGEN SYMBOLISERAR GRUPPEN, INTE DAGSLÄGET.
+            Korten färgades först ur användarens återhämtning, som kartan. Men
+            den här vyn är en INNEHÅLLSFÖRTECKNING — man letar efter
+            ryggövningar, inte efter hur ryggen mår. Med dagsläget blev
+            otränade grupper ofärgade och alltså osynliga som val, och färgen
+            skiftade från dag till dag utan att gruppen ändrats. */}
+        {data.regions.filter(r => regionIds.includes(r.id)).map(r =>
+          r.d.map((d, i) => (
+            <path key={r.id + i} d={d} fill={C.lime} fillOpacity={0.72}
+              style={{ mixBlendMode: "multiply" }} />
+          ))
+        )}
       </svg>
     </div>
   );
@@ -106,8 +94,7 @@ export function MuskelgruppsVy({ muscleStates = {}, regionState = regionStateDef
         )}
       </div>
       <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.55 }}>
-        Färgen är din återhämtning just nu. Tryck på en grupp för att se
-        övningarna.
+        Tryck på en grupp för att se dess övningar.
       </div>
 
       <div style={{
@@ -119,25 +106,21 @@ export function MuskelgruppsVy({ muscleStates = {}, regionState = regionStateDef
       }}>
         {GRUPPER.map(g => {
           const vyer = Object.keys(g.regioner);
-          const rd = gruppReadiness(g, muscleStates, regionState);
-          const färg = rd != null ? recoveryColor(rd) : null;
           return (
             <button key={g.id} onClick={() => onVälj && onVälj(g.id)} data-grupp={g.id}
-              aria-label={`${g.namn}, ${antal[g.id] || 0} övningar${rd != null ? `, ${rd} procent återhämtad` : ""}`}
+              aria-label={`${g.namn}, ${antal[g.id] || 0} övningar`}
               style={{
                 ...card, padding: "10px 6px 9px", cursor: "pointer", textAlign: "center",
                 border: `1px solid ${C.border}`, background: C.card, minHeight: 44,
               }}>
               <div style={{ display: "flex", justifyContent: "center", gap: 4, height: 150 }}>
                 {vyer.map(vy => (
-                  <Figur key={vy} vy={vy} regionIds={g.regioner[vy]}
-                    muscleStates={muscleStates} regionState={regionState} höjd={150} />
+                  <Figur key={vy} vy={vy} regionIds={g.regioner[vy]} höjd={150} />
                 ))}
               </div>
               <div style={{ ...label(), color: C.text, marginTop: 9, fontSize: 12 }}>{g.namn}</div>
-              <div style={{ fontFamily: MONO, fontSize: 11, color: färg || C.muted, marginTop: 3 }}>
-                {rd != null ? `${rd} %` : "—"}
-                <span style={{ color: C.muted }}> · {antal[g.id] || 0} övn</span>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted, marginTop: 3 }}>
+                {antal[g.id] || 0} övningar
               </div>
             </button>
           );
