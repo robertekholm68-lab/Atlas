@@ -25,6 +25,7 @@
  * varje id här finns i övningsbanken.
  */
 export const MED_BILD = [
+  "triceps_pushdown",
   "seated_cable_row",
   "t_bar_row",
   "db_row",
