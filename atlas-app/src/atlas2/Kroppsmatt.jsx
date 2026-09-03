@@ -271,6 +271,44 @@ export function Asymmetri({ mätningar, onValj }) {
  * Grupperna byggs ur registret, så ett nytt mått dyker upp här utan att den här
  * filen rörs.
  */
+const fältStil = {
+  width: "100%", padding: "11px 12px", borderRadius: 10, minHeight: 44,
+  border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+  fontSize: 15, fontFamily: MONO,
+};
+
+/**
+ * Ett mätfält.
+ *
+ * LIGGER PÅ MODULNIVÅ, INTE INUTI NyMatning.
+ *
+ * Definierad inuti komponenten skapades funktionen på nytt vid varje
+ * tangenttryck. React jämför komponenttyper med identitet, såg en ny typ, och
+ * rev fältet för att bygga ett nytt i stället för att uppdatera det. Fokus
+ * försvann med det gamla elementet — och på mobil åker tangentbordet ner när
+ * fokus försvinner.
+ *
+ * Robert: "nu när jag registrerar vikt så åker tangentbordet ner efter varje
+ * siffra. 8 ner jag får ta upp det 9 ner jag får ta upp det osv".
+ *
+ * inputMode="decimal" ger numeriskt tangentbord på mobil MED decimaltecken.
+ * type="number" hade gett det också, men avvisar komma i flera webbläsare och
+ * gör en svensk användares "91,5" till ingenting.
+ */
+function Falt({ id, namn, enhet, steg, värde, onÄndra }) {
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <label htmlFor={`matt-${id}`} style={{ ...label(), display: "block", marginBottom: 5 }}>
+        {namn}{enhet ? ` (${enhet})` : ""}
+      </label>
+      <input id={`matt-${id}`} data-matt={id}
+        value={värde} onChange={e => onÄndra(id, e.target.value)}
+        inputMode="decimal" enterKeyHint="next" autoComplete="off"
+        placeholder={steg || "—"} style={fältStil} />
+    </div>
+  );
+}
+
 export function NyMatning({ mätningar = [], befintlig = null, onSpara, onAvbryt, onRadera }) {
   const [öppen, setÖppen] = useState(() => new Set());
   const [fel, setFel] = useState("");
@@ -298,12 +336,6 @@ export function NyMatning({ mätningar = [], befintlig = null, onSpara, onAvbryt
   // något. Utan det ser en hopfälld grupp tom ut även när den inte är det.
   const ifyllda = g => mattIGrupp(g).filter(m => String(värden[m.id] || "").trim() !== "").length;
 
-  const fältStil = {
-    width: "100%", padding: "11px 12px", borderRadius: 10, minHeight: 44,
-    border: `1px solid ${C.border}`, background: C.card2, color: C.text,
-    fontSize: 15, fontFamily: MONO,
-  };
-
   const spara = () => {
     const [år, mån, dag] = datum.split("-").map(Number);
     const [tim, min] = (tid || "12:00").split(":").map(Number);
@@ -320,21 +352,6 @@ export function NyMatning({ mätningar = [], befintlig = null, onSpara, onAvbryt
     setFel("");
     onSpara(post, befintlig ? befintlig.ts : null);
   };
-
-  // inputMode="decimal" ger numeriskt tangentbord på mobil MED decimaltecken.
-  // type="number" hade gett det också, men avvisar komma i flera webbläsare och
-  // gör en svensk användares "91,5" till ingenting.
-  const Falt = ({ id, namn, enhet, steg }) => (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <label htmlFor={`matt-${id}`} style={{ ...label(), display: "block", marginBottom: 5 }}>
-        {namn}{enhet ? ` (${enhet})` : ""}
-      </label>
-      <input id={`matt-${id}`} data-matt={id}
-        value={värden[id]} onChange={e => sätt(id, e.target.value)}
-        inputMode="decimal" enterKeyHint="next" autoComplete="off"
-        placeholder={steg || "—"} style={fältStil} />
-    </div>
-  );
 
   return (
     <div data-nymatning="1">
@@ -358,12 +375,12 @@ export function NyMatning({ mätningar = [], befintlig = null, onSpara, onAvbryt
       <div style={{ ...card, padding: 16, marginTop: 12 }}>
         <div style={{ ...label(), marginBottom: 11 }}>Kroppssammansättning</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Falt id="kg" namn="Vikt" enhet="kg" steg="82,4" />
-          <Falt id="fat" namn="Kroppsfett" enhet="%" steg="22,1" />
+          <Falt id="kg" namn="Vikt" enhet="kg" steg="82,4"  värde={värden["kg"]} onÄndra={sätt} />
+          <Falt id="fat" namn="Kroppsfett" enhet="%" steg="22,1"  värde={värden["fat"]} onÄndra={sätt} />
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <Falt id="muscle" namn="Muskelmassa" enhet="%" steg="37,4" />
-          <Falt id="visceral" namn="Visceralt" enhet="" steg="8" />
+          <Falt id="muscle" namn="Muskelmassa" enhet="%" steg="37,4"  värde={värden["muscle"]} onÄndra={sätt} />
+          <Falt id="visceral" namn="Visceralt" enhet="" steg="8"  värde={värden["visceral"]} onÄndra={sätt} />
         </div>
       </div>
 
@@ -392,7 +409,7 @@ export function NyMatning({ mätningar = [], befintlig = null, onSpara, onAvbryt
                   return rader;
                 }, []).map((par, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginTop: i ? 10 : 0 }}>
-                    {par.map(m => <Falt key={m.id} id={m.id} namn={m.namn} enhet="cm" />)}
+                    {par.map(m => <Falt key={m.id} id={m.id} namn={m.namn} enhet="cm" värde={värden[m.id]} onÄndra={sätt} />)}
                     {par.length === 1 && <div style={{ flex: 1 }} />}
                   </div>
                 ))}
