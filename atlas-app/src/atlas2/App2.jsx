@@ -993,30 +993,45 @@ export function Atlas2() {
             </button>
           )}
 
-          <button onClick={() => { setBankGrupp(null); setSheet("ovningar"); }} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
-            Bläddra bland alla övningar →
-          </button>
-          {/* MUSKELGRUPPER. Kroppen som ingång till övningarna, med
-              återhämtningen synlig på varje grupp. */}
-          <button onClick={() => setSheet("muskelgrupper")} data-muskelgrupper="1"
-            style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
-            Muskelgrupper — välj utifrån kroppen →
-          </button>
-          {/* TOMT PASS. Skiljer sig från att plocka övningar i banken: här
-              bestämmer man ingenting i förväg utan fyller på i gymmet. */}
-          <button onClick={startaTomtPass} data-starta-tomt="1"
-            style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
-            Starta tomt pass — fyll på efterhand →
-          </button>
-          <button onClick={() => setSheet("maskiner")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
-            Maskiner — inställningar och vanliga fel →
-          </button>
-          {/* Kunskapsbasen står bland de andra uppslagsverken. 23
-              träningsartiklar och 21 muskelbeskrivningar har funnits i
-              datalagret sedan 1.0 utan att nå 2.0. */}
-          <button onClick={() => setSheet("kunskap")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
-            Kunskap — träningsprinciper och muskelfakta →
-          </button>
+          {/* IKONRUTNÄT I STÄLLET FÖR TEXTRADER.
+              Fem rader med "Något — förklaring →" tog 220 px och lästes som
+              en lista att skanna, inte som val att trycka på. Ikoner på två
+              rader tar 150 px och varje ruta är en tydlig knapp.
+
+              SVG, inte emoji: emoji renderas olika per telefon och ser ut som
+              chatt, inte gränssnitt. Linjeikoner i volt på mörk yta följer
+              guiden. Varje ruta har fortfarande sin etikett — en ikon utan ord
+              är en gissning. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 14 }}>
+            {[
+              { id: "tomt", namn: "Tomt pass", data: "starta-tomt", gör: startaTomtPass,
+                ikon: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M12 9v6M9 12h6" /></> },
+              { id: "grupper", namn: "Muskelgrupper", data: "muskelgrupper", gör: () => setSheet("muskelgrupper"),
+                ikon: <><circle cx="12" cy="5" r="2" /><path d="M8 9h8l1 5-2 1v6h-2v-5h-2v5H9v-6l-2-1z" /></> },
+              { id: "ovningar", namn: "Övningar", data: "ovningar", gör: () => { setBankGrupp(null); setSheet("ovningar"); },
+                ikon: <><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12" /></> },
+              { id: "maskiner", namn: "Maskiner", data: "maskiner", gör: () => setSheet("maskiner"),
+                ikon: <><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></> },
+              { id: "kunskap", namn: "Kunskap", data: "kunskap", gör: () => setSheet("kunskap"),
+                ikon: <><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z" /></> },
+            ].map(k => (
+              <button key={k.id} onClick={k.gör} data-ikon={k.data}
+                {...(k.data === "starta-tomt" ? { "data-starta-tomt": "1" } : {})}
+                {...(k.data === "muskelgrupper" ? { "data-muskelgrupper": "1" } : {})}
+                aria-label={k.namn}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
+                  padding: "13px 6px 11px", minHeight: 44, borderRadius: 14, cursor: "pointer",
+                  border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke={C.lime}
+                  strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  {k.ikon}
+                </svg>
+                <span style={{ fontSize: 11, fontFamily: HFONT, fontWeight: 700, letterSpacing: .3 }}>{k.namn}</span>
+              </button>
+            ))}
+          </div>
 
           <div style={{ fontSize: 12.5, color: C.muted, margin: "20px 0 10px" }}>
             Tränat något annat?
