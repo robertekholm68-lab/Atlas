@@ -66,12 +66,13 @@ function muskelNamn(id) {
  * övning. Utan den vägen tvingades man skapa ett program för att logga ett pass,
  * och då loggade man inte alls.
  */
-export function ExerciseBank({ onClose, onStarta, iPågåendePass = false }) {
+export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, startGrupp = null }) {
   // Valda övningar i den ordning de plockades. Ordningen ÄR passets ordning —
   // den som väljer bänkpress först vill förmodligen börja där.
   const [valda, setValda] = useState([]);
   const [sök, setSök] = useState("");
-  const [grupp, setGrupp] = useState(null);
+  // startGrupp: kommer man från muskelgruppsvyn är gruppen redan vald.
+  const [grupp, setGrupp] = useState(startGrupp);
   const [öppen, setÖppen] = useState(null);
 
   // Grupperna i den ordning de står i taxonomin, med antal.
