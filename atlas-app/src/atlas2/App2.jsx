@@ -1024,6 +1024,7 @@ export function Atlas2() {
     );
     if (flik === "coachen") return (
       <CoachView autoIntervju={autoIntervju} onAutoIntervjuKvitterad={() => setAutoIntervju(false)}
+        nästaPassNamn={activeProgram ? ((nästaPass(activeProgram, sessions) || {}).workout || {}).name || null : null}
         sessions={sessions} activeProgram={activeProgram} weights={weights} nutRec={nutRec}
         profile={profilN} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} setMål={setMål} />

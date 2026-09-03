@@ -26,14 +26,15 @@ function Rad({ text }) {
   );
 }
 
-export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec, setMål, autoIntervju = false, onAutoIntervjuKvitterad }) {
+export function CoachView({ sessions, activeProgram, weights, profile, foodLog, goal, nutritionTargets, onStart, onOpenGoal, nutRec, setMål, autoIntervju = false, onAutoIntervjuKvitterad, nästaPassNamn = null }) {
   // Svaren på varför-frågan ska få konsekvenser — annars är de datainsamling på
   // låtsas. Motorn kräver minst tre svar inom tre veckor: två är ingen tendens.
   // Signalen räknas FÖRE facts eftersom den sänker tilliten till readiness inuti
   // coachFacts — ordningen är alltså inte kosmetisk.
   const signal = reasonSignal(sessions);
   const facts = coachFacts({ sessions, activeProgram, weights, goal, nutRec, reasonSignal: signal });
-  const rek = recommendation(facts);
+  // Passnamnet skickas in så knappen kan säga vad den faktiskt startar.
+  const rek = recommendation(facts, nästaPassNamn);
   // Målresans läge mot planen. null när målet saknas eller saknar plan — då
   // visas fasvyn som förut, aldrig ett påhittat läge.
   const fokus = målfokus(facts);

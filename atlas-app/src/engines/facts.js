@@ -29,6 +29,7 @@
 
 import { bodyState, weekSessions, lastSessionLabel, sessionVolume } from "../atlas2/store.js";
 import { MUSCLES } from "../data/muscles.js";
+import { EXERCISES } from "../data/exercises.js";
 import { resa as byggResa, nästaDelmål } from "./journey.js";
 import { planLäge } from "./malplan.js";
 import { readinessBreakdown, metricSeries } from "./index.js";
@@ -108,7 +109,30 @@ export function coachFacts(ctx = {}, now = Date.now()) {
     // VARFÖR siffran är som den är utan att räkna om något själv.
     readinessRaw: trainingBase != null ? Math.round(trainingBase) : null,
     readinessWhy,
-    redo: sorterad.filter(([, s]) => s.readiness >= 76).map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
+    // REDO-LISTAN SORTERAR BORT MUSKLER MAN INTE FAKTISKT TRÄNAR.
+    //
+    // Robert fick "Adductors är redo. Där ger ett pass mest effekt idag" — men
+    // adduktorerna var utvilade för att han ALDRIG belastar dem direkt. De fick
+    // en spillrest last från knäböj, tillräckligt för att slippa no_data men
+    // långt ifrån ett tränat tillstånd.
+    //
+    // En muskel man inte tränar ligger alltid högst. Att rekommendera den är
+    // att förväxla "orörd" med "redo" — samma fel som helkroppssnittet gjorde
+    // när otränade muskler uteslöts helt.
+    //
+    // BARA MUSKLER MAN FAKTISKT KAN TRÄNA DIREKT hamnar i redo-listan.
+    //
+    // Rubriken säger "X är redo — där ger ett pass mest effekt idag". Det är
+    // bara sant om det FINNS en övning för X. En muskel som bara får sekundär
+    // last kan inte vara målet för ett pass.
+    //
+    // Mätt under arbetet: adduktorerna HAR en egen övning (hip_adduction,
+    // faktor 1,0), så de passerar filtret — mitt första antagande att de
+    // saknade övningar var fel. Filtret behövs ändå: 18 av 21 muskler har egna
+    // övningar, och de tre utan ska aldrig kunna toppa rekommendationen.
+    redo: sorterad
+      .filter(([id, s]) => s.readiness >= 76 && harEgenÖvning(id))
+      .map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
     slitna: sorterad.filter(([, s]) => s.readiness < 56).reverse().map(([id, s]) => ({ id, namn: namn(id), värde: Math.round(s.readiness) })),
     otränade: Object.entries(states).filter(([, s]) => s.status === "no_data").map(([id]) => ({ id, namn: namn(id) })),
     // Tilliten sänks av reasonSignal, aldrig siffran självt. Skickas ingen
@@ -254,7 +278,21 @@ export function coachFacts(ctx = {}, now = Date.now()) {
  * Rekommendationen: nästa bästa beslut, med sina skäl.
  * Skälen är inte pynt — de är kravet. Coachen ska kunna visa VARFÖR.
  */
-export function recommendation(facts) {
+/**
+ * Går muskeln att träna direkt?
+ *
+ * En muskel utan egna övningar kan aldrig vara "där ett pass ger mest effekt" —
+ * det finns inget pass att lägga där. Faktorn 0,7 skiljer primärmuskel från
+ * medhjälpare: knäböj belastar adduktorerna, men ingen kör knäböj FÖR dem.
+ */
+const medEgenÖvning = new Set(
+  EXERCISES.flatMap(e => (e.activation || [])
+    .filter(a => a && a.factor >= 0.7)
+    .map(a => a.muscleId))
+);
+function harEgenÖvning(muskelId) { return medEgenÖvning.has(muskelId); }
+
+export function recommendation(facts, nästaPassNamn = null) {
   if (facts.datalage.svagast === "ingen" || facts.kropp.readiness == null) {
     return {
       rubrik: "Logga ett pass så kan jag börja räkna.",
@@ -289,7 +327,15 @@ export function recommendation(facts) {
       ...slitna.slice(0, 1).map(m => `${m.namn}: ${m.värde}% — behöver mer vila`),
       facts.träning.senast ? `Senaste pass: ${facts.träning.senast.toLowerCase()}` : null,
     ].filter(Boolean),
-    knapp: mål ? `Starta pass – ${mål.namn}` : "Starta pass",
+    // KNAPPEN SÄGER VAD SOM FAKTISKT STARTAR.
+    //
+    // Förut stod muskelnamnet: "Starta pass – Adductors". Men knappen startar
+    // programmets NÄSTA PASS, inte ett pass för den muskeln — Robert tryckte
+    // och fick bröstövningar. Texten lovade något appen inte kunde leverera.
+    //
+    // Muskelraden står kvar i rubriken, där den är sann: adduktorerna ÄR mest
+    // utvilade. Det är knappen som ska beskriva handlingen.
+    knapp: nästaPassNamn ? `Starta pass – ${nästaPassNamn}` : "Starta pass",
     reservation,
   };
 }
