@@ -20,6 +20,7 @@ import { WorkoutView, DoneView, buildLive } from "./WorkoutView.jsx";
 import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { ExerciseBank } from "./ExerciseBank.jsx";
+import { MuskelgruppsVy } from "./MuskelgruppsVy.jsx";
 import { MachineGuide } from "./MachineGuide.jsx";
 import { KnowledgeView } from "./KnowledgeView.jsx";
 import { MuscleSplit } from "./MuscleSplit.jsx";
@@ -373,6 +374,8 @@ export function Atlas2() {
   // Egen nyckel: weights är { ts, kg } och läses av coach, framsteg och
   // backup — att bygga om den formen skulle tyst skriva om historik.
   const [mätningar, setMätningar] = useState([]);
+  // Förvald grupp när övningsbanken öppnas från muskelgruppsvyn.
+  const [bankGrupp, setBankGrupp] = useState(null);
   const sättMätningar = f => setMätningar(xs => {
     const ny = typeof f === "function" ? f(xs) : f;
     save("matningar", ny);
@@ -706,7 +709,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
+    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "muskelgrupper" ? "Muskelgrupper" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -990,8 +993,14 @@ export function Atlas2() {
             </button>
           )}
 
-          <button onClick={() => setSheet("ovningar")} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
+          <button onClick={() => { setBankGrupp(null); setSheet("ovningar"); }} style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
             Bläddra bland alla övningar →
+          </button>
+          {/* MUSKELGRUPPER. Kroppen som ingång till övningarna, med
+              återhämtningen synlig på varje grupp. */}
+          <button onClick={() => setSheet("muskelgrupper")} data-muskelgrupper="1"
+            style={{ ...btnText, marginTop: 4, minHeight: 44 }}>
+            Muskelgrupper — välj utifrån kroppen →
           </button>
           {/* TOMT PASS. Skiljer sig från att plocka övningar i banken: här
               bestämmer man ingenting i förväg utan fyller på i gymmet. */}
@@ -1165,9 +1174,13 @@ export function Atlas2() {
                 onKost={() => { setSheet(null); setFlik("mat"); }}
                 onClose={() => setSheet(null)} />
             ) : sheet === "ovningar" ? (
-              <ExerciseBank onClose={() => setSheet(null)}
+              <ExerciseBank onClose={() => setSheet(null)} startGrupp={bankGrupp}
                 onStarta={live ? läggTillÖvningIPass : startaFrittPass}
                 iPågåendePass={!!live} />
+            ) : sheet === "muskelgrupper" ? (
+              <MuskelgruppsVy muscleStates={bodyState(sessions, Date.now()).states}
+                onVälj={g => { setBankGrupp(g); setSheet("ovningar"); }}
+                onClose={() => setSheet(null)} />
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
             ) : (sheet === "utveckling" || String(sheet).startsWith("utveckling:")) ? (
