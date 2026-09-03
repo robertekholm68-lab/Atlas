@@ -74,7 +74,10 @@ const readinessFöre = await läsReadiness();
 // ── PASS-FLIKEN: ingången ska finnas ──
 await klickText("Pass");
 await page.waitForTimeout(300);
-await kolla("pass: ingång till aktivitetsloggning finns", finnsText("Logga aktivitet"));
+// Ingången heter "Sport" och är en knapp i rutnätet sedan #152. Förut låg
+// den under en rubrik som såg ut som text — Robert trodde den var oklickbar.
+await kolla("pass: ingång till aktivitetsloggning finns",
+  page.evaluate(() => !!document.querySelector('button[data-ikon="sport"]')));
 
 // Pass-fliken står i layoutskriptets MÅSTE_RYMMAS — ingången får inte
 // göra vyn scrollande på den minsta skärmen.
@@ -86,7 +89,7 @@ await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(250);
 
 // ── LOGGNINGSVYN ──
-await klickText("Logga aktivitet");
+await page.evaluate(() => document.querySelector('button[data-ikon="sport"]').click());
 await page.waitForTimeout(400);
 await kolla("arket öppnas med aktivitetsval", finnsText("Aktivitet"));
 await kolla("ingen förhandsvisning innan en aktivitet valts", page.evaluate(() =>
