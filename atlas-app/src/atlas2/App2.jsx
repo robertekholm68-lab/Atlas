@@ -986,10 +986,21 @@ export function Atlas2() {
               "Helkropp A, B, C" och trodde att det var alla program som fanns.
 
               Ett val man gjort en gång måste gå att göra om. */}
+          {/* BYT PROGRAM — lång knapp, men den får INTE se ut som passen
+              ovanför. De är kort med volt-kant och hör till det aktiva
+              programmet; den här lämnar det. Streckad kant och dämpad text
+              säger "annan sorts handling" utan att gömma den. */}
           {activeProgram && (
             <button onClick={() => setSheet("program")} data-byt="1"
-              style={{ ...btnText, marginTop: 16, minHeight: 44 }}>
-              Byt program — {activeProgram.name} →
+              style={{
+                width: "100%", marginTop: 14, padding: "12px 14px", minHeight: 44,
+                borderRadius: 12, cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+                border: `1px dashed ${C.border}`, background: "transparent", color: C.text2,
+                fontSize: 13,
+              }}>
+              <span>Byt program <span style={{ color: C.muted }}>· nu: {activeProgram.name}</span></span>
+              <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
           )}
 
@@ -1014,6 +1025,12 @@ export function Atlas2() {
                 ikon: <><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></> },
               { id: "kunskap", namn: "Kunskap", data: "kunskap", gör: () => setSheet("kunskap"),
                 ikon: <><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z" /></> },
+              // SPORT. Låg förut under en rubrik "Tränat något annat?" som såg ut
+              // som text, inte som ett val — Robert trodde den var oklickbar.
+              // In i rutnätet som sjätte knapp: sex rutor på två rader är
+              // dessutom jämnare än fem.
+              { id: "sport", namn: "Sport", data: "sport", gör: () => setSheet("sport"),
+                ikon: <><path d="M13 4l2 3 3 1-1 3 2 4-3 1-1 4-3-2-4 1v-3l-3-2 2-3-1-3 3-1z" /><circle cx="12" cy="12" r="2" /></> },
             ].map(k => (
               <button key={k.id} onClick={k.gör} data-ikon={k.data}
                 {...(k.data === "starta-tomt" ? { "data-starta-tomt": "1" } : {})}
@@ -1033,10 +1050,6 @@ export function Atlas2() {
             ))}
           </div>
 
-          <div style={{ fontSize: 12.5, color: C.muted, margin: "20px 0 10px" }}>
-            Tränat något annat?
-          </div>
-          <button onClick={() => setSheet("sport")} style={btnGhost}>Logga aktivitet</button>
         </div>
       );
     }

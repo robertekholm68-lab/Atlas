@@ -16,7 +16,10 @@ const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
 describe("genvägarna är ett ikonrutnät", () => {
   it("fem knappar med data-ikon", () => {
     const ids = [...src.matchAll(/data: "([a-z-]+)", gör:/g)].map(m => m[1]);
-    expect(ids).toEqual(["starta-tomt", "muskelgrupper", "ovningar", "maskiner", "kunskap"]);
+    // Sport tillkom: låg förut under en rubrik som såg ut som text, inte
+    // som ett val — Robert trodde den var oklickbar. Sex rutor på två rader
+    // är dessutom jämnare än fem.
+    expect(ids).toEqual(["starta-tomt", "muskelgrupper", "ovningar", "maskiner", "kunskap", "sport"]);
   });
 
   it("tre kolumner", () => {
@@ -33,7 +36,7 @@ describe("genvägarna är ett ikonrutnät", () => {
 
   it("varje knapp har etikett — en ikon utan ord är en gissning", () => {
     const namn = [...src.matchAll(/namn: "([^"]+)", data:/g)].map(m => m[1]);
-    expect(namn.length).toBe(5);
+    expect(namn.length).toBe(6);
     for (const n of namn) expect(n.length).toBeGreaterThan(2);
   });
 
@@ -49,11 +52,23 @@ describe("genvägarna är ett ikonrutnät", () => {
   });
 });
 
-describe("Byt program står kvar som egen rad", () => {
-  it("den är kontextuell och visar programnamnet", () => {
-    // Den hör inte hemma i rutnätet: den finns bara när ett program är valt,
-    // och dess text är programmets namn.
-    expect(src).toMatch(/Byt program — \{activeProgram\.name\} →/);
+describe("Byt program är en lång knapp som skiljer sig från passen", () => {
+  it("streckad kant — passen ovanför har heldragen volt", () => {
+    // Passkorten hör till det aktiva programmet; den här lämnar det. Kanten
+    // säger "annan sorts handling" utan att gömma knappen.
+    const byt = src.slice(src.indexOf('data-byt="1"'), src.indexOf('data-byt="1"') + 700);
+    expect(byt).toMatch(/border: `1px dashed/);
+  });
+
+  it("visar nuvarande program", () => {
+    expect(src).toMatch(/nu: \{activeProgram\.name\}/);
+  });
+
+  it("den gamla textraden och sportrubriken är borta", () => {
+    expect(src).not.toMatch(/Byt program — \{activeProgram\.name\} →/);
+    // Frasen finns kvar i en kommentar som förklarar varför den togs bort —
+    // testet matchar JSX-raden, inte kommentaren.
+    expect(src).not.toMatch(/>\s*Tränat något annat\?\s*</);
   });
 });
 
