@@ -206,3 +206,46 @@ export function matchaMaskinkod(text) {
 
   return null;
 }
+
+/**
+ * VILKEN ÖVNING PÅ ALTERNATIVMASKINEN SOM FAKTISKT ERSÄTTER.
+ *
+ * Robert: "jag såg också i förklaringen till latsdrag att den kunde ersättas
+ * med dips".
+ *
+ * Latsdraget listar "Assisterad dip / chin" som alternativ. Maskinen är rätt —
+ * samma stativ gör både dips och chins — men NAMNET säger dips, och dips är en
+ * helt annan rörelse: bröst och triceps, inte rygg.
+ *
+ * Maskinen bär fyra övningar (parallel_dip, bench_dips, chin_up, pull_up). Två
+ * ersätter latsdrag, två gör det inte. Att bara skriva maskinens namn lämnar
+ * användaren att gissa vilken — och gissar man fel tränar man fel muskel.
+ *
+ * Fyra alternativpar har samma problem, mätt över hela banken:
+ *   Latsdrag → Assisterad dip / chin
+ *   Tricepspress → Assisterad dip / chin
+ *   Dipsmaskin → Assisterad dip / chin
+ *   Funktionell kabelmaskin → Kabelkors
+ *   Smithmaskin ↔ Power rack
+ *
+ * Returnerar de övningar på alternativmaskinen som delar muskelgrupp med
+ * ursprungsmaskinen — alltså de som faktiskt är ersättare. Är alla övningar av
+ * samma grupp returneras null: då behövs ingen förtydligande text.
+ */
+export function ersättandeÖvningar(frånId, tillId, exercises) {
+  const från = typeById[frånId], till = typeById[tillId];
+  if (!från || !till || !Array.isArray(exercises)) return null;
+
+  const grupp = id => (exercises.find(e => e.id === id) || {}).group;
+  const frånGrupper = new Set((från.exercises || []).map(grupp).filter(Boolean));
+  const tillÖvningar = (till.exercises || []).filter(Boolean);
+
+  const grupperPåTill = new Set(tillÖvningar.map(grupp).filter(Boolean));
+  // Spretar den inte behövs ingen precisering — maskinens namn räcker.
+  if (grupperPåTill.size <= 1) return null;
+
+  const passande = tillÖvningar.filter(id => frånGrupper.has(grupp(id)));
+  // Ingen övning matchar: alternativet är tveksamt, men det är ett datafel att
+  // rätta i machines.js — inte något den här funktionen ska dölja.
+  return passande.length ? passande : null;
+}
