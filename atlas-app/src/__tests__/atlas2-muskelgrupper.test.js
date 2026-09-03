@@ -61,29 +61,30 @@ describe("regionerna finns i kartan", () => {
   });
 });
 
-describe("vyn ärver kartans regler", () => {
+describe("färgen symboliserar gruppen, inte dagsläget", () => {
   const src = readFileSync(resolve("src/atlas2/MuskelgruppsVy.jsx"), "utf8");
 
-  it("färgen kommer från recoveryColor", () => {
-    expect(src).toMatch(/recoveryColor\(st\.readiness\)/);
+  it("alla kort färgas i volt", () => {
+    // Korten färgades först ur användarens återhämtning, som kartan. Men den
+    // här vyn är en INNEHÅLLSFÖRTECKNING — man letar efter ryggövningar, inte
+    // efter hur ryggen mår.
+    expect(src).toMatch(/fill=\{C\.lime\} fillOpacity=\{0\.72\}/);
   });
 
-  it("otränad är ofärgad men konturerad", () => {
-    // Ofärgat = ingen data, samma regel som kartan. Men kortet måste ändå visa
-    // VAR gruppen sitter.
-    expect(src).toMatch(/fill=\{färg \|\| "none"\}/);
-    expect(src).toMatch(/stroke=\{färg \|\| C\.muted\}/);
+  it("readiness läses inte längre", () => {
+    // Med dagsläget blev otränade grupper ofärgade och alltså osynliga som
+    // val, och färgen skiftade från dag till dag utan att gruppen ändrats.
+    expect(src).not.toMatch(/recoveryColor/);
+    expect(src).not.toMatch(/gruppReadiness/);
+  });
+
+  it("kortet visar antal övningar, inte procent", () => {
+    expect(src).toMatch(/\{antal\[g\.id\] \|\| 0\} övningar/);
+    expect(src).not.toMatch(/procent återhämtad/);
   });
 
   it("två kolumner — figurerna behöver plats", () => {
-    // Vid tre kolumner blir muskeln en fläck på 20 px.
     expect(src).toMatch(/gridTemplateColumns: "repeat\(2, 1fr\)"/);
-  });
-
-  it("gruppens readiness är snittet av regioner med data", () => {
-    // En grupp där bara en av tre regioner har data ska visa den regionens
-    // värde, inte dra ner snittet med nollor.
-    expect(src).toMatch(/if \(!värden\.length\) return null;/);
   });
 });
 
@@ -98,5 +99,30 @@ describe("ingången leder till rätt lista", () => {
     // Annars skulle "Bläddra bland alla övningar" ärva senaste gruppvalet.
     const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
     expect(src).toMatch(/setBankGrupp\(null\); setSheet\("ovningar"\)/);
+  });
+});
+
+describe("gruppvalet filtrerar listan", () => {
+  const bank = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
+
+  it("filtret matchar övningens egen grupp", () => {
+    // Filtret matchade MUSCLES[...].group, som är en ANNAN taxonomi: gemener
+    // och biceps/triceps ihopslagna till "arms". Muskelgruppsvyn skickar
+    // bankens id ("Back"), vilket gav NOLL träffar — därför visades hela
+    // listan oavsett val. Mätt: "Back" via MUSCLES gav 0, via e.group 27.
+    expect(bank).toMatch(/if \(grupp && e\.group !== grupp\) return false;/);
+    expect(bank).not.toMatch(/MUSCLES\[\(e\.activation \|\| \[\]\)\[0\]\?\.muscleId\] \|\| \{\}\)\.group/);
+  });
+
+  it("ett nytt gruppval slår igenom även när banken är monterad", () => {
+    // useState läser bara initialvärdet.
+    expect(bank).toMatch(/useEffect\(\(\) => \{ setGrupp\(startGrupp\); \}, \[startGrupp\]\)/);
+  });
+
+  it("varje grupp i vyn har övningar i banken", () => {
+    for (const g of GRUPPER) {
+      const n = EXERCISES.filter(e => e.group === g.id).length;
+      expect(n, g.id).toBeGreaterThan(0);
+    }
   });
 });
