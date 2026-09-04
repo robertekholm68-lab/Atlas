@@ -14,12 +14,14 @@ import { resolve } from "path";
 const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
 
 describe("genvägarna är ett ikonrutnät", () => {
-  it("fem knappar med data-ikon", () => {
+  it("sju knappar med data-ikon", () => {
     const ids = [...src.matchAll(/data: "([a-z-]+)", gör:/g)].map(m => m[1]);
     // Sport tillkom: låg förut under en rubrik som såg ut som text, inte
     // som ett val — Robert trodde den var oklickbar. Sex rutor på två rader
     // är dessutom jämnare än fem.
-    expect(ids).toEqual(["starta-tomt", "muskelgrupper", "ovningar", "maskiner", "kunskap", "sport"]);
+    // Feedback tillkom: testare rapporterar det de kan rapportera på tio
+    // sekunder, och ligger knappen bakom två menyval blir den aldrig använd.
+    expect(ids).toEqual(["starta-tomt", "muskelgrupper", "ovningar", "maskiner", "kunskap", "sport", "feedback"]);
   });
 
   it("tre kolumner", () => {
@@ -36,7 +38,7 @@ describe("genvägarna är ett ikonrutnät", () => {
 
   it("varje knapp har etikett — en ikon utan ord är en gissning", () => {
     const namn = [...src.matchAll(/namn: "([^"]+)", data:/g)].map(m => m[1]);
-    expect(namn.length).toBe(6);
+    expect(namn.length).toBe(7);
     for (const n of namn) expect(n.length).toBeGreaterThan(2);
   });
 
