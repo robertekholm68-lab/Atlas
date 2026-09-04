@@ -64,11 +64,15 @@ describe("regionerna finns i kartan", () => {
 describe("färgen symboliserar gruppen, inte dagsläget", () => {
   const src = readFileSync(resolve("src/atlas2/MuskelgruppsVy.jsx"), "utf8");
 
-  it("alla kort färgas i volt", () => {
+  it("alla kort färgas rött", () => {
     // Korten färgades först ur användarens återhämtning, som kartan. Men den
     // här vyn är en INNEHÅLLSFÖRTECKNING — man letar efter ryggövningar, inte
     // efter hur ryggen mår.
-    expect(src).toMatch(/fill=\{C\.lime\} fillOpacity=\{0\.72\}/);
+    //
+    // Volt vid 0,72 blev ljusgrönt mot den beige huden och läste som en svag
+    // skugga. Rött är konventionen i anatomiillustrationer och krockar inte
+    // med kroppskartans skala, eftersom vyn inte visar dagsläget.
+    expect(src).toMatch(/fill=\{C\.critical\} fillOpacity=\{0\.92\}/);
   });
 
   it("readiness läses inte längre", () => {

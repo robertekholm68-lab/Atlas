@@ -67,7 +67,7 @@ function Figur({ vy, regionIds, höjd }) {
             skiftade från dag till dag utan att gruppen ändrats. */}
         {data.regions.filter(r => regionIds.includes(r.id)).map(r =>
           r.d.map((d, i) => (
-            <path key={r.id + i} d={d} fill={C.lime} fillOpacity={0.72}
+            <path key={r.id + i} d={d} fill={C.critical} fillOpacity={0.92}
               style={{ mixBlendMode: "multiply" }} />
           ))
         )}
