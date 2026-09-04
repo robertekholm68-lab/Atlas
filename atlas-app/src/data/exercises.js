@@ -54,7 +54,7 @@ const EXERCISES = [
   { id: "cable_curl", name: "Cable Curl", group: "Biceps", equipment: "Cable", pattern: "Curl", loadMode: "external", activation: [{ muscleId: "biceps_brachii", factor: 1 }, { muscleId: "forearms", factor: 0.3 }] },
   { id: "reverse_curl", name: "Reverse Barbell Curl", group: "Biceps", equipment: "Barbell", pattern: "Curl", loadMode: "external", activation: [{ muscleId: "forearms", factor: 0.7 }, { muscleId: "biceps_brachii", factor: 0.6 }] },
   { id: "wrist_curl", name: "Seated Wrist Curl", group: "Biceps", equipment: "Barbell", pattern: "Curl", loadMode: "external", activation: [{ muscleId: "forearms", factor: 1 }] },
-  { id: "triceps_pushdown", name: "Triceps Pressdown", group: "Triceps", equipment: "Cable", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }, { muscleId: "deltoid_anterior", factor: 0.3 }, { muscleId: "forearms", factor: 0.3 }] },
+  { id: "triceps_pushdown", name: "Triceps Pressdown", group: "Triceps", equipment: "Cable", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
   { id: "rope_pushdown", name: "Rope Pushdown", group: "Triceps", equipment: "Cable", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
   { id: "skullcrusher", name: "Lying Triceps Extension", group: "Triceps", equipment: "EZ Bar", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
   { id: "overhead_ext", name: "Overhead Triceps Extension", group: "Triceps", equipment: "Dumbbell", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
@@ -226,6 +226,14 @@ const SPORTS = [
 ];
 
 const CUES = {
+  // Källa: styrkelabbet.se/triceps-pushdown och muscles.se/ovningsbank/
+  // armovningar/triceps/pushdowns. Egna formuleringar, inget ordagrant.
+  //
+  // INGEN SEKUNDÄRMUSKEL LADES TILL i activation. Flera källor understryker
+  // att pushdown är en renodlad isolationsövning, och att man känner den i
+  // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
+  // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  triceps_pushdown: ["Greppa stången eller repet i axelhöjd, armbågarna in mot kroppen", "Håll överarmarna helt stilla genom hela rörelsen", "Pressa ner tills armarna är raka, känn triceps jobba", "För tillbaka kontrollerat utan att armbågarna vandrar ut"],
   safety_bar_squat: ["Stången vilar på axlarna, greppa handtagen", "Håll bålen upprätt — stången vill fälla dig framåt", "Sänk till djup du behärskar, knäna följer tårna", "Driv upp genom hela foten"],
   db_neutral_press: ["Handflatorna mot varandra (neutralt grepp)", "Armbågarna något indragna, skonsamt för axeln", "Pressa upp och lätt ihop", "Sänk kontrollerat till brösthöjd"],
   chest_supported_row: ["Bröstet mot dynan, undvik att kasta med kroppen", "Dra med armbågarna bakåt/nedåt", "Kläm ihop skulderbladen i toppen", "Sänk kontrollerat till full sträckning"],
@@ -293,7 +301,7 @@ const STRENGTH_STD = { bench_press: [0.75, 1.0, 1.5], squat: [1.0, 1.5, 2.0], de
 
 const MAIN_LIFTS = [["bench_press", "Bänkpress"], ["squat", "Knäböj"], ["deadlift", "Marklyft"], ["ohp", "Militärpress"], ["row", "Skivstångsrodd"]];
 
-export { EXERCISES, WORKOUTS, SPORT_INTENSITY, HIIT_MULT, HIIT_MUSCLE_MULT, SPORTS, CARDIO, CUES, EX_GROUPS, EQUIP_ALL, EQUIP_PROFILES, BODYWEIGHT, STRENGTH_STD, MAIN_LIFTS, STABLE_ID, resolveActivity, DEFAULT_ACTIVE_SPORTS };
+export { EXERCISES, WORKOUTS, SPORT_INTENSITY, HIIT_MULT, HIIT_MUSCLE_MULT, SPORTS, CARDIO, CUES, CUES as TEKNIK_CUES, EX_GROUPS, EQUIP_ALL, EQUIP_PROFILES, BODYWEIGHT, STRENGTH_STD, MAIN_LIFTS, STABLE_ID, resolveActivity, DEFAULT_ACTIVE_SPORTS };
 
 // Cardio/kondition — samma form som SPORTS (cardio-faktor 0–1 + aktivering), byggs med computeCardioLoad/computeSportLoad.
 const CARDIO = [
