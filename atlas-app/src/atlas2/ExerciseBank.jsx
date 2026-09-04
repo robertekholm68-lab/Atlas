@@ -248,16 +248,42 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
                     Saknas bilden visas ingenting alls. En platshållare med ett
                     kamera-ikon ser ut som en trasig bild, och 157 av 160
                     övningar saknar bild i skrivande stund. */}
-                {bildFör(e.id) && (
-                  <img src={bildFör(e.id)} alt={`${e.name} — startposition till vänster, slutposition till höger`}
-                    loading="lazy"
-                    style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 13 }} />
-                )}
-                {/* UTFÖRANDET. Teknikpunkterna fanns skrivna i datan för 47
-                    övningar (CUES i exercises.js) men visades ingenstans —
-                    exporterade, aldrig importerade i banken. Namnet krockade
-                    dessutom med vilosignalernas CUES, därför TEKNIK_CUES här. */}
-                {TEKNIK_CUES[e.id] && (
+                {/* TEXTEN LIGGER ÖVER BILDEN, INTE I DEN.
+                    Bilderna har 43–54 % mörkt utrymme under motivet, och där
+                    ryms rubrik och teknikpunkter. Att bränna in texten hade
+                    sett likadant ut men gjort den omöjlig att söka, översätta
+                    eller rätta — och osynlig för skärmläsare. Bilderna är
+                    beskurna med 275 px textfält kvar; appen ritar texten.
+
+                    Ingen gradient behövs: fältet är redan svart i bilden. */}
+                {bildFör(e.id) ? (
+                  <div style={{ position: "relative", marginBottom: 13, borderRadius: 10, overflow: "hidden" }}>
+                    <img src={bildFör(e.id)} alt={`${e.name} — utförande`} loading="lazy"
+                      style={{ width: "100%", display: "block" }} />
+                    {TEKNIK_CUES[e.id] && (
+                      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 14px 14px" }}>
+                        <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                          {TEKNIK_CUES[e.id].map((rad, i) => (
+                            <li key={i} style={{
+                              display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 7,
+                              fontSize: 12, color: C.text2, lineHeight: 1.4,
+                            }}>
+                              <span style={{
+                                flexShrink: 0, width: 17, height: 17, borderRadius: 999,
+                                background: C.lime, color: "#0A0A0A", fontSize: 10, fontWeight: 700,
+                                display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1,
+                              }}>{i + 1}</span>
+                              <span>{rad}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                {/* Utan bild står teknikpunkterna som vanlig lista. Datan finns
+                    för 48 övningar; bilder för en handfull. */}
+                {TEKNIK_CUES[e.id] && !bildFör(e.id) && (
                   <>
                     <div style={{ ...label(), marginBottom: 8 }}>Utförande</div>
                     <ol style={{ margin: "0 0 16px", padding: "0 0 0 18px" }}>
