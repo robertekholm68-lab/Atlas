@@ -72,9 +72,25 @@ describe("bilderna ligger där bygget når dem", () => {
     expect(src).toMatch(/bildFör\(e\.id\)/);
   });
 
-  it("bilden har alt-text som förklarar diptyken", () => {
-    // En skärmläsare ska förstå att det är två positioner i en bild.
+  it("bilden har alt-text", () => {
+    // Alt-texten beskrev en DIPTYK ("startposition till vänster") — det
+    // formatet gällde de tre silverfigurerna. De fotorealistiska bilderna är
+    // en enda pose, så beskrivningen stämde inte längre.
     const src = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
-    expect(src).toMatch(/startposition till vänster/);
+    expect(src).toMatch(/alt=\{`\$\{e\.name\} — utförande`\}/);
+  });
+
+  it("teknikpunkterna ligger över bilden som riktig text", () => {
+    // INTE inbränd i bilden. Robert: "den måste vara redigerbar om jag i
+    // framtiden vill översätta". Inbränd text går inte att söka, översätta
+    // eller rätta, och är osynlig för skärmläsare.
+    const src = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
+    expect(src).toMatch(/position: "absolute", left: 0, right: 0, bottom: 0/);
+    expect(src).toMatch(/TEKNIK_CUES\[e\.id\]\.map/);
+  });
+
+  it("utan bild står punkterna som vanlig lista", () => {
+    const src = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
+    expect(src).toMatch(/TEKNIK_CUES\[e\.id\] && !bildFör\(e\.id\)/);
   });
 });
