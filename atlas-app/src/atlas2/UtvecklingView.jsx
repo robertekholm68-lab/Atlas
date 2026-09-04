@@ -1,3 +1,8 @@
+// UTVECKLING ÄR EN FLIK NU, INTE ETT ARK. Ett ark låg ovanpå navigationen;
+// en flik ligger under den. Bottenmarginalen måste därför räkna med navhöjden,
+// annars hamnar sista knappen — "Spara mätning" — bakom menyn. Verifieraren
+// fångade det: Playwright rapporterade att nav-svg:n fångade klicket.
+import { NAV_HÖJD } from "./layout.js";
 import { useState, useMemo } from "react";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import {
@@ -155,16 +160,21 @@ function MattFlik({ mätningar, mätta, onValj, onNy }) {
 // Undervyerna. "Kropp" är förvalet — vikt och sammansättning är det de flesta
 // öppnar vyn för. Kroppsmåtten och historiken är egna flikar i stället för mer
 // innehåll på samma skärm; femton omkretsar under fyra nyckeltal blir en vägg.
+// PASS FÖRST. Framsteg och Utveckling var två vyer som svarade på samma
+// fråga — "hur går det?" — men den ena var en flik och den andra en undervy.
+// Det var historia, inte logik. Nu är det EN flik, Utveckling, med pass som
+// första underflik eftersom det är det man oftast vill se.
 const FLIKAR = [
+  { id: "pass", namn: "Pass" },
   { id: "kropp", namn: "Kropp" },
   { id: "matt", namn: "Mått" },
   { id: "styrka", namn: "Styrka" },
   { id: "historik", namn: "Historik" },
 ];
 
-export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], profile, startDetalj = null, onClose }) {
+export function UtvecklingView({ passInnehåll = null, startFlik = null, mätningar = [], setMätningar, sessions = [], profile, startDetalj = null, onClose }) {
   const [period, setPeriod] = useState(90);
-  const [flik, setFlik] = useState("kropp");
+  const [flik, setFlik] = useState(startFlik || "pass");
   // null = ingen, {} = ny mätning, post = redigera den posten
   const [formulär, setFormulär] = useState(null);
   // `startDetalj` gör att ett tryck på ett nyckeltal i Framsteg landar direkt i
@@ -238,14 +248,14 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
   // femton mått blir trång på telefon, och det här är skärmar man gör EN sak i.
   if (detalj) {
     return (
-      <div style={{ padding: "4px 0 24px" }}>
+      <div style={{ padding: `4px 0 ${NAV_HÖJD + 32}px` }}>
         <MattDetalj id={detalj} mätningar={mätningar} onStäng={() => setDetalj(null)} />
       </div>
     );
   }
   if (formulär) {
     return (
-      <div style={{ padding: "4px 0 24px" }}>
+      <div style={{ padding: `4px 0 ${NAV_HÖJD + 32}px` }}>
         <NyMatning
           mätningar={mätningar}
           befintlig={formulär.ts ? formulär : null}
@@ -258,7 +268,7 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
   }
 
   return (
-    <div style={{ padding: "4px 0 24px" }}>
+    <div style={{ padding: `4px 0 ${NAV_HÖJD + 32}px` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={hdr(19)}>Utveckling</div>
         {onClose && <button onClick={onClose} style={btnText} aria-label="Stäng">Stäng</button>}
@@ -267,12 +277,6 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
         Kroppen och styrkan över tid. Vikten ensam säger inte om du tappat fett
         eller muskel — det gör fettfri massa.
       </div>
-
-      {/* EN primär CTA per vy, enligt guiden. Det här är den. */}
-      <button onClick={() => setFormulär({})} data-ny-matning="1"
-        style={{ ...btnPrimary, marginTop: 14 }}>
-        + Ny mätning
-      </button>
 
       <div style={{ display: "flex", gap: 7, margin: "14px 0 12px", overflowX: "auto" }}>
         {FLIKAR.map(f => (
@@ -287,6 +291,17 @@ export function UtvecklingView({ mätningar = [], setMätningar, sessions = [], 
             }}>{f.namn}</button>
         ))}
       </div>
+
+      {flik === "pass" && passInnehåll}
+
+      {/* EN primär CTA per vy. Den hör till kroppsflikarna — i Pass-fliken
+          vore "Ny mätning" fel handling. */}
+      {(flik === "kropp" || flik === "matt") && (
+        <button onClick={() => setFormulär({})} data-ny-matning="1"
+          style={{ ...btnPrimary, marginBottom: 14 }}>
+          + Ny mätning
+        </button>
+      )}
 
       {flik === "matt" && (
         <MattFlik mätningar={mätningar} mätta={mätta} onValj={setDetalj}

@@ -123,9 +123,9 @@ describe("skrivbordsskalet", () => {
   });
 
   it("aktiv flik markeras med volt-ram — det ENDA state som får det", async () => {
-    const el = await rendera({ aktiv: "framsteg", onChange: () => {}, onMeny: () => {}, children: null });
+    const el = await rendera({ aktiv: "utveckling", onChange: () => {}, onMeny: () => {}, children: null });
     const knappar = [...el.querySelectorAll("button")];
-    const aktiv = knappar.find(b => /framsteg/i.test(b.textContent));
+    const aktiv = knappar.find(b => /utveckling/i.test(b.textContent));
     const passiv = knappar.find(b => /^hem$/i.test(b.textContent.trim()));
     expect(aktiv.getAttribute("aria-current")).toBe("page");
     // Volt #D4FF00 normaliseras till rgb av webbläsaren.

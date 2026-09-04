@@ -168,7 +168,7 @@ function ModeChoice({ onPick }) {
 
 /* ══════════ HEM ══════════ */
 
-function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta, mål, weights = [], onMål, sex = null }) {
+function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge, onAvfärda, onNudgeCta, mål, weights = [], mätningar = [], onMål, onVikt, sex = null }) {
   const now = Date.now();
   const { states } = useMemo(() => bodyState(sessions, now), [sessions.length]);
   // Readiness-siffran hämtas ur §13 (samma källa som coachen och progress-vyn),
@@ -185,6 +185,12 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
   const nw = activeProgram ? nextWorkout(activeProgram, sessions) : null;
   const vecka = weekSessions(sessions, now).length;
   const senast = lastSessionLabel(sessions, now);
+  const senasteVikt = (() => {
+    const m = (mätningar || []).filter(x => x && x.kg != null).sort((a, b) => b.ts - a.ts)[0];
+    if (m) return m.kg;
+    const w = (weights || []).filter(x => x && x.kg != null).sort((a, b) => b.ts - a.ts)[0];
+    return w ? w.kg : null;
+  })();
   const osäkert = rd != null && sessions.length < 3;
 
   const datum = new Date(now).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" });
@@ -261,7 +267,10 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
       {[["Readiness", orDash(rd), osäkert ? "osäkert underlag" : null,
           rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical, true],
         ["Veckans pass", sessions.length ? vecka : DASH, null, C.text, false],
-        ["Senast", senast || DASH, null, C.text, false]].map(([l, v, sub, col, tryckbar], i) => {
+        // VIKTEN EN TRYCKNING FRÅN HEM. Den är det mest loggade efter set, men
+        // låg fyra tryck bort: Framsteg → Utveckling → Kropp → Ny mätning.
+        // "Senast" fick lämna plats — passdatumet står ändå i passlistan.
+        ["Vikt", senasteVikt != null ? `${senasteVikt}` : DASH, senasteVikt != null ? "kg" : null, C.text, "vikt"]].map(([l, v, sub, col, tryckbar], i) => {
         const innehåll = (
           <>
             <div style={label()}>{l}</div>
@@ -273,6 +282,13 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
         // Readiness är det enda talet som går att fråga varför. De andra två är
         // räknade fakta utan uppdelning — en knapp där hade lovat något som
         // inte finns.
+        if (tryckbar === "vikt") return (
+          <button key={l} onClick={onVikt} data-hem-vikt="1" aria-label="Logga vikt"
+            style={{ ...stil, background: "none", cursor: "pointer", minHeight: 44, color: C.text }}>
+            {innehåll}
+            <div style={{ ...label(C.lime), marginTop: 3, fontSize: 8 }}>Logga</div>
+          </button>
+        );
         return tryckbar ? (
           <button key={l} onClick={() => onOpen("readiness")} aria-label="Varför den här readiness-siffran?"
             style={{ ...stil, background: "none", cursor: "pointer", minHeight: 44, color: C.text }}>
@@ -377,6 +393,8 @@ export function Atlas2() {
   const [mätningar, setMätningar] = useState([]);
   // Förvald grupp när övningsbanken öppnas från muskelgruppsvyn.
   const [bankGrupp, setBankGrupp] = useState(null);
+  // Vilken underflik Utveckling ska öppna på. Hem → vikt sätter "kropp".
+  const [utvecklingsflik, setUtvecklingsflik] = useState(null);
   const sättMätningar = f => setMätningar(xs => {
     const ny = typeof f === "function" ? f(xs) : f;
     save("matningar", ny);
@@ -1035,25 +1053,21 @@ export function Atlas2() {
             {[
               { id: "tomt", namn: "Tomt pass", data: "starta-tomt", gör: startaTomtPass,
                 ikon: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M12 9v6M9 12h6" /></> },
-              { id: "grupper", namn: "Muskelgrupper", data: "muskelgrupper", gör: () => setSheet("muskelgrupper"),
+              // ÖVNINGSBANKEN HADE TRE INGÅNGAR: den här knappen, Muskelgrupper,
+              // och "+" i passvyn. De två första var samma sak med olika första
+              // steg. Nu är muskelgruppsvyn DEN ingången — med "Alla" som första
+              // kort för den som inte vill välja grupp.
+              { id: "grupper", namn: "Övningar", data: "muskelgrupper", gör: () => setSheet("muskelgrupper"),
                 ikon: <><circle cx="12" cy="5" r="2" /><path d="M8 9h8l1 5-2 1v6h-2v-5h-2v5H9v-6l-2-1z" /></> },
-              { id: "ovningar", namn: "Övningar", data: "ovningar", gör: () => { setBankGrupp(null); setSheet("ovningar"); },
-                ikon: <><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12" /></> },
-              { id: "maskiner", namn: "Maskiner", data: "maskiner", gör: () => setSheet("maskiner"),
-                ikon: <><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></> },
-              { id: "kunskap", namn: "Kunskap", data: "kunskap", gör: () => setSheet("kunskap"),
-                ikon: <><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4zM20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z" /></> },
+
+
               // SPORT. Låg förut under en rubrik "Tränat något annat?" som såg ut
               // som text, inte som ett val — Robert trodde den var oklickbar.
               // In i rutnätet som sjätte knapp: sex rutor på två rader är
               // dessutom jämnare än fem.
               { id: "sport", namn: "Sport", data: "sport", gör: () => setSheet("sport"),
                 ikon: <><path d="M13 4l2 3 3 1-1 3 2 4-3 1-1 4-3-2-4 1v-3l-3-2 2-3-1-3 3-1z" /><circle cx="12" cy="12" r="2" /></> },
-              // FEEDBACK. Testare rapporterar det de kan rapportera på tio
-              // sekunder; ligger knappen bakom två menyval blir den aldrig
-              // använd. Här står den bland de andra ingångarna.
-              { id: "feedback", namn: "Feedback", data: "feedback", gör: () => setSheet("feedback"),
-                ikon: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></> },
+
             ].map(k => (
               <button key={k.id} onClick={k.gör} data-ikon={k.data}
                 {...(k.data === "starta-tomt" ? { "data-starta-tomt": "1" } : {})}
@@ -1080,7 +1094,8 @@ export function Atlas2() {
       <Home sessions={sessions} activeProgram={activeProgram}
         onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec}
         nudge={nudge} onAvfärda={avfärda} onNudgeCta={() => setFlik("mat")}
-        mål={mål} weights={weights} onMål={öppnaMål} sex={sex} />
+        mål={mål} weights={weights} mätningar={mätningar} onMål={öppnaMål} sex={sex}
+        onVikt={() => { setUtvecklingsflik("kropp"); setFlik("utveckling"); }} />
     );
     if (flik === "coachen") return (
       <CoachView autoIntervju={autoIntervju} onAutoIntervjuKvitterad={() => setAutoIntervju(false)}
@@ -1089,15 +1104,21 @@ export function Atlas2() {
         profile={profilN} foodLog={foodLog} goal={mål} nutritionTargets={nutritionTargets}
         onStart={startaPass} onOpenGoal={() => setSheet("mal")} setMål={setMål} />
     );
-    if (flik === "framsteg") return (
-      // Ett nyckeltal öppnar sin egen detaljvy; knappen längst ned öppnar
-      // Utveckling utan valt mått. Id:t åker med i arknamnet så vyn kan hydrera
-      // rätt skärm direkt i stället för att användaren får leta rätt på måttet.
-      <ProgressView sessions={sessions} weights={weights} mätningar={mätningar}
-        activeProgram={activeProgram} nutRec={nutRec}
-        onOpenUtveckling={id => setSheet(id ? "utveckling:" + id : "utveckling")}
-        onOpenSession={id => setSheet("pass:" + id)}
-        onOpenFordelning={() => setSheet("fordelning")} />
+    if (flik === "utveckling") return (
+      // FRAMSTEG OCH UTVECKLING ÄR NU EN FLIK. Båda svarade på "hur går det?"
+      // — den ena visade pass och volym, den andra kropp och styrka. Att den
+      // ena var flik och den andra undervy var historia, inte logik.
+      // ProgressView lever kvar som innehåll i underfliken Pass.
+      <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar}
+        sessions={sessions} profile={profilN}
+        startFlik={utvecklingsflik}
+        passInnehåll={
+          <ProgressView sessions={sessions} weights={weights} mätningar={mätningar}
+            activeProgram={activeProgram} nutRec={nutRec}
+            onOpenUtveckling={id => { if (id) setSheet("utveckling:" + id); }}
+            onOpenSession={id => setSheet("pass:" + id)}
+            onOpenFordelning={() => setSheet("fordelning")} />
+        } />
     );
     return (
       <FoodView foodLog={foodLog} setFoodLog={setFoodLog}
@@ -1245,7 +1266,7 @@ export function Atlas2() {
             ) : sheet === "fordelning" ? (
               <MuscleSplit sessions={sessions} onClose={() => setSheet(null)} />
             ) : sheet === "import" ? (
-              <ImportSheet profile={profile} onOpenProfil={() => setSheet("profil")} sessions={sessions} setSessions={setSessions}
+              <ImportSheet profile={profile} onOpenProfil={() => setSheet("profil")} onOpen={setSheet} sessions={sessions} setSessions={setSessions}
                 setWeights={setWeights} setFoodLog={setFoodLog}
                 onClose={() => setSheet(null)} />
             ) : sheet === "program" ? (

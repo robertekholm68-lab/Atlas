@@ -553,11 +553,11 @@ describe("Askr 2.0 — OS-bakåtknappen (beslutet)", () => {
     expect(backAction({ sheet: "import", flik: "hem" })).toBe("stäng-ark");
     // Även när man står på en annan flik vinner arket — det stängs först.
     expect(backAction({ sheet: "mal", flik: "coachen" })).toBe("stäng-ark");
-    expect(backAction({ sheet: "muskel:pectoralis_major", flik: "framsteg" })).toBe("stäng-ark");
+    expect(backAction({ sheet: "muskel:pectoralis_major", flik: "utveckling" })).toBe("stäng-ark");
   });
 
   it("annan flik än hem utan ark: bakåt går till hem", () => {
-    for (const flik of ["coachen", "framsteg", "mat", "pass"]) {
+    for (const flik of ["coachen", "utveckling", "mat", "pass"]) {
       expect(harBakåtmål({ sheet: null, flik })).toBe(true);
       expect(backAction({ sheet: null, flik })).toBe("till-hem");
     }
@@ -674,8 +674,8 @@ describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
 
   it("bakåt från en annan flik går till hem", async () => {
     const el = await mount();
-    await klick(el, b => /^framsteg$/i.test(b.textContent.trim()));
-    expect(harMeny(el)).toBe(false);   // framsteg-fliken har ingen meny-knapp
+    await klick(el, b => /^utveckling$/i.test(b.textContent.trim()));
+    expect(harMeny(el)).toBe(false);   // utvecklings-fliken har ingen meny-knapp
     await pop();
     expect(harMeny(el)).toBe(true);    // åter på hem
   });
@@ -685,7 +685,7 @@ describe("Askr 2.0 — OS-bakåtknappen (kopplad till historiken)", () => {
     // Efter mount ligger EN vaktpost i historiken. Fler flikbyten får inte lägga
     // fler poster — annars måste bakåt tryckas en gång per byte för att komma ut.
     const längd = window.history.length;
-    for (const namn of ["framsteg", "coachen", "hem", "framsteg", "hem"]) {
+    for (const namn of ["utveckling", "coachen", "hem", "utveckling", "hem"]) {
       await klick(el, b => new RegExp(`^${namn}$`, "i").test(b.textContent.trim()));
     }
     expect(window.history.length).toBe(längd);

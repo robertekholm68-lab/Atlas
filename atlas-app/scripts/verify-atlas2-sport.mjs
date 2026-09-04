@@ -172,7 +172,7 @@ await kolla(`distansen rörde inte belastningen (${lastFöre} kvar)`,
 // och "45 min". En grön rad som pekar på fel vy är värre än ingen rad alls.
 await klickText("Tillbaka till hem");
 await page.waitForTimeout(400);
-await klickText("Framsteg");
+await klickText("Utveckling");
 await page.waitForTimeout(500);
 await kolla("framstegsvyn är verkligen framme (inte kvittot kvar)", page.evaluate(() =>
   !/passet är loggat/i.test(document.body.innerText || "")));
@@ -201,7 +201,7 @@ await kolla("kartan talar om sportpasset i klartext", page.evaluate(() =>
   !/ingen historik än/i.test(document.body.innerText || "")));
 
 // ── RADERING via SessionSheet ──
-await klickText("Framsteg");
+await klickText("Utveckling");
 await page.waitForTimeout(400);
 await klickText("Löpning");
 await page.waitForTimeout(400);

@@ -20,7 +20,7 @@ const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric"
 const byggeLäsbart = () =>
   formatBuildTime(typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "");
 
-export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, profile, onOpenProfil, onClose }) {
+export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, profile, onOpenProfil, onOpen, onClose }) {
   const [steg, setSteg] = useState("scan");
   const [plan, setPlan] = useState(null);
   const [taMed, setTaMed] = useState([]);
@@ -96,6 +96,25 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, pro
             <ProfilLucka profile={profile} onOpen={onOpenProfil} />
             <button onClick={onOpenProfil} style={{ ...btnGhost, marginTop: 8 }}>
               Kön, ålder, längd, kost och skador
+            </button>
+          </>
+        )}
+
+        {/* ── UPPSLAGSVERK OCH KONTAKT ──
+            Kunskap, Maskiner och Feedback låg i passflikens rutnät, för att
+            det fanns plats — inte för att de hör till pass. Nu blev passfliken
+            pass igen, och de hamnar här bland de andra sakerna man gör sällan. */}
+        {onOpen && (
+          <>
+            <div style={{ ...label(), margin: "22px 0 8px" }}>Mer</div>
+            <button onClick={() => onOpen("kunskap")} data-mer="kunskap" style={btnGhost}>
+              Kunskap — träningsprinciper och muskelfakta
+            </button>
+            <button onClick={() => onOpen("maskiner")} data-mer="maskiner" style={{ ...btnGhost, marginTop: 8 }}>
+              Maskiner — inställningar och vanliga fel
+            </button>
+            <button onClick={() => onOpen("feedback")} data-mer="feedback" style={{ ...btnGhost, marginTop: 8 }}>
+              Skicka feedback
             </button>
           </>
         )}

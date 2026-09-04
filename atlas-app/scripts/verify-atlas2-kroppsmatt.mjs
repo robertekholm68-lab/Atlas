@@ -54,14 +54,15 @@ await klickText("Riktig profil"); await page.waitForTimeout(900);
 
 // ── Framsteg → Utveckling ────────────────────────────────────────────────────
 await page.evaluate(() => {
-  const b = [...document.querySelectorAll("button")].find(x => /framsteg/i.test(x.innerText || ""));
+  const b = [...document.querySelectorAll("button")].find(x => /^utveckling$/i.test(x.innerText || ""));
   if (b) b.click();
 });
 await page.waitForTimeout(500);
 await kolla("framsteg: inga nyckeltal utan mätningar",
   (await page.locator("[data-nyckeltal]").count()) === 0);
 
-await page.locator("[data-utveckling]").first().click();
+// Utveckling är nu en flik som öppnar på Pass. Kroppsflikarna bär CTA:n.
+await page.locator('[data-flik="kropp"]').first().click();
 await page.waitForTimeout(500);
 await kolla("utveckling öppnas med CTA för ny mätning",
   (await page.locator("[data-ny-matning]").count()) === 1);
@@ -87,7 +88,7 @@ await page.locator('[data-grupp="armar"]').click();
 await page.waitForTimeout(200);
 await page.fill('[data-matt="biceps_hoger"]', "36");
 await page.fill('[data-matt="biceps_vanster"]', "35,5");
-await page.locator('[data-spara="1"]').click();
+await page.locator('[data-spara="1"]').scrollIntoViewIfNeeded(); await page.locator('[data-spara="1"]').click();
 await page.waitForTimeout(500);
 
 await kolla("mätningen sparades och formuläret stängdes",
@@ -135,14 +136,14 @@ await page.evaluate(() => {
 await page.reload();
 await page.waitForTimeout(900);
 await page.evaluate(() => {
-  const b = [...document.querySelectorAll("button")].find(x => /framsteg/i.test(x.innerText || ""));
+  const b = [...document.querySelectorAll("button")].find(x => /^utveckling$/i.test(x.innerText || ""));
   if (b) b.click();
 });
 await page.waitForTimeout(500);
 await kolla("framsteg visar nyckeltal efter en mätning",
   (await page.locator("[data-nyckeltal]").count()) >= 2);
 
-await page.locator("[data-utveckling]").first().click();
+await page.locator('[data-flik="kropp"]').first().click();
 await page.waitForTimeout(400);
 await page.locator("[data-ny-matning]").click();
 await page.waitForTimeout(300);
@@ -150,7 +151,7 @@ await page.fill('[data-matt="kg"]', "81,2");
 await page.locator('[data-grupp="overkropp"]').click();
 await page.waitForTimeout(200);
 await page.fill('[data-matt="midja"]', "90");
-await page.locator('[data-spara="1"]').click();
+await page.locator('[data-spara="1"]').scrollIntoViewIfNeeded(); await page.locator('[data-spara="1"]').click();
 await page.waitForTimeout(500);
 
 await page.locator('[data-flik="matt"]').click();
@@ -158,7 +159,8 @@ await page.waitForTimeout(300);
 await page.locator('[data-matt-rad="midja"]').click();
 await page.waitForTimeout(300);
 await kolla("förändring sedan start visas med rätt tecken och enhet",
-  await page.evaluate(() => /−1,5 cm/.test(document.body.innerText)));
+  // Skiftlägesokänsligt: enheten renderas i versaler av label()-stilen.
+  await page.evaluate(() => /−1,5 cm/i.test(document.body.innerText)));
 await kolla("kurvan ritas vid två punkter", await page.evaluate(() =>
   document.querySelectorAll("[data-detalj] svg polyline").length === 1
   && document.querySelectorAll("[data-detalj] svg circle").length === 2));
@@ -182,7 +184,7 @@ await page.waitForTimeout(300);
 await kolla("redigering fyller formuläret med postens värden",
   await page.evaluate(() => document.querySelector('[data-matt="kg"]').value === "81,2"));
 await page.fill('[data-matt="kg"]', "81,8");
-await page.locator('[data-spara="1"]').click();
+await page.locator('[data-spara="1"]').scrollIntoViewIfNeeded(); await page.locator('[data-spara="1"]').click();
 await page.waitForTimeout(400);
 const efterÄndring = await page.evaluate(() => JSON.parse(localStorage.getItem("atlas.v3.matningar")));
 await kolla("ändringen sparades utan att skapa en ny post",
