@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { C, hdr, label, btnText, btnPrimary, card, volt } from "./design.js";
-import { EXERCISES } from "../data/exercises.js";
+import { EXERCISES, TEKNIK_CUES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
 
 /** Övningsbankens grupper på svenska. Samma nio som muskelgruppsvyn. */
@@ -252,6 +252,22 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
                   <img src={bildFör(e.id)} alt={`${e.name} — startposition till vänster, slutposition till höger`}
                     loading="lazy"
                     style={{ width: "100%", borderRadius: 10, display: "block", marginBottom: 13 }} />
+                )}
+                {/* UTFÖRANDET. Teknikpunkterna fanns skrivna i datan för 47
+                    övningar (CUES i exercises.js) men visades ingenstans —
+                    exporterade, aldrig importerade i banken. Namnet krockade
+                    dessutom med vilosignalernas CUES, därför TEKNIK_CUES här. */}
+                {TEKNIK_CUES[e.id] && (
+                  <>
+                    <div style={{ ...label(), marginBottom: 8 }}>Utförande</div>
+                    <ol style={{ margin: "0 0 16px", padding: "0 0 0 18px" }}>
+                      {TEKNIK_CUES[e.id].map((rad, i) => (
+                        <li key={i} style={{ fontSize: 12.5, color: C.text2, lineHeight: 1.55, marginBottom: 6 }}>
+                          {rad}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
                 )}
                 <div style={{ ...label(), marginBottom: 8 }}>Belastar</div>
                 {akt.map(a => (
