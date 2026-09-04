@@ -40,9 +40,13 @@ describe("registret och mappen är i takt", () => {
 
 describe("saknad bild är ett giltigt tillstånd", () => {
   it("bildFör returnerar null för en övning utan bild", () => {
-    // Inte en platshållare. 157 av 160 saknar bild, och en trasig-bild-ikon
-    // gånger 157 vore värre än ingenting.
-    expect(bildFör("bench_press")).toBe(null);
+    // Inte en platshållare. De flesta övningar saknar fortfarande bild, och en
+    // trasig-bild-ikon gånger 150 vore värre än ingenting.
+    //
+    // Exemplet var bench_press tills den fick ett foto. En övning som väljs
+    // för att den SAKNAR något måste bytas när den får det — annars testar
+    // fallet inget.
+    expect(bildFör("skullcrusher")).toBe(null);
   });
 
   it("bildFör returnerar en sökväg för en övning med bild", () => {
