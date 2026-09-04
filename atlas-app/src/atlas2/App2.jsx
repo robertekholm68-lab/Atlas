@@ -21,6 +21,7 @@ import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { ExerciseBank } from "./ExerciseBank.jsx";
 import { MuskelgruppsVy } from "./MuskelgruppsVy.jsx";
+import { FeedbackSheet } from "./FeedbackSheet.jsx";
 import { MachineGuide } from "./MachineGuide.jsx";
 import { KnowledgeView } from "./KnowledgeView.jsx";
 import { MuscleSplit } from "./MuscleSplit.jsx";
@@ -709,7 +710,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "muskelgrupper" ? "Muskelgrupper" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
+    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "muskelgrupper" ? "Muskelgrupper" : s === "feedback" ? "Feedback" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -1048,6 +1049,11 @@ export function Atlas2() {
               // dessutom jämnare än fem.
               { id: "sport", namn: "Sport", data: "sport", gör: () => setSheet("sport"),
                 ikon: <><path d="M13 4l2 3 3 1-1 3 2 4-3 1-1 4-3-2-4 1v-3l-3-2 2-3-1-3 3-1z" /><circle cx="12" cy="12" r="2" /></> },
+              // FEEDBACK. Testare rapporterar det de kan rapportera på tio
+              // sekunder; ligger knappen bakom två menyval blir den aldrig
+              // använd. Här står den bland de andra ingångarna.
+              { id: "feedback", namn: "Feedback", data: "feedback", gör: () => setSheet("feedback"),
+                ikon: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9h8M8 12h5" /></> },
             ].map(k => (
               <button key={k.id} onClick={k.gör} data-ikon={k.data}
                 {...(k.data === "starta-tomt" ? { "data-starta-tomt": "1" } : {})}
@@ -1222,6 +1228,8 @@ export function Atlas2() {
               <ExerciseBank onClose={() => setSheet(null)} startGrupp={bankGrupp}
                 onStarta={live ? läggTillÖvningIPass : startaFrittPass}
                 iPågåendePass={!!live} />
+            ) : sheet === "feedback" ? (
+              <FeedbackSheet profile={profile} läge={mode} onClose={() => setSheet(null)} />
             ) : sheet === "muskelgrupper" ? (
               <MuskelgruppsVy muscleStates={bodyState(sessions, Date.now()).states}
                 onVälj={g => { setBankGrupp(g); setSheet("ovningar"); }}
