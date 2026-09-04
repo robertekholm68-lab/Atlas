@@ -54,7 +54,7 @@ const EXERCISES = [
   { id: "cable_curl", name: "Cable Curl", group: "Biceps", equipment: "Cable", pattern: "Curl", loadMode: "external", activation: [{ muscleId: "biceps_brachii", factor: 1 }, { muscleId: "forearms", factor: 0.3 }] },
   { id: "reverse_curl", name: "Reverse Barbell Curl", group: "Biceps", equipment: "Barbell", pattern: "Curl", loadMode: "external", activation: [{ muscleId: "forearms", factor: 0.7 }, { muscleId: "biceps_brachii", factor: 0.6 }] },
   { id: "wrist_curl", name: "Seated Wrist Curl", group: "Biceps", equipment: "Barbell", pattern: "Curl", loadMode: "external", activation: [{ muscleId: "forearms", factor: 1 }] },
-  { id: "triceps_pushdown", name: "Triceps Pressdown", group: "Triceps", equipment: "Cable", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
+  { id: "triceps_pushdown", name: "Triceps Pressdown", group: "Triceps", equipment: "Cable", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }, { muscleId: "deltoid_anterior", factor: 0.3 }, { muscleId: "forearms", factor: 0.3 }] },
   { id: "rope_pushdown", name: "Rope Pushdown", group: "Triceps", equipment: "Cable", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
   { id: "skullcrusher", name: "Lying Triceps Extension", group: "Triceps", equipment: "EZ Bar", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
   { id: "overhead_ext", name: "Overhead Triceps Extension", group: "Triceps", equipment: "Dumbbell", pattern: "Extension", loadMode: "external", activation: [{ muscleId: "triceps_brachii", factor: 1 }] },
