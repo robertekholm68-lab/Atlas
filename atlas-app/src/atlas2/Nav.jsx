@@ -21,7 +21,7 @@ export function NavIcon({ name, size = 24, color = C.muted }) {
   if (name === "mat") return (
     <svg {...v}><path d="M12 8 q-4 -3 -6 1 q-2 5 2 10 q3 3 4 0 q1 3 4 0 q4 -5 2 -10 q-2 -4 -6 -1 Z" {...p} /><path d="M12 8 V5 q0 -2 2 -2.5" {...p} /></svg>
   );
-  if (name === "framsteg") return (
+  if (name === "utveckling") return (
     <svg {...v}><rect x="3" y="14" width="4.5" height="7" rx="1" {...p} /><rect x="9.8" y="9" width="4.5" height="12" rx="1" {...p} /><rect x="16.5" y="4" width="4.5" height="17" rx="1" {...p} /></svg>
   );
   return (                          // coachen: person, inte pratbubbla — det är någon
@@ -33,7 +33,7 @@ export function NavIcon({ name, size = 24, color = C.muted }) {
 // flikar — annars är det bara en tidsfråga innan den ena får en flik den andra
 // saknar, precis som paletten en gång låg på fyra ställen.
 export const FLIKAR = [
-  ["hem", "Hem"], ["pass", "Pass"], ["mat", "Mat"], ["framsteg", "Framsteg"], ["coachen", "Coachen"],
+  ["hem", "Hem"], ["pass", "Pass"], ["mat", "Mat"], ["utveckling", "Utveckling"], ["coachen", "Coachen"],
 ];
 
 export function BottomNav({ aktiv, onChange }) {

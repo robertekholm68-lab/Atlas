@@ -134,7 +134,7 @@ steg.push(`${medSvar && medSvar.id !== "hist_1" ? "OK " : "FEL"} svaret hamnade 
 
 // ── Framsteg: passlistan är vägen in ─────────────────────────────────────────
 await klick("Tillbaka till hem"); await page.waitForTimeout(400);
-await klick("Framsteg"); await page.waitForTimeout(500);
+await klick("Utveckling"); await page.waitForTimeout(500);
 await kolla("framstegsvyn listar loggade pass", finns("Loggade pass"));
 
 const antalFöre = (await pass()).length;
@@ -166,7 +166,7 @@ const kvarEfterReload = (await pass()).some(s => (s.sets || []).some(x => x.weig
 steg.push(`${kvarEfterReload ? "OK " : "FEL"} rättningen överlever omladdning`);
 
 // ── Radering: två steg, sedan borta ──────────────────────────────────────────
-await klick("Framsteg"); await page.waitForTimeout(500);
+await klick("Utveckling"); await page.waitForTimeout(500);
 await page.evaluate(() => {
   const b = [...document.querySelectorAll("button")].filter(x => /\d+ set/.test(x.innerText || ""));
   b[0].click();

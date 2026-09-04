@@ -99,10 +99,12 @@ describe("ingången leder till rätt lista", () => {
     expect(src).toMatch(/useState\(startGrupp\)/);
   });
 
-  it("App2 nollställer gruppen när banken öppnas på vanligt sätt", () => {
-    // Annars skulle "Bläddra bland alla övningar" ärva senaste gruppvalet.
-    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
-    expect(src).toMatch(/setBankGrupp\(null\); setSheet\("ovningar"\)/);
+  it("Alla-kortet öppnar banken utan grupp", () => {
+    // Muskelgruppsvyn är nu enda ingången. "Alla" är första kortet, för den
+    // som bara vill söka — onVälj(null) ger banken utan filter.
+    const src = readFileSync(resolve("src/atlas2/MuskelgruppsVy.jsx"), "utf8");
+    expect(src).toMatch(/onVälj\(null\)/);
+    expect(src).toMatch(/data-grupp="alla"/);
   });
 });
 

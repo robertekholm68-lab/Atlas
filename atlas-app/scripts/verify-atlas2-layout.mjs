@@ -123,7 +123,7 @@ for (const [etikett, bredd, höjd] of [["SE", 375, 667], ["14", 390, 844], ["des
   steg.push(`${skal.pos === väntat ? "OK " : "FEL"} ${etikett.padEnd(7)} skal      ${skal.pos === "sticky" ? "sidopanel" : "bottennav"}`);
 
   await mät("hem");
-  for (const [f, n] of [["Mat", "mat"], ["Framsteg", "framsteg"], ["Coachen", "coachen"]]) { await klick(f); await mät(n); }
+  for (const [f, n] of [["Mat", "mat"], ["Utveckling", "utveckling"], ["Coachen", "coachen"]]) { await klick(f); await mät(n); }
 
   await klick("Hem"); await page.waitForTimeout(300);
   await klick("Starta"); await page.waitForTimeout(700);

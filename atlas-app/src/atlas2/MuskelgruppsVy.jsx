@@ -94,7 +94,7 @@ export function MuskelgruppsVy({ muscleStates = {}, regionState = regionStateDef
         )}
       </div>
       <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.55 }}>
-        Tryck på en grupp för att se dess övningar.
+        Tryck på en grupp för att se dess övningar, eller Alla för hela banken.
       </div>
 
       <div style={{
@@ -104,6 +104,24 @@ export function MuskelgruppsVy({ muscleStates = {}, regionState = regionStateDef
         // formen läses.
         display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginTop: 16,
       }}>
+        {/* "ALLA" FÖRST. Muskelgruppsvyn är nu enda ingången till banken, så
+            den som bara vill söka behöver en väg som inte kräver ett gruppval.
+            Kortet visar båda figurerna utan markering. */}
+        <button onClick={() => onVälj && onVälj(null)} data-grupp="alla"
+          aria-label={`Alla, ${EXERCISES.length} övningar`}
+          style={{
+            ...card, padding: "10px 6px 9px", cursor: "pointer", textAlign: "center",
+            border: `1px solid ${C.lime}`, background: C.card, minHeight: 44,
+          }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 4, height: 150 }}>
+            <Figur vy="front" regionIds={[]} höjd={150} />
+            <Figur vy="back" regionIds={[]} höjd={150} />
+          </div>
+          <div style={{ ...label(), color: C.lime, marginTop: 9, fontSize: 12 }}>Alla</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted, marginTop: 3 }}>
+            {EXERCISES.length} övningar
+          </div>
+        </button>
         {GRUPPER.map(g => {
           const vyer = Object.keys(g.regioner);
           return (
