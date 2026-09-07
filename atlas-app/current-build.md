@@ -169,15 +169,29 @@ dashboard, body-map, training, programs, nutrition, recipes, goals, ai-coach,
 progress, calendar, profile, machines, chamber, onboarding, settings.
 
 ### `src/atlas2/` — Askr 2.0
-`design.js` (alla visuella beslut på ett ställe), `store.js` (async v3-lagring +
-härledda tillstånd + `sessionVolume` + synk-form), `import.js` (historikimport),
-`BodyMap2.jsx`, `Nav.jsx`, `WorkoutView.jsx`, `FoodView.jsx`, `CoachView.jsx`,
-`CoachChat.jsx`, `ProgressView.jsx`, `ProgramSheet.jsx`, `ImportSheet.jsx`,
-`MuscleSheet.jsx`, `GoalSheet.jsx`, `NutritionSheet.jsx`, `SessionSheet.jsx`,
-`ReadinessSheet.jsx`, `RescueView.jsx`, `MealPrepView.jsx`, `SportView.jsx`,
-`SupplementsPanel.jsx`, `Shell.jsx` (skrivbordsskal), `layout.js` (brytpunkt,
-dvh, navhöjd), `foodlog.js`, `backup2.js`, `backnav.js` (OS-bakåtbeslut, rent),
-`App2.jsx`, `main2.jsx`, `body_regions.json`.
+Listan är avläst ur katalogen 2026-09-07, inte skriven ur minnet — den föregående
+saknade femton filer.
+
+*Grund:* `App2.jsx`, `main2.jsx`, `design.js` (alla visuella beslut på ett
+ställe), `store.js` (async v3-lagring + härledda tillstånd + `sessionVolume` +
+synk-form), `layout.js` (brytpunkt, dvh, navhöjd), `Nav.jsx`, `Shell.jsx`
+(skrivbordsskal), `backnav.js` (OS-bakåtbeslut, rent), `backup2.js`,
+`import.js` (historikimport), `body_regions.json`, `body_regions_female.json`.
+
+*Kropp och träning:* `BodyMap2.jsx`, `MuskelgruppsVy.jsx`, `MuscleSheet.jsx`,
+`MuscleSplit.jsx`, `muscleIcon.jsx`, `WorkoutView.jsx`, `SessionSheet.jsx`,
+`ProgramSheet.jsx`, `CustomProgram.jsx`, `ExerciseBank.jsx`, `MachineGuide.jsx`,
+`SkannaMaskin.jsx`, `SportView.jsx`, `ReadinessSheet.jsx`.
+
+*Mat:* `FoodView.jsx`, `foodlog.js`, `NutritionSheet.jsx`, `MealPrepView.jsx`,
+`RescueView.jsx`, `CustomRecipe.jsx`, `FotoMaltid.jsx`, `Streckkod.jsx`,
+`SupplementsPanel.jsx`, `sokord.js`.
+
+*Utveckling och profil:* `UtvecklingView.jsx` (fem underflikar), `Kroppsmatt.jsx`,
+`ProgressView.jsx`, `GoalSheet.jsx`, `ProfileSheet.jsx`, `FeedbackSheet.jsx`,
+`KnowledgeView.jsx`, `ImportSheet.jsx`.
+
+*Coach:* `CoachView.jsx`, `CoachChat.jsx`.
 `facts.js` och `journey.js` är numera bara återexport — de riktiga filerna
 ligger i `engines/`.
 
@@ -1233,6 +1247,24 @@ vet.
   midja avvisades tyst. Nu räcker ett värde; bara den helt tomma posten avvisas.
   Det befintliga testet "utan vikt finns ingen mätning" låste fast den gamla
   regeln och skrevs om — regeln ändrades med avsikt, testet följde efter.
+- **En komponent definierad inuti en annan komponent rivs vid varje render.**
+  `Falt` låg inuti `NyMatning`. React jämför komponenttyper med IDENTITET, och en
+  funktion skapad på nytt vid varje tangenttryck är en ny typ — fältet revs och
+  byggdes om, fokus försvann, och på mobil åkte tangentbordet ner. Symptomet såg
+  ut som ett tangentbordsfel; orsaken var var funktionen bodde.
+- **En övning vald för att den SAKNAR något måste bytas när den får det.**
+  Testfallet "bildFör returnerar null" använde bench_press som exempel på övning
+  utan bild. När bench_press fick en bild testade fallet ingenting — det var
+  fortfarande grönt. Exempel som bygger på en frånvaro har ett utgångsdatum.
+- **En commit-text beskriver ett ögonblick, inte nuläget.** #156 lade till två
+  sekundärmuskler på triceps pressdown och #157 tog bort dem igen. Den som läser
+  #156 i tron att den beskriver koden i dag får fel svar. Koden vinner — det är
+  därför siffror ska räknas fram, inte läsas ur historik.
+- **En flik ligger UNDER navigationen, ett ark ovanpå.** När Utveckling gjordes
+  om från ark till flik hamnade "Spara mätning" bakom bottenmenyn. Playwright
+  rapporterade att nav-svg:n fångade klicket — en användare hade inte kunnat
+  trycka heller. Byter man behållartyp ändras z-ordningen, och bottenmarginalen
+  måste räkna med `NAV_HÖJD`.
 - **Ett eget skydd för sin egen funktion prövar sällan det som går sönder.**
   `verify-atlas2-matlogg.mjs` kontrollerade dagsväljaren på 390 px och letade
   efter SIDSCROLL. Det som brast var HÖJDEN på 375 px: den nya raden kostade
@@ -1257,6 +1289,120 @@ vet.
   två tal som inte går ihop är det talen som ska ifrågasättas, inte koden som ska
   fås att visa båda.
 
+
+## Navigationen, övningsbanken och muskelgrupperna (#147–#161)
+
+Femton PR:er från molnsessionen 2026-09-07. Allt nedan är kontrollerat mot
+koden, inte mot commit-texterna.
+
+### Navigationen (#161)
+
+**Framsteg och Utveckling blev EN flik**, döpt Utveckling, med fem underflikar
+i `UtvecklingView.jsx`: Pass · Kropp · Mått · Styrka · Historik. Båda svarade på
+"hur går det?" — den ena visade pass och volym, den andra kropp och styrka. Att
+den ena var flik och den andra undervy var historia, inte logik.
+
+**Passfliken har tre knappar** i rutnätet: Tomt pass · Övningar · Sport.
+Kunskap, Maskiner och Feedback flyttade till Mer-menyn på Hem, där Om dig,
+Datasäkerhet och Version redan låg. De låg i passflikens rutnät för att det
+fanns plats, inte för att de hör till pass.
+
+**Muskelgruppsvyn är enda ingången till banken**, med "Alla · 160 övningar" som
+första kort. Övningsbanken hade tre ingångar; två av dem var samma lista med
+olika första steg.
+
+**Vikten är ett tryck från Hem** i stället för fyra (Framsteg → Utveckling →
+Kropp → Ny mätning).
+
+Ett UI-fel som bara mätning hittade: när Utveckling blev flik i stället för ark
+hamnade "Spara mätning" BAKOM bottenmenyn. Ett ark ligger ovanpå navigationen,
+en flik under. Bottenmarginalen räknar nu med `NAV_HÖJD`.
+
+### Muskelgruppsvyn (#150, #154, #159)
+
+`MuskelgruppsVy.jsx` — nio kort, ett per grupp i övningsbanken, figuren med
+gruppen markerad. Gruppernas storlek, räknad ur `EXERCISES`: Legs 38, Back 27,
+Shoulders 22, Core 19, Chest 18, Triceps 12, Biceps 11, Glutes 9, Calves 4.
+Summa 160.
+
+**Färgen symboliserar gruppen, inte dagsläget** (`C.critical` vid 0,92). Vyn
+färgades först ur användarens återhämtning, som kroppskartan — men det här är en
+INNEHÅLLSFÖRTECKNING. Med dagsläget blev otränade grupper ofärgade och därmed
+osynliga som val, och färgen skiftade från dag till dag utan att gruppen ändrats.
+Rött krockar inte med kartans skala just därför: kartan svarar på hur kroppen
+mår idag, den här vyn på var muskeln sitter.
+
+**Filtret matchade fel taxonomi.** Banken filtrerade på `MUSCLES[...].group`
+(gemener, biceps/triceps hopslagna till "arms") medan muskelgruppsvyn skickade
+bankens id ("Back"). Noll träffar — och en tom filtrering visar allt, så felet
+såg ut som "alla övningar kommer upp oavsett val". Nu en taxonomi: `e.group`.
+
+### Övningsbanken (#155, #157, #158)
+
+**Teknikpunkterna fanns redan skrivna för 48 övningar** men visades ingenstans —
+exporterade, aldrig importerade i banken. Namnet krockade med vilosignalernas
+`CUES` i `engines/cues.js`, därför heter de nu `TEKNIK_CUES`.
+
+**Åtta övningar har bild** (`MED_BILD`), alla i `public/ovningar/<id>.webp` och
+alltså utanför appbundeln: fem fotorealistiska (triceps_pushdown, squat,
+deadlift, bench_press, wide_pulldown) och tre äldre silverfigurer i diptyk
+(seated_cable_row, t_bar_row, db_row). De två stilarna bör ensas.
+
+**Teknikpunkterna ligger ÖVER bilden som riktig text**, inte inbränd. Bilderna
+har 43–54 % mörkt fält under motivet; beskärningen behåller 275 px där appen
+ritar punkterna med CSS. Inbränd text hade sett likadan ut men blivit omöjlig att
+söka, översätta eller rätta — och osynlig för skärmläsare.
+
+**Triceps pressdown har EN muskel, med flit.** #156 lade till deltoid_anterior
+0,3 och forearms 0,3; #157 tog bort dem igen efter att källorna visat att
+pushdown är en renodlad isolationsövning. Koden i dag: `triceps_brachii` 1,0 och
+inget mer. Den som läser #156:s commit-text i tron att den beskriver nuläget får
+fel svar — datan driver kroppskartan och readiness, och en påhittad
+sekundärmuskel hade färgat en axel som inte tränats.
+
+### Programmen och passen (#148, #149, #151, #152, #153)
+
+**Ändrade övningar sparas tillbaka till programmet.** Frågan ställs på KVITTOT,
+inte under passet: när passet är klart ser man vad man faktiskt körde och kan
+avgöra om bytet var engångs (maskinen upptagen) eller ett nytt upplägg. Fyra nya
+funktioner i `engines/programs.js`: `passetÄndrat`, `sparaPassTillProgram`,
+`ärInbyggt`, `kopieraSomEget`. Programmet byter ALDRIG id — historiken pekar på
+programId + workoutId, och ett nytt id hade klippt av progressionen. Inbyggda
+program kopieras till ett eget i stället för att skrivas över.
+
+**Coachknappen sa en muskel men startade ett program.** Knappen skrev ut den mest
+utvilade muskeln men `onStart` startade programmets nästa pass — "Adductors" gav
+bänkpress. Knappen säger nu passets namn; rubriken står kvar, för "Adductors är
+redo" ÄR sant. Dessutom kräver redo-listan nu att muskeln har en EGEN övning:
+18 av 21 muskler har det, och de tre utan ska aldrig kunna toppa
+rekommendationen.
+
+**Alternativmaskinen säger vilken övning som ersätter**
+(`ersättandeÖvningar` i `engines/machines.js`). Latsdraget listade "Assisterad
+dip / chin" — maskinen är rätt, men dips tränar bröst och triceps, inte rygg.
+Funktionen returnerar de övningar på alternativmaskinen som delar muskelgrupp
+med ursprungsmaskinen, så samma maskin ger olika svar beroende på var man kommer
+ifrån. Matchar ingen övning returneras null i stället för att dölja ett datafel.
+
+### Feedback från appen (#160)
+
+`FeedbackSheet.jsx` skickar till coach-proxyns `/api/feedback`, som mailar vidare
+via Resend. Ingen mailklient öppnas — en mailto-länk hade tappat de flesta på
+vägen. Nyckel och mottagaradress ligger i miljövariabler i Vercel, aldrig i
+koden: en adress i ett publikt repo blir skräppostmål inom veckor.
+
+**Kvittot kommer från servern**, inte från att anropet gjordes. Ett "Skickat!"
+för ett mail som aldrig lämnade servern är värre än ett felmeddelande. Vyn
+redovisar öppet vad som skickas (version, läge, enhet) och att ingen
+träningsdata, matlogg eller mätvärden ingår.
+
+### Fältet som tappade fokus (#147)
+
+Komponenten `Falt` definierades INUTI `NyMatning`. Vid varje tangenttryck kördes
+`NyMatning` om och skapade funktionen på nytt; React jämför komponenttyper med
+IDENTITET, såg en ny typ och rev fältet i stället för att uppdatera det. Fokus
+försvann med det gamla elementet — och på mobil åker tangentbordet ner när fokus
+försvinner. Man kunde skriva en siffra i taget. `Falt` ligger nu på modulnivå.
 
 ## Matloggen bakåt i tiden
 
