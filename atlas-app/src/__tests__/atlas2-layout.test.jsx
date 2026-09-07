@@ -202,16 +202,25 @@ describe("appen väljer skal efter bredd", () => {
     for (const el of [mobil, desktop]) expect(/readiness/i.test(el.textContent)).toBe(true);
   });
 
+  it("kortet har tre lägen — minimerat, normalt, uppfällt", () => {
+    // Kortet täckte 35 % av kartan även när man bara ville se kroppen. Med ett
+    // tredje läge blir det 16 %: bara handtag och startknapp, och benen syns.
+    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+    expect(src).toMatch(/sättKortläge\(\(kortläge \+ 1\) % 3\)/);
+    // Läget sparas: den som drar ner vill ha det nerdraget nästa gång också.
+    expect(src).toMatch(/save\("kortlage", v\)/);
+  });
+
   it("beskedet finns i mobilens hemkort, om än bakom en dragning", async () => {
     // Det får inte FÖRSVINNA — bara flytta. En vy som tappar innehåll vid en
     // layoutändring är en regression, inte en förbättring.
     const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
-    const kort = src.slice(src.indexOf('data-hemkort="1"'), src.indexOf('data-hemkort="1"') + 2600);
+    const kort = src.slice(src.indexOf('data-hemkort="1"'), src.indexOf('data-hemkort="1"') + 4200);
     expect(kort).toMatch(/<Besked \/>/);
     // Målraden finns på TVÅ ställen: alltid synlig när mål saknas, och i det
     // uppfällda läget när det är satt. Verifieraren fångade att den försvann
     // helt för den som ännu inte satt ett mål — och målet driver hela appen.
-    expect(kort).toMatch(/\{!mål && <MålRad \/>\}/);
+    expect(kort).toMatch(/\{!mål && kortläge > 0 && <MålRad \/>\}/);
     expect(kort).toMatch(/\{mål && <MålRad \/>\}/);
   });
 });
