@@ -949,6 +949,42 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
     return q.length < 2 ? [] : (searchFoods(q, null, foodLog, 25, skafferi) || []);
   }, [sök, foodLog]);
 
+  // OPEN FOOD FACTS SOM TILLÄGG, EFTER LIVSMEDELSVERKET.
+  //
+  // Livsmedelsverket har 2 679 poster men NOLL märkesvaror. Mätt: "lindahls",
+  // "oatly", "barebells" och "nocco" ger 0 träffar. OFF har 27 164 svenska
+  // produkter — Barebells 66, Nocco 59, Oatly 41.
+  //
+  // Söks live via proxyn, ALDRIG inbakat: 27 000 poster hade fördubblat
+  // appbundeln. Och söks först efter 400 ms paus — OFF rate-limitar globalt,
+  // och en sökning per tangenttryck vore fem anrop för ett ord.
+  //
+  // Träffarna märks "Open Food Facts · overifierad", samma som streckkoden.
+  // Datan är folkbidragen; Livsmedelsverkets är analyserad.
+  const [offTräffar, setOffTräffar] = useState([]);
+  const [offLäge, setOffLäge] = useState(null);   // söker | klar | offline
+  useEffect(() => {
+    const q = sök.trim().toLowerCase();
+    if (q.length < 3) { setOffTräffar([]); setOffLäge(null); return; }
+    let lever = true;
+    setOffLäge("söker");
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://askr-coach.vercel.app/api/foods?q=${encodeURIComponent(q)}`);
+        const d = await r.json();
+        if (!lever) return;
+        // Skafferiet och Livsmedelsverket vinner: en OFF-träff med samma
+        // streckkod som en sparad vara är en dubblett.
+        const kända = new Set((skafferi || []).map(v => v.barcode).filter(Boolean));
+        setOffTräffar((d.träffar || []).filter(f => !kända.has(f.barcode)));
+        setOffLäge(d.otillgänglig ? "offline" : "klar");
+      } catch (e) {
+        if (lever) { setOffTräffar([]); setOffLäge("offline"); }
+      }
+    }, 400);
+    return () => { lever = false; clearTimeout(t); };
+  }, [sök]);
+
   if (vald) {
     // Number() så ett tomt fält under redigering ger 0 i förhandsvisningen,
     // inte NaN.
@@ -1001,7 +1037,21 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
 
         {/* NaN-SKYDD. Fältet får vara tomt under redigering, men en post med
             grams: "" ger NaN i näringsräkningen och förgiftar dagssumman tyst. */}
-        <button onClick={() => { const g = Number(gram) || 100; onLägg({ id: nyId("f_"), foodId: vald.id, name: vald.name, grams: g, ts: Date.now() }); setVald(null); setSök(""); }}
+        <button onClick={() => {
+          const g = Number(gram) || 100;
+          // EN OFF-VARA BÄR SINA EGNA TAL. foodId "off_…" finns inte i
+          // FOOD_INDEX, och utan egna tal hade computeNutrition räknat den som
+          // noll — samma fel som skafferiet hade en gång. Posten får kcal och
+          // makron direkt, skalade till gram, och märks med källan.
+          const post = vald.källa === "off"
+            ? { id: nyId("f_"), name: vald.name, grams: g, ts: Date.now(), source: "off",
+                kcal: Math.round(vald.kcal * g / 100), protein: Math.round(vald.protein * g / 10) / 10,
+                carbs: vald.carbs != null ? Math.round(vald.carbs * g / 10) / 10 : null,
+                fat: vald.fat != null ? Math.round(vald.fat * g / 10) / 10 : null,
+                barcode: vald.barcode || null }
+            : { id: nyId("f_"), foodId: vald.id, name: vald.name, grams: g, ts: Date.now() };
+          onLägg(post); setVald(null); setSök("");
+        }}
           style={{ ...btnPrimary, marginTop: 20 }}>Lägg till <span style={{ fontSize: 19 }}>+</span></button>
       </div>
     );
@@ -1202,6 +1252,42 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
           <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{f.kcal} kcal · P {f.protein}</span>
         </button>
       ))}
+
+      {/* OFF-TRÄFFAR EFTER LIVSMEDELSVERKETS, under egen rubrik. Källan syns
+          — datan är folkbidragen och kan ha fel. */}
+      {offTräffar.length > 0 && (
+        <>
+          <div style={{ ...label(), color: C.muted, margin: "16px 0 4px", display: "flex", alignItems: "center", gap: 8 }}>
+            Märkesvaror
+            <span style={{ fontSize: 9.5, color: C.recovering, fontWeight: 400, letterSpacing: .5 }}>
+              Open Food Facts · overifierad
+            </span>
+          </div>
+          {offTräffar.map(f => (
+            <button key={f.id} onClick={() => { setVald(f); setGram(100); }} data-off-traff="1"
+              style={{ width: "100%", textAlign: "left", padding: "14px 4px", minHeight: 44, boxSizing: "border-box", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, color: C.text, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <span style={{ minWidth: 0, overflow: "hidden" }}>
+                <span style={{ fontSize: 14, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                {f.brand && <span style={{ fontSize: 11, color: C.muted }}>{f.brand}</span>}
+              </span>
+              <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{f.kcal} kcal · P {f.protein}</span>
+            </button>
+          ))}
+        </>
+      )}
+
+      {/* ÄRLIGT OM NÄTET. Livsmedelsverket fungerar offline; OFF gör det inte.
+          En tom lista utan förklaring ser ut som "finns inte". */}
+      {sök.trim().length >= 3 && offLäge === "söker" && offTräffar.length === 0 && (
+        <div style={{ fontSize: 11.5, color: C.muted, textAlign: "center", padding: "12px 0" }}>
+          Söker märkesvaror…
+        </div>
+      )}
+      {sök.trim().length >= 3 && offLäge === "offline" && (
+        <div style={{ fontSize: 11.5, color: C.muted, textAlign: "center", padding: "12px 0", lineHeight: 1.5 }}>
+          Märkesvaror kräver nät och kunde inte hämtas just nu.
+        </div>
+      )}
     </div>
   );
 }
