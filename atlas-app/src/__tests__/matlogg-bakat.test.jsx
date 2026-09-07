@@ -15,6 +15,8 @@
 //      Date.now() och skickar den till `lägg`. Skulle var och en känna till
 //      den valda dagen vore det sju ställen att glömma på.
 
+import { readFileSync } from "fs";
+import { resolve } from "path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
@@ -296,5 +298,35 @@ describe("matvyn: dagsväljare och flytt", () => {
     expect(d.getDate()).toBe(20);
     expect(d.getHours()).toBe(13);
     expect(d.getMinutes()).toBe(15);
+  });
+});
+
+describe("dagsväljaren går en dag i taget", () => {
+  const src = readFileSync(resolve("src/atlas2/FoodView.jsx"), "utf8");
+
+  it("pilarna hoppar inte över tomma dagar", () => {
+    // Robert: "när jag försöker backa i matloggen så hoppar den över dagar där
+    // det inte är loggat något".
+    //
+    // Förut: dagarMed.find(d => d < dagStart(dagTs)) — närmaste dag MED
+    // loggning. Mätt: loggat idag och för fem dagar sedan gav ett hopp på fem
+    // dagar vid ETT tryck.
+    //
+    // Det gjorde två saker omöjliga: att se vilka dagar man missat, och att
+    // logga i efterhand på en tom dag — man kom aldrig dit.
+    expect(src).toMatch(/const föreDag = dagStart\(dagTs\) - 864e5;/);
+    expect(src).toMatch(/const efterDag = dagStart\(dagTs\) \+ 864e5;/);
+    expect(src).not.toMatch(/dagarMed\.find\(d => d < dagStart/);
+  });
+
+  it("dagar med loggning markeras i stället", () => {
+    // dagarMed används fortfarande — men till att VISA vilka dagar som bär
+    // loggning, inte till att styra vart pilen går.
+    expect(src).toMatch(/const harLogg = d => dagarMed\.some/);
+    expect(src).toMatch(/\{harLogg\(dagTs\) && \(/);
+  });
+
+  it("framåtpilen är spärrad på idag", () => {
+    expect(src).toMatch(/disabled=\{visarIdag\} data-dag-fram="1"/);
   });
 });

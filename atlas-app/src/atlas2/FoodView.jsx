@@ -122,8 +122,20 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
 
   // Föregående DAG MED LOGG, inte föregående kalenderdag. Att stega genom en
   // tom vecka en dag i taget är sju tryck för att komma till något som finns.
-  const föreDag = dagarMed.find(d => d < dagStart(dagTs));
-  const efterDag = [...dagarMed].reverse().find(d => d > dagStart(dagTs));
+  // PILARNA GÅR EN DAG I TAGET, inte till närmaste dag med loggning.
+  //
+  // Förut hoppade de över tomma dagar: hade man loggat idag och för fem dagar
+  // sedan tog ett tryck bakåt en fem dagar tillbaka. Mätt.
+  //
+  // Det gör två saker omöjliga. Man kan inte se VILKA dagar man missat — och
+  // det är ofta just det man vill veta. Och man kan inte logga i efterhand på
+  // en tom dag, eftersom man aldrig kommer dit.
+  //
+  // dagarMed används fortfarande, men till att MARKERA vilka dagar som har
+  // loggning — inte till att styra vart pilen går.
+  const föreDag = dagStart(dagTs) - 864e5;
+  const efterDag = dagStart(dagTs) + 864e5;
+  const harLogg = d => dagarMed.some(x => x === dagStart(d));
 
   return (
     <div>
@@ -174,10 +186,18 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
 
           Den som bara loggar idag ser "Idag" och behöver aldrig röra dem. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 4px" }}>
-        <button onClick={() => onByt(föreDag != null ? föreDag : dagStart(dagTs) - 864e5)}
+        <button onClick={() => onByt(föreDag)}
           data-dag-bak="1" aria-label="Föregående dag" style={stegKnapp}>‹</button>
         <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
           <div style={{ ...label() }} data-dag-namn="1">{dagNamn(dagTs)}</div>
+          {/* En prick visar att dagen bär loggning. Utan den ser en tom dag
+              likadan ut som en dag man inte hunnit fram till än. */}
+          {harLogg(dagTs) && (
+            <div aria-hidden style={{
+              width: 4, height: 4, borderRadius: 999, background: C.lime,
+              margin: "3px auto 0",
+            }} />
+          )}
           {!visarIdag && (
             <button onClick={() => onByt(null)} data-till-idag="1"
               style={{ ...btnText, padding: "2px 8px", minHeight: 26, fontSize: 11.5, color: C.lime }}>
@@ -185,7 +205,7 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
             </button>
           )}
         </div>
-        <button onClick={() => onByt(efterDag != null ? efterDag : dagStart(dagTs) + 864e5)}
+        <button onClick={() => onByt(efterDag)}
           disabled={visarIdag} data-dag-fram="1" aria-label="Nästa dag"
           style={{ ...stegKnapp, opacity: visarIdag ? 0.4 : 1, cursor: visarIdag ? "default" : "pointer" }}>›</button>
       </div>
