@@ -139,6 +139,12 @@ const spill = await page.evaluate(() => document.documentElement.scrollHeight - 
 steg.push(`${spill <= 1 ? "OK " : "FEL"} hemvyn spiller inte över (${Math.round(spill)} px)`);
 
 // Ett klick ska landa i coachvyn med intervjun IGÅNG, inte i en hopfälld chatt.
+//
+// Målraden ligger i hemkortets uppfällda läge sedan #164: kartan tar hela ytan
+// och kortet visar det man behöver varje gång — starta pass och readiness.
+// Målet läser man ibland, inte alltid, så kortet fälls upp först.
+await page.evaluate(() => document.querySelector('[data-hemkort="1"]')?.click());
+await page.waitForTimeout(500);
 await klick("Sätt ett mål"); await page.waitForTimeout(900);
 t = await text();
 steg.push(`${/berätta vad du siktar på/i.test(t) ? "OK " : "FEL"} klicket startar intervjun direkt`);

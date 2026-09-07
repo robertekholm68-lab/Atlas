@@ -18,7 +18,7 @@
 // per-muskel-SVG som vi inte har.
 
 import { useState } from "react";
-import { C, recoveryColor } from "./design.js";
+import { C, HFONT, recoveryColor } from "./design.js";
 import REGIONS from "./body_regions.json";
 import REGIONS_KVINNA from "./body_regions_female.json";
 import figurFram from "../assets/brand/figur-fram.webp";
@@ -234,12 +234,24 @@ function Figur({ vy, states, onSelect, rör, setRör, figur = FIGURER.m }) {
  * Fram och bak sida vid sida, som i skisserna. Ingen bakgrund, ingen gloria,
  * ingen platta — figurerna står mot appens svärta.
  */
-export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true, kompakt = false, fyll = false, sex = null }) {
+export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = true, kompakt = false, fyll = false, sex = null, enVy = false }) {
   // `rör` lever kvar trots att namnraden är borta: den markerar formen man
   // pekar på genom att höja opaciteten (`opAktiv` i Figur). Det är återkoppling
   // på att regionen går att klicka, inte en etikett.
   const [rör, setRör] = useState(null);
   const figur = figurFör(sex);
+
+  // EN FIGUR I TAGET PÅ HEMVYN.
+  //
+  // Två figurer sida vid sida begränsas av BREDDEN, inte höjden: på 390 px
+  // skärm får varje figur 183 px och därmed 456 px höjd — oavsett hur hög
+  // skärmen är. Mätt. Helskärm gav bara 8 % större figurer.
+  //
+  // En figur får 370 px bredd och blir ~850 px hög. Dubbelt så stor, och
+  // muskelgrupperna går att träffa med ett finger. Man frågar dessutom sällan
+  // "hur mår fram OCH bak?" — man frågar om en muskel.
+  const [vy, setVy] = useState("front");
+  const vyer = enVy ? [vy] : ["front", "back"];
 
   // `fyll` betyder: ta den höjd som finns kvar i föräldern i stället för ett
   // bestämt antal pixlar. Föräldern är då en flex-kolumn, och kartan är den som
@@ -247,8 +259,8 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
   // det finns plats och krympa när det inte gör det. `minHeight: 0` krävs för
   // att en flex-child ska FÅ krympa; utan den växer den ur skärmen i stället.
   const yttre = fyll
-    ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }
-    : {};
+    ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }
+    : { position: "relative" };
   const figurer = fyll
     ? { display: "flex", gap: 10, justifyContent: "center", flex: 1, minHeight: 0 }
     : { display: "flex", gap: 10, height, justifyContent: "center" };
@@ -256,8 +268,8 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
   return (
     <div style={yttre}>
       <div style={figurer}>
-        {["front", "back"].map(v => (
-          <div key={v} style={{ flex: 1, maxWidth: "48%", height: "100%" }}>
+        {vyer.map(v => (
+          <div key={v} style={{ flex: 1, maxWidth: enVy ? "100%" : "48%", height: "100%" }}>
             <Figur vy={v} states={muscleStates} onSelect={onSelect} rör={rör} setRör={setRör} figur={figur} />
           </div>
         ))}
@@ -276,6 +288,34 @@ export function BodyMap2({ muscleStates = {}, onSelect, height = 300, legend = t
       {/* Färgnyckeln får ALDRIG tas bort för att spara höjd: färgerna är
           avläsningen, och en karta man inte kan läsa är dekoration. Däremot får
           den bli kortare — samma fem betydelser, färre tecken. */}
+      {/* VÄND. Ligger över kartans nederkant till höger — tumzonen på en
+          telefon. Texten säger vart man ska, inte var man är: "Baksidan" när
+          man ser framsidan. En knapp som säger var man redan är läses som en
+          etikett och trycks inte på. */}
+      {enVy && (
+        <button onClick={() => setVy(v => (v === "front" ? "back" : "front"))}
+          data-vand="1" aria-label={vy === "front" ? "Visa baksidan" : "Visa framsidan"}
+          style={{
+            // ÖVER KORTET, INTE BAKOM DET. Knappen låg först vid kartans
+            // nederkant och hamnade delvis under hemkortet — mätt på skärmbild.
+            // Nu i kartans övre högra hörn, där ingenting annat ligger.
+            position: "absolute", right: 0, top: 4, zIndex: 3,
+            display: "flex", alignItems: "center", gap: 7,
+            padding: "9px 14px", minHeight: 44, borderRadius: 999, cursor: "pointer",
+            border: `1px solid ${C.border}`, background: "rgba(20,20,20,0.82)",
+            backdropFilter: "blur(8px)", color: C.text2,
+            fontFamily: HFONT, fontSize: 11, fontWeight: 700, letterSpacing: 1,
+            textTransform: "uppercase",
+          }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.lime}
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M17 2l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <path d="M7 22l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+          {vy === "front" ? "Baksidan" : "Framsidan"}
+        </button>
+      )}
+
       {legend && (
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: kompakt ? "3px 10px" : "6px 14px", marginTop: kompakt ? 4 : 6, flexShrink: 0 }}>
           {(kompakt
