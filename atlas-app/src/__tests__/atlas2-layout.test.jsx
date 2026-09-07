@@ -224,3 +224,28 @@ describe("appen väljer skal efter bredd", () => {
     expect(kort).toMatch(/\{mål && <MålRad \/>\}/);
   });
 });
+
+describe("flikbyten tonar in", () => {
+  const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+
+  it("vyn animeras vid byte", () => {
+    // Allt hoppade: man tryckte på en flik och nästa vy fanns bara där.
+    // askrIn fanns definierad i design.js men användes INGENSTANS — rörelsen
+    // var planerad men aldrig inkopplad.
+    expect(src).toMatch(/animation: "askrIn 170ms/);
+  });
+
+  it("key tvingar omrendering, annars körs den bara en gång", () => {
+    expect(src).toMatch(/<div key=\{flik\} style=\{\{/);
+  });
+
+  it("omslaget ärver flex — annars kollapsar hemvyns karta", () => {
+    const f = src.slice(src.indexOf("function Flikbyte"), src.indexOf("function Flikbyte") + 500);
+    expect(f).toMatch(/flex: 1, minHeight: 0/);
+  });
+
+  it("båda skalen använder det", () => {
+    // Mobil och desktop monterar vyn olika; övergången måste gälla båda.
+    expect((src.match(/<Flikbyte flik=\{flik\}>/g) || []).length).toBe(2);
+  });
+});

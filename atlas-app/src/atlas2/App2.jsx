@@ -448,6 +448,33 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
 
 /* ══════════ APP ══════════ */
 
+/**
+ * TONAR IN VYN VID FLIKBYTE.
+ *
+ * Allt hoppade: man tryckte på en flik och nästa vy fanns bara där. Skillnaden
+ * mellan "fungerar" och "känns dyrt" ligger ofta i 170 ms.
+ *
+ * key={flik} tvingar React att montera om vid varje byte, så animationen
+ * startar på nytt. Utan det körs den bara första gången.
+ *
+ * askrIn fanns definierad i design.js men användes INGENSTANS — rörelsen var
+ * planerad men aldrig inkopplad. prefers-reduced-motion nollar den, vilket
+ * KEYFRAMES redan sköter globalt.
+ *
+ * Vyerna sätter egen höjd via flex; omslaget måste därför ärva den, annars
+ * kollapsar hemvyns karta.
+ */
+function Flikbyte({ flik, children }) {
+  return (
+    <div key={flik} style={{
+      animation: "askrIn 170ms cubic-bezier(.2,.8,.2,1)",
+      display: "flex", flexDirection: "column", flex: 1, minHeight: 0,
+    }}>
+      {children}
+    </div>
+  );
+}
+
 export function Atlas2() {
   // ── LAGRING: async hydrering ──────────────────────────────────────────────
   // store.load/save är asynkrona (förberedelse för enhetssynk). Tillståndet kan
@@ -1258,12 +1285,15 @@ export function Atlas2() {
         </div>
       )}
       {desktop
-        ? <Shell aktiv={flik} onChange={setFlik} onMeny={() => setSheet("import")}>{vy()}</Shell>
-        : <>{vy()}<BottomNav aktiv={flik} onChange={setFlik} /></>}
+        ? <Shell aktiv={flik} onChange={setFlik} onMeny={() => setSheet("import")}>
+            <Flikbyte flik={flik}>{vy()}</Flikbyte>
+          </Shell>
+        : <><Flikbyte flik={flik}>{vy()}</Flikbyte><BottomNav aktiv={flik} onChange={setFlik} /></>}
       {sheet && (
         <div onClick={() => setSheet(null)} style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", zIndex: 60,
           display: "flex", alignItems: desktop ? "center" : "flex-end", justifyContent: "center", padding: desktop ? 24 : 0,
+          animation: "askrTona 180ms ease-out",
         }}>
           <div ref={arkRef} role="dialog" aria-modal="true" aria-label={arkEtikett(sheet)} tabIndex={-1}
             onClick={e => e.stopPropagation()} style={{
@@ -1273,6 +1303,16 @@ export function Atlas2() {
               borderRadius: desktop ? 28 : "22px 22px 0 0",
               border: desktop ? `1px solid ${C.hairline}` : "none",
               padding: "18px 18px 26px", maxHeight: "86vh", overflowY: "auto",
+              // ARKET GLIDER UPP, det hoppar inte fram.
+              //
+              // 220 ms med en kurva som bromsar in mot slutet — samma känsla som
+              // ett fysiskt ark man drar upp. Kortare än 150 ms märks knappt,
+              // längre än 300 ms känns trögt. På desktop tonar det i stället
+              // fram: ett centrerat modalfönster som glider underifrån ser ut
+              // som ett misstag.
+              animation: desktop
+                ? "askrTona 160ms ease-out"
+                : "askrUpp 220ms cubic-bezier(.16,1,.3,1)",
               // ARKET SCROLLAR — OCH DET SKA SYNAS ATT DET GÖR DET.
               //
               // Programlistan är 1202 px hög i ett ark på 726 px. Alla elva

@@ -57,7 +57,10 @@ function Makro({ namn, värde, mål, färg }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
         <span style={{ ...label(), color: C.text2 }}>{namn}</span>
         <span style={{ fontSize: 13, fontFamily: HFONT, fontWeight: 700 }}>
-          <span style={{ color: färg }}>{Math.round(värde)}</span>
+          {/* Streck, inte nolla — samma regel som kaloriringen. Tre rader
+              "0 g" bredvid varandra läser som ett underkänt, inte som en
+              tom dag. */}
+          <span style={{ color: värde > 0 ? färg : C.muted }}>{värde > 0 ? Math.round(värde) : DASH}</span>
           <span style={{ color: C.muted }}> {mål ? `/ ${mål} g` : "g"}</span>
         </span>
       </div>
@@ -80,7 +83,10 @@ function Ring({ kcal, mål }) {
           transform={`rotate(-90 ${storlek / 2} ${storlek / 2})`} />
       )}
       <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle"
-        style={{ fontFamily: HFONT, fontSize: 31, fontWeight: 800, fill: C.text }}>{kcal}</text>
+        // STRECK NÄR INGET LOGGATS, inte en nolla. Appens genomgående regel:
+        // en nolla påstår att något är mätt och blev noll. Ett stort "0" mitt
+        // på matfliken läser dessutom som ett misslyckande innan dagen börjat.
+        style={{ fontFamily: HFONT, fontSize: 31, fontWeight: 800, fill: kcal > 0 ? C.text : C.muted }}>{kcal > 0 ? kcal : DASH}</text>
       <text x="50%" y="62%" textAnchor="middle"
         style={{ fontFamily: HFONT, fontSize: 11, letterSpacing: 1.4, fill: C.muted }}>
         {mål ? `/ ${mål} KCAL` : "KCAL"}
@@ -184,8 +190,18 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
           style={{ ...stegKnapp, opacity: visarIdag ? 0.4 : 1, cursor: visarIdag ? "default" : "pointer" }}>›</button>
       </div>
       {dagensLogg.length === 0 ? (
+        // TOMT LÄGE SOM BJUDER IN, INTE KONSTATERAR.
+        //
+        // "Inget loggat idag" är sant men dött — det beskriver ett
+        // misslyckande innan dagen ens börjat. En fråga öppnar i stället för
+        // att stänga, och den som läser den vet redan vad nästa steg är.
+        //
+        // Gäller BARA idag. För en gången dag är konstaterandet rätt: då finns
+        // inget att göra åt saken, och en uppmaning vore påträngande.
         <div style={{ padding: "26px 16px", textAlign: "center", border: `1px dashed ${C.border}`, borderRadius: 14, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
-          {visarIdag ? "Inget loggat idag." : `Inget loggat ${dagNamn(dagTs).toLowerCase()}.`}
+          {visarIdag
+            ? <span style={{ color: C.text2 }}>Vad har du ätit idag?</span>
+            : `Inget loggat ${dagNamn(dagTs).toLowerCase()}.`}
         </div>
       ) : grupperaMåltider(dagensLogg, e => {
         const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;

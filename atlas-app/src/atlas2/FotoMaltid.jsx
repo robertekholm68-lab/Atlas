@@ -119,9 +119,7 @@ export function FotoMaltid({ onLägg, onClose }) {
       {läge === "start" && (
         <>
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.6 }}>
-            Claude känner igen vad som ligger på tallriken. Mängderna är
-            uppskattningar som du justerar innan de loggas — näringen räknas
-            sedan ur Livsmedelsverkets data.
+            Mängderna är uppskattningar du justerar innan de loggas.
           </div>
           <input ref={filväljare} type="file" accept="image/*" capture="environment"
             onChange={e => analysera(e.target.files && e.target.files[0])}

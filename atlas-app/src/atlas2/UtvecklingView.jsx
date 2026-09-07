@@ -274,8 +274,7 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
         {onClose && <button onClick={onClose} style={btnText} aria-label="Stäng">Stäng</button>}
       </div>
       <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.55 }}>
-        Kroppen och styrkan över tid. Vikten ensam säger inte om du tappat fett
-        eller muskel — det gör fettfri massa.
+        Kroppen och styrkan över tid.
       </div>
 
       <div style={{ display: "flex", gap: 7, margin: "14px 0 12px", overflowX: "auto" }}>
