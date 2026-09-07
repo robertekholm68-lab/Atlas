@@ -87,7 +87,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-08-26)
+## Aktuella siffror (avlästa 2026-09-07)
 
 | Sak | Antal |
 |---|---|
@@ -103,10 +103,10 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | — varav kuraterade | 73 |
 | Recept | 276 |
 | Recept med bild | 140 av 276 |
-| Övningar med bild (`MED_BILD`) | 3 av 160 |
+| Övningar med bild (`MED_BILD`) | 8 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1666 i 144 filer |
+| Tester (vitest) | 1739 i 151 filer |
 | DOM-skript | 16 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
