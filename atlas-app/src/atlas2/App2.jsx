@@ -262,11 +262,13 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
     </div>
   ));
 
-  const Nyckeltal = () => (
-    <div style={{ ...statRow, marginTop: mobil ? 12 : 20, flexShrink: 0 }}>
+  const Nyckeltal = ({ kompakt = false }) => (
+    <div style={{ ...statRow, marginTop: kompakt ? 9 : (mobil ? 12 : 20), flexShrink: 0 }}>
       {[["Readiness", orDash(rd), osäkert ? "osäkert underlag" : null,
           rd == null ? C.muted : rd >= 76 ? C.ready : rd >= 56 ? C.recovering : C.critical, true],
-        ["Veckans pass", sessions.length ? vecka : DASH, null, C.text, false],
+        // VECKANS PASS UTGÅR I KOMPAKT LÄGE. Den är den minst brådskande av
+        // de tre och siffran står redan i passfliken.
+        ...(kompakt ? [] : [["Veckans pass", sessions.length ? vecka : DASH, null, C.text, false]]),
         // VIKTEN EN TRYCKNING FRÅN HEM. Den är det mest loggade efter set, men
         // låg fyra tryck bort: Framsteg → Utveckling → Kropp → Ny mätning.
         // "Senast" fick lämna plats — passdatumet står ändå i passlistan.
@@ -274,11 +276,11 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
         const innehåll = (
           <>
             <div style={label()}>{l}</div>
-            <div style={{ ...hdr(mobil ? 19 : 21, col), marginTop: 3 }}>{v}</div>
+            <div style={{ ...hdr(kompakt ? 17 : (mobil ? 19 : 21), col), marginTop: kompakt ? 1 : 3 }}>{v}</div>
             {sub && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>}
           </>
         );
-        const stil = { ...statCell(i), padding: mobil ? "10px 4px" : "14px 4px" };
+        const stil = { ...statCell(i), padding: kompakt ? "7px 4px" : (mobil ? "10px 4px" : "14px 4px") };
         // Readiness är det enda talet som går att fråga varför. De andra två är
         // räknade fakta utan uppdelning — en knapp där hade lovat något som
         // inte finns.
@@ -316,7 +318,21 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
   // Höjden låses till skärmen minus bottennaven, och kartan är `flex: 1`.
   // Webbläsaren räknar då ut kartans höjd åt oss vid varje skärmstorlek —
   // säkrare än en pixelbudget som blir fel på nästa telefon.
-  const [uppdraget, setUppdraget] = useState(false);
+  // TRE LÄGEN, INTE TVÅ.
+  //
+  // Kortet täckte 250 px av kartans 720 — 35 %, alltså låren och nedåt — även
+  // när man bara ville se kroppen. Nu går det att dra NER också: kvar blir
+  // draghandtaget och startknappen, och benen syns.
+  //
+  //   0  minimerat   handtag + startknapp   (~90 px)
+  //   1  normalt     + nyckeltal            (~250 px)
+  //   2  uppfällt    + mål och besked
+  //
+  // Läget sparas: den som drar ner vill ha det nerdraget nästa gång också.
+  const [kortläge, setKortläge] = useState(1);
+  useEffect(() => { load("kortlage", 1).then(v => { if (v === 0 || v === 1 || v === 2) setKortläge(v); }); }, []);
+  const sättKortläge = v => { setKortläge(v); save("kortlage", v); };
+  const uppdraget = kortläge === 2;
   if (mobil) return (
     <div style={{
       padding: "12px 18px 8px", boxSizing: "border-box",
@@ -352,11 +368,11 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
             svagt igenom, så man förstår att kortet ligger ÖVER kartan och går
             att flytta. Helt täckt hade sett ut som en vägg. */}
         <div
-          onClick={() => setUppdraget(u => !u)}
-          data-hemkort="1" role="button" tabIndex={0}
+          onClick={() => sättKortläge((kortläge + 1) % 3)}
+          data-hemkort="1" data-kortlage={kortläge} role="button" tabIndex={0}
           aria-expanded={uppdraget}
-          aria-label={uppdraget ? "Visa mindre" : "Visa mer"}
-          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setUppdraget(u => !u); } }}
+          aria-label={["Visa nyckeltal", "Visa mål och besked", "Visa bara kroppen"][kortläge]}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sättKortläge((kortläge + 1) % 3); } }}
           style={{
             // Kortet får inte täcka figurens fötter helt. -8 lät det gå
             // utanför skärmkanten; 0 låter det sluta där navigationen börjar.
@@ -383,10 +399,21 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
 
               MED mål satt räcker det i uppfällt läge: då är det en statusrad
               man läser ibland, inte en uppmaning. */}
-          {!mål && <MålRad />}
+          {!mål && kortläge > 0 && <MålRad />}
 
-          <Start />
-          <Nyckeltal />
+          <Start visaFörslag={kortläge > 0} />
+
+          {/* NYCKELTALEN LIGGER UPPFÄLLT.
+              Mätt: kortet täckte 263 px av kartans 720 — 37 %, alltså knäna och
+              nedåt. Nyckeltalsraden tog 76 px av dem, mest av allt i kortet.
+
+              Men den är STATUS, inte handling: readiness syns redan som färg på
+              kroppen ovanför, och veckans pass är sällan det man öppnar appen
+              för. Det som måste synas varje gång är beslutet — starta pass.
+
+              Vikten var undantaget. Den var poängen med hela raden ("ett tryck
+              från Hem"), så den ligger kvar som en smal rad bredvid readiness. */}
+          {kortläge > 0 && <Nyckeltal kompakt />}
 
           {uppdraget && (
             <div style={{ marginTop: 14 }}>
