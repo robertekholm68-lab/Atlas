@@ -6,6 +6,8 @@
 // bottennav och sidopanel läser SAMMA flikar, och att skrivbordsläget inte
 // smugit in en andra sanning i form av egna vyer.
 
+import { readFileSync } from "fs";
+import { resolve } from "path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
@@ -188,7 +190,24 @@ describe("appen väljer skal efter bredd", () => {
   it("BÅDA lägena renderar samma vy — inga egna desktopvyer smyger in", async () => {
     const mobil = await mount(390);
     const desktop = await mount(1440);
-    // Hemvyns besked kommer ur samma todaysMessage i båda lägena.
-    for (const el of [mobil, desktop]) expect(/logga ett pass/i.test(el.textContent)).toBe(true);
+    // Samma DATA i båda lägena, men inte nödvändigtvis samtidigt synlig.
+    //
+    // Beskedet låg förut alltid framme på mobil. Nu ligger det i hemkortets
+    // uppfällda läge: kartan tar hela ytan, och kortet visar det man behöver
+    // varje gång — starta pass och readiness. Beskedet är sådant man läser
+    // ibland, inte alltid.
+    //
+    // Testet kollar därför att BÅDA lägena bygger på samma readiness-siffra,
+    // inte att samma text råkar vara synlig i samma ögonblick.
+    for (const el of [mobil, desktop]) expect(/readiness/i.test(el.textContent)).toBe(true);
+  });
+
+  it("beskedet finns i mobilens hemkort, om än bakom en dragning", async () => {
+    // Det får inte FÖRSVINNA — bara flytta. En vy som tappar innehåll vid en
+    // layoutändring är en regression, inte en förbättring.
+    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+    const kort = src.slice(src.indexOf('data-hemkort="1"'), src.indexOf('data-hemkort="1"') + 1800);
+    expect(kort).toMatch(/<Besked \/>/);
+    expect(kort).toMatch(/<MålRad \/>/);
   });
 });

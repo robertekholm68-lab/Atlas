@@ -316,6 +316,7 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
   // Höjden låses till skärmen minus bottennaven, och kartan är `flex: 1`.
   // Webbläsaren räknar då ut kartans höjd åt oss vid varje skärmstorlek —
   // säkrare än en pixelbudget som blir fel på nästa telefon.
+  const [uppdraget, setUppdraget] = useState(false);
   if (mobil) return (
     <div style={{
       padding: "12px 18px 8px", boxSizing: "border-box",
@@ -332,15 +333,59 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
         </button>
       </div>
 
-      {/* Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot
-          svärtan och det enda som lyser är muskler med faktiskt underlag. */}
-      <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} sex={sex}
-        fyll kompakt={layout.kompaktNyckel} />
+      {/* KARTAN TAR HELA YTAN, resten ligger ÖVER den.
+          Förut delade kartan skärmen med fyra staplade element och fick
+          hälften. Nu fyller den allt från header till nav, och startknappen
+          med nyckeltalen ligger som ett kort ovanpå nederkanten.
 
-      <MålRad />
-      <Besked />
-      <Start />
-      <Nyckeltal />
+          Ingen bakgrund, ingen ljuskägla, ingen platta. Kroppen står mot
+          svärtan och det enda som lyser är muskler med faktiskt underlag. */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <BodyMap2 muscleStates={states} onSelect={id => onOpen("muskel:" + id)} sex={sex}
+          fyll enVy legend={false} kompakt={layout.kompaktNyckel} />
+
+        {/* KORTET. Det som alltid syns är beslutet — starta pass — och
+            readiness. Resten når man genom att dra upp, för det är sådant man
+            läser ibland, inte varje gång.
+
+            Bakgrunden är nästan ogenomskinlig med oskärpa: figurens ben syns
+            svagt igenom, så man förstår att kortet ligger ÖVER kartan och går
+            att flytta. Helt täckt hade sett ut som en vägg. */}
+        <div
+          onClick={() => setUppdraget(u => !u)}
+          data-hemkort="1" role="button" tabIndex={0}
+          aria-expanded={uppdraget}
+          aria-label={uppdraget ? "Visa mindre" : "Visa mer"}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setUppdraget(u => !u); } }}
+          style={{
+            // Kortet får inte täcka figurens fötter helt. -8 lät det gå
+            // utanför skärmkanten; 0 låter det sluta där navigationen börjar.
+            position: "absolute", left: -18, right: -18, bottom: 0,
+            padding: "10px 18px 12px",
+            borderRadius: "20px 20px 0 0",
+            border: `1px solid ${C.border}`, borderBottom: "none",
+            background: "rgba(14,14,14,0.93)", backdropFilter: "blur(14px)",
+            cursor: "pointer", transition: "transform 220ms cubic-bezier(.2,.8,.2,1)",
+            maxHeight: "72%", overflowY: uppdraget ? "auto" : "hidden",
+          }}>
+          {/* Draghandtaget säger att kortet går att flytta. Utan det ser en
+              rundad kant bara ut som en kant. */}
+          <div aria-hidden style={{
+            width: 38, height: 4, borderRadius: 999, background: C.border,
+            margin: "0 auto 12px",
+          }} />
+
+          <Start />
+          <Nyckeltal />
+
+          {uppdraget && (
+            <div style={{ marginTop: 14 }}>
+              <MålRad />
+              <Besked />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 
