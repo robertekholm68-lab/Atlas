@@ -1233,6 +1233,14 @@ vet.
   midja avvisades tyst. Nu räcker ett värde; bara den helt tomma posten avvisas.
   Det befintliga testet "utan vikt finns ingen mätning" låste fast den gamla
   regeln och skrevs om — regeln ändrades med avsikt, testet följde efter.
+- **Ett eget skydd för sin egen funktion prövar sällan det som går sönder.**
+  `verify-atlas2-matlogg.mjs` kontrollerade dagsväljaren på 390 px och letade
+  efter SIDSCROLL. Det som brast var HÖJDEN på 375 px: den nya raden kostade
+  52 px och matvyn — en av vyerna som aldrig får scrolla — blev 31 px för hög.
+  Ett skript skrivet till en funktion mäter funktionens löften; det är de
+  äldre, breda skydden (`verify-atlas2-layout.mjs`) som fångar vad funktionen
+  kostade allt annat. Båda behövs, och den nya raden hörde hemma i en rad som
+  redan fanns.
 - **Ett test som inte hittar något att pröva blir grönt av tomhet.**
   Portkontrollen läste `localhost:(\d+)` ur varje DOM-skript och jämförde med
   porten servern binder. Ett skript som skrev `localhost:${PORT}` gav noll
@@ -1260,7 +1268,10 @@ aldrig NÄR — och den som glömde logga en dag kunde inte fylla i den i efterh
 radering låg på plats i `FoodView.jsx`. Det som saknades var enbart tiden. Att
 bygga en "redigeringsfunktion" hade blivit en andra väg till samma sak.
 
-Dagen väljs i översikten (`valdDag`, `null` = idag). Bakåtpilen hoppar till
+Dagen väljs i RUBRIKRADEN över måltidslistan (`valdDag`, `null` = idag) — inte
+på en egen rad överst, vilket kostade 52 px och gjorde matvyn 31 px för hög för
+iPhone SE. Dagen är rubriken, inte en etikett ovanför den. Bakåtpilen hoppar
+till
 **föregående dag som har logg**, inte till föregående kalenderdag: att stega
 genom en tom vecka en dag i taget är sju tryck för att komma till något som
 finns. Framåt är avstängt på idag — framtida måltider loggas inte.

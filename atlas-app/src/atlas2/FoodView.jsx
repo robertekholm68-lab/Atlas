@@ -121,25 +121,6 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
 
   return (
     <div>
-      {/* DAGSVÄLJAREN. Nu kan man logga och rätta bakåt — och den som bara
-          loggar idag ser "Idag" och behöver aldrig röra den. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
-        <button onClick={() => onByt(föreDag != null ? föreDag : dagStart(dagTs) - 864e5)}
-          data-dag-bak="1" aria-label="Föregående dag" style={stegKnapp}>‹</button>
-        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
-          <div style={{ ...hdr(15) }} data-dag-namn="1">{dagNamn(dagTs)}</div>
-          {!visarIdag && (
-            <button onClick={() => onByt(null)} data-till-idag="1"
-              style={{ ...btnText, padding: "2px 8px", minHeight: 28, fontSize: 11.5, color: C.lime }}>
-              Tillbaka till idag
-            </button>
-          )}
-        </div>
-        <button onClick={() => onByt(efterDag != null ? efterDag : dagStart(dagTs) + 864e5)}
-          disabled={visarIdag} data-dag-fram="1" aria-label="Nästa dag"
-          style={{ ...stegKnapp, opacity: visarIdag ? 0.4 : 1, cursor: visarIdag ? "default" : "pointer" }}>›</button>
-      </div>
-
       <div style={{ ...card, display: "flex", gap: 16, alignItems: "center" }}>
         <Ring kcal={t.kcal} mål={mål && mål.kcal} />
         <div style={{ flex: 1 }}>
@@ -178,11 +159,29 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
         Logga måltid <span style={{ fontSize: 19 }}>+</span>
       </button>
 
-      {/* Rubriken följer den valda dagen. "Dagens måltider" över gårdagens
-          lista är inte en detalj: det är den enda texten som säger VAD man
-          tittar på när man scrollat förbi dagsväljaren. */}
-      <div style={{ ...label(), margin: "22px 0 4px" }}>
-        {visarIdag ? "Dagens måltider" : `Måltider ${dagNamn(dagTs).toLowerCase()}`}
+      {/* DAGSVÄLJAREN SITTER I RUBRIKRADEN, INTE PÅ EN EGEN RAD.
+          Som egen rad överst kostade den 52 px, och matvyn blev 31 px för hög
+          på iPhone SE — en av vyerna som enligt layoutlöftet aldrig får
+          scrolla (verify-atlas2-layout.mjs fångade det i CI). Rubriken säger
+          ändå redan vilken dag man ser, så pilarna hör hemma just där: dagen
+          ÄR rubriken, inte en etikett ovanför den.
+
+          Den som bara loggar idag ser "Idag" och behöver aldrig röra dem. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 4px" }}>
+        <button onClick={() => onByt(föreDag != null ? föreDag : dagStart(dagTs) - 864e5)}
+          data-dag-bak="1" aria-label="Föregående dag" style={stegKnapp}>‹</button>
+        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+          <div style={{ ...label() }} data-dag-namn="1">{dagNamn(dagTs)}</div>
+          {!visarIdag && (
+            <button onClick={() => onByt(null)} data-till-idag="1"
+              style={{ ...btnText, padding: "2px 8px", minHeight: 26, fontSize: 11.5, color: C.lime }}>
+              Tillbaka till idag
+            </button>
+          )}
+        </div>
+        <button onClick={() => onByt(efterDag != null ? efterDag : dagStart(dagTs) + 864e5)}
+          disabled={visarIdag} data-dag-fram="1" aria-label="Nästa dag"
+          style={{ ...stegKnapp, opacity: visarIdag ? 0.4 : 1, cursor: visarIdag ? "default" : "pointer" }}>›</button>
       </div>
       {dagensLogg.length === 0 ? (
         <div style={{ padding: "26px 16px", textAlign: "center", border: `1px dashed ${C.border}`, borderRadius: 14, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
