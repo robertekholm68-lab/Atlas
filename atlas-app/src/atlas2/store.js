@@ -12,6 +12,7 @@ import {
 } from "../engines/index.js";
 import { MUSCLES } from "../data/muscles.js";
 import { nextWorkout } from "../engines/programs.js";
+import { sammaDygn } from "./foodlog.js";
 
 const NS = "atlas.v3.";
 const key = k => NS + k;
@@ -165,10 +166,12 @@ export { nextWorkout };
 // carbs/fat — aldrig `calories`, det är lag i hela kodbasen.
 
 // Samma "idag" som matvyn: lokal kalenderdag, inte ett rullande dygn.
-const sammaDag = (a, b) => {
-  const x = new Date(a), y = new Date(b);
-  return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
-};
+//
+// FÖRR STOD DEFINITIONEN TVÅ GÅNGER — en här och en i matvyn. De råkade vara
+// överens, men dagsväljaren (logga och rätta bakåt) BYGGER på att de är det:
+// filtrerar vyn på ett dygnsbegrepp och summerar totalerna på ett annat,
+// hamnar poster i listan som inte finns i summan. Nu importeras samma funktion.
+const sammaDag = sammaDygn;
 
 /**
  * Dagens näring, summerad ur matloggen med SAMMA motorfunktion (computeNutrition)
