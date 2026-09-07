@@ -375,12 +375,22 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
             margin: "0 auto 12px",
           }} />
 
+          {/* UTAN MÅL SYNS MÅLRADEN ALLTID.
+              Målet driver hela appen — coachens rekommendation, delmålen,
+              kostplanen. Att gömma "Sätt ett mål" bakom en dragning för den
+              som ännu inte satt ett är att gömma nästa steg. Verifieraren
+              fångade det: "målraden syns direkt på hemvyn utan mål".
+
+              MED mål satt räcker det i uppfällt läge: då är det en statusrad
+              man läser ibland, inte en uppmaning. */}
+          {!mål && <MålRad />}
+
           <Start />
           <Nyckeltal />
 
           {uppdraget && (
             <div style={{ marginTop: 14 }}>
-              <MålRad />
+              {mål && <MålRad />}
               <Besked />
             </div>
           )}

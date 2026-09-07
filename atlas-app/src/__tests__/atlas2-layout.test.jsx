@@ -206,8 +206,12 @@ describe("appen väljer skal efter bredd", () => {
     // Det får inte FÖRSVINNA — bara flytta. En vy som tappar innehåll vid en
     // layoutändring är en regression, inte en förbättring.
     const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
-    const kort = src.slice(src.indexOf('data-hemkort="1"'), src.indexOf('data-hemkort="1"') + 1800);
+    const kort = src.slice(src.indexOf('data-hemkort="1"'), src.indexOf('data-hemkort="1"') + 2600);
     expect(kort).toMatch(/<Besked \/>/);
-    expect(kort).toMatch(/<MålRad \/>/);
+    // Målraden finns på TVÅ ställen: alltid synlig när mål saknas, och i det
+    // uppfällda läget när det är satt. Verifieraren fångade att den försvann
+    // helt för den som ännu inte satt ett mål — och målet driver hela appen.
+    expect(kort).toMatch(/\{!mål && <MålRad \/>\}/);
+    expect(kort).toMatch(/\{mål && <MålRad \/>\}/);
   });
 });

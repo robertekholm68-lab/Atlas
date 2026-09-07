@@ -60,10 +60,36 @@ const läsKarta = (page) => page.evaluate(() => {
   return { viewBox: svgs.map(s => s.getAttribute("viewBox")), imgs, regioner, färgade, lägen };
 });
 
+/**
+ * Läser båda vyerna genom att VÄNDA figuren.
+ *
+ * Hemvyn visar en figur i taget sedan #164: två figurer sida vid sida
+ * begränsas av bredden och blir 456 px höga oavsett skärm, medan en figur blir
+ * dubbelt så stor. Verifieraren måste därför trycka på vändknappen för att se
+ * baksidan — den finns, men inte samtidigt.
+ */
+async function läsBåda(page) {
+  const fram = await läsKarta(page);
+  await page.evaluate(() => document.querySelector('[data-vand="1"]')?.click());
+  await page.waitForTimeout(400);
+  const bak = await läsKarta(page);
+  // VÄND TILLBAKA. Senare kontroller klickar på framsidans regioner, och en
+  // verifierare får inte lämna appen i ett annat läge än den fann den.
+  await page.evaluate(() => document.querySelector('[data-vand="1"]')?.click());
+  await page.waitForTimeout(400);
+  return {
+    viewBox: [...fram.viewBox, ...bak.viewBox],
+    imgs: [...fram.imgs, ...bak.imgs],
+    regioner: [...fram.regioner, ...bak.regioner],
+    färgade: fram.färgade + bak.färgade,
+    lägen: [...new Set([...fram.lägen, ...bak.lägen])],
+  };
+}
+
 // ── Kvinna + demo ────────────────────────────────────────────────────────────
 {
   const page = await starta("Kvinna", "Demo");
-  const k = await läsKarta(page);
+  const k = await läsBåda(page);
   await kolla("kvinna: två vyer med kvinnofigurens viewBox", k.viewBox.length === 2 && k.viewBox.every(v => v === KVINNA.front.viewBox));
   await kolla("kvinna: basbilderna är inbäddade (data-URI) och skilda fram/bak", k.imgs.length === 2 && k.imgs.every(s => s && s.startsWith("data:image/webp")) && k.imgs[0] !== k.imgs[1]);
   await kolla("kvinna: 22 regioner (11 fram + 11 bak)", k.regioner.length === 22);
@@ -86,9 +112,11 @@ const läsKarta = (page) => page.evaluate(() => {
     titlar: document.querySelectorAll("g[data-region] title").length,
     text: document.body.innerText,
   }));
+  // 11 REGIONER, INTE 22: hemvyn visar en figur i taget sedan #164. Båda
+  // vyerna kontrolleras av läsBåda ovan; här räcker den synliga.
   await kolla("kvinna: hover ger INGET muskelnamn",
-    h.regioner === 22 && h.text.length > 50 && !/FRAMSIDA LÅR/i.test(h.text));
-  await kolla("kvinna: regionerna har ingen <title>", h.regioner === 22 && h.titlar === 0);
+    h.regioner === 11 && h.text.length > 50 && !/FRAMSIDA LÅR/i.test(h.text));
+  await kolla("kvinna: regionerna har ingen <title>", h.regioner === 11 && h.titlar === 0);
   await page.screenshot({ path: "dist-atlas2/verify-kvinnokarta-mobil.png" });
   await page.close();
 }
@@ -96,7 +124,7 @@ const läsKarta = (page) => page.evaluate(() => {
 // ── Kvinna + demo, skrivbord ─────────────────────────────────────────────────
 {
   const page = await starta("Kvinna", "Demo", 1280);
-  const k = await läsKarta(page);
+  const k = await läsBåda(page);
   await kolla("kvinna skrivbord: kvinnofigurens viewBox", k.viewBox.every(v => v === KVINNA.front.viewBox));
   await page.screenshot({ path: "dist-atlas2/verify-kvinnokarta-desktop.png" });
   await page.close();
@@ -105,7 +133,7 @@ const läsKarta = (page) => page.evaluate(() => {
 // ── Man + demo ───────────────────────────────────────────────────────────────
 {
   const page = await starta("Man", "Demo");
-  const k = await läsKarta(page);
+  const k = await läsBåda(page);
   await kolla("man: mansfigurens viewBox", k.viewBox.every(v => v === MAN.front.viewBox));
   await kolla("man: 22 regioner", k.regioner.length === 22);
   await kolla("man: vader och baksida lår finns bakifrån", ["calves", "hamstrings", "gluteals", "erector_spinae"].every(id => k.regioner.includes(id)));
@@ -119,7 +147,7 @@ const läsKarta = (page) => page.evaluate(() => {
 // ── Inget kön valt + demo: mannen, som förut ─────────────────────────────────
 {
   const page = await starta(null, "Demo");
-  const k = await läsKarta(page);
+  const k = await läsBåda(page);
   await kolla("inget kön: mansfiguren", k.viewBox.every(v => v === MAN.front.viewBox));
   await page.close();
 }
@@ -127,7 +155,7 @@ const läsKarta = (page) => page.evaluate(() => {
 // ── Kvinna + riktig profil: ingen färg utan underlag ─────────────────────────
 {
   const page = await starta("Kvinna", "Riktig profil");
-  const k = await läsKarta(page);
+  const k = await läsBåda(page);
   await kolla("kvinna riktig: kvinnofiguren visas", k.viewBox.every(v => v === KVINNA.front.viewBox));
   await kolla("kvinna riktig: noll färgade former utan historik", k.färgade === 0);
   await page.close();
