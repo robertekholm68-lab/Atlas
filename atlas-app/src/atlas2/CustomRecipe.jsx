@@ -85,8 +85,7 @@ export function CustomRecipe({ onSpara, onClose }) {
         {onClose && <button onClick={onClose} style={btnText} aria-label="Stäng">Stäng</button>}
       </div>
       <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.55 }}>
-        Lägg till ingredienser så räknar Askr näringen. Receptet blir sökbart och
-        kan hamna i veckomenyn.
+        Lägg till ingredienser så räknar Askr näringen.
       </div>
 
       <input value={namn} onChange={e => setNamn(e.target.value)}

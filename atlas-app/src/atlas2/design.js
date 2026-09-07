@@ -179,3 +179,46 @@ export const statCell = (i) => ({
  */
 export const DASH = "—";
 export const orDash = v => (v === null || v === undefined || Number.isNaN(v)) ? DASH : v;
+
+/**
+ * RÖRELSE.
+ *
+ * Appen hoppade: ark dök upp färdiga, flikar byttes utan mellanläge. Det
+ * fungerar, men det är skillnaden mellan en sida och en produkt — hjärnan
+ * läser en rörelse som ett samband ("det här kom därifrån") och ett hopp som
+ * en ny bild utan förklaring.
+ *
+ * TRE KURVOR RÄCKER. Fler blir en zoo av tider som ingen håller ordning på.
+ *
+ * prefers-reduced-motion respekteras: den som stängt av rörelse i systemet får
+ * samma innehåll utan animation. Det är inte en artighet — rörelse utlöser
+ * illamående hos en del människor.
+ */
+export const KEYFRAMES = `
+@keyframes askrTona { from { opacity: 0 } to { opacity: 1 } }
+@keyframes askrUpp {
+  from { opacity: 0; transform: translateY(16px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+@keyframes askrIn {
+  from { opacity: 0; transform: translateY(6px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+`;
+
+/** Injicerar keyframes en gång. Idempotent — dubbla anrop lägger inte till två. */
+export function monteraRörelse() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("askr-rorelse")) return;
+  const el = document.createElement("style");
+  el.id = "askr-rorelse";
+  el.textContent = KEYFRAMES;
+  document.head.appendChild(el);
+}

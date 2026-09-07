@@ -1,7 +1,11 @@
 import { createRoot } from "react-dom/client";
+import { monteraRörelse } from "./design.js";
 import "../styles/global.css";
 import { Atlas2 } from "./App2.jsx";
 
+// Rörelsereglerna injiceras före första render, så inget hinner ritas utan
+// dem. monteraRörelse är idempotent.
+monteraRörelse();
 createRoot(document.getElementById("root")).render(<Atlas2 />);
 
 // UPPDATERINGAR — varför appen letar efter dem själv.
