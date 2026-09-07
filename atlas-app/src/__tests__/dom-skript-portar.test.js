@@ -81,6 +81,13 @@ describe("DOM-skriptens portar", () => {
       const src = readFileSync(join(KATALOG, f), "utf8");
       const lyssnar = portenI(f);
       const surfar = [...src.matchAll(/localhost:(\d{2,5})/g)].map(m => Number(m[1]));
+      // ETT SKRIPT UTAN LÄSBAR ADRESS SKYDDAS INTE AV KONTROLLEN NEDAN.
+      //
+      // Skriver man `localhost:${PORT}` matchar inget, listan blir tom och
+      // slingan går aldrig ett varv — kontrollen blir grön för att den inte
+      // hittade något att pröva. Ett test som passerar av tomhet är exakt den
+      // sortens falska skydd de här filerna finns för att stoppa.
+      if (!surfar.length) fel.push(`${f}: ingen läsbar localhost-adress (skriv porten som siffra)`);
       for (const s of new Set(surfar)) if (s !== lyssnar) fel.push(`${f}: lyssnar ${lyssnar}, surfar ${s}`);
     }
     expect(fel).toEqual([]);

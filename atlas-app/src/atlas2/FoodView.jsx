@@ -29,12 +29,26 @@ import { receptBild } from "../data/recipeImages.js";
 import { dagensNutrition, nyId } from "./store.js";
 import { mealDecision, estimateMeal, rensaSökfras, gramUrText } from "../engines/index.js";
 import { createDictation, voiceSupport } from "../engines/voice.js";
-import { buildEstimatedEntry } from "./foodlog.js";
+import { buildEstimatedEntry, stämplaDag, sammaDygn, dagStart, flyttaPost, dagarMedLogg } from "./foodlog.js";
 
-const idag = ts => {
-  const d = new Date(ts), n = new Date();
-  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
-};
+const idag = ts => sammaDygn(ts, Date.now());
+
+/** "26 aug", eller "Idag"/"Igår" när det är de dagarna. */
+function dagNamn(ts, nu = Date.now()) {
+  if (sammaDygn(ts, nu)) return "Idag";
+  if (sammaDygn(ts, nu - 864e5)) return "Igår";
+  return new Date(ts).toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "short" });
+}
+
+/** "ÅÅÅÅ-MM-DD" ur ett ts — formatet <input type="date"> vill ha. */
+function datumFält(ts) {
+  const d = new Date(ts), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function tidFält(ts) {
+  const d = new Date(ts), p = n => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 function Makro({ namn, värde, mål, färg }) {
   const andel = mål ? Math.min(1, värde / mål) : 0;
@@ -77,7 +91,7 @@ function Ring({ kcal, mål }) {
 
 /* ── ÖVERSIKT ── */
 
-function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onSkala, onSättKcal, onTaBort, onSpara }) {
+function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed, onLogga, onSätta, onÄndra, onÄndraNamn, onSättGram, onSättMåltid, onSkala, onSättKcal, onTaBort, onFlytta, onSpara }) {
   const [redigerar, setRedigerar] = useState(null);
 
   const stegKnapp = {
@@ -99,6 +113,11 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
   // sanning, inte två.
   const t = totaler;
   const kvar = mål && mål.kcal ? mål.kcal - t.kcal : null;
+
+  // Föregående DAG MED LOGG, inte föregående kalenderdag. Att stega genom en
+  // tom vecka en dag i taget är sju tryck för att komma till något som finns.
+  const föreDag = dagarMed.find(d => d < dagStart(dagTs));
+  const efterDag = [...dagarMed].reverse().find(d => d > dagStart(dagTs));
 
   return (
     <div>
@@ -140,10 +159,33 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
         Logga måltid <span style={{ fontSize: 19 }}>+</span>
       </button>
 
-      <div style={{ ...label(), margin: "22px 0 4px" }}>Dagens måltider</div>
+      {/* DAGSVÄLJAREN SITTER I RUBRIKRADEN, INTE PÅ EN EGEN RAD.
+          Som egen rad överst kostade den 52 px, och matvyn blev 31 px för hög
+          på iPhone SE — en av vyerna som enligt layoutlöftet aldrig får
+          scrolla (verify-atlas2-layout.mjs fångade det i CI). Rubriken säger
+          ändå redan vilken dag man ser, så pilarna hör hemma just där: dagen
+          ÄR rubriken, inte en etikett ovanför den.
+
+          Den som bara loggar idag ser "Idag" och behöver aldrig röra dem. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 4px" }}>
+        <button onClick={() => onByt(föreDag != null ? föreDag : dagStart(dagTs) - 864e5)}
+          data-dag-bak="1" aria-label="Föregående dag" style={stegKnapp}>‹</button>
+        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+          <div style={{ ...label() }} data-dag-namn="1">{dagNamn(dagTs)}</div>
+          {!visarIdag && (
+            <button onClick={() => onByt(null)} data-till-idag="1"
+              style={{ ...btnText, padding: "2px 8px", minHeight: 26, fontSize: 11.5, color: C.lime }}>
+              Tillbaka till idag
+            </button>
+          )}
+        </div>
+        <button onClick={() => onByt(efterDag != null ? efterDag : dagStart(dagTs) + 864e5)}
+          disabled={visarIdag} data-dag-fram="1" aria-label="Nästa dag"
+          style={{ ...stegKnapp, opacity: visarIdag ? 0.4 : 1, cursor: visarIdag ? "default" : "pointer" }}>›</button>
+      </div>
       {dagensLogg.length === 0 ? (
         <div style={{ padding: "26px 16px", textAlign: "center", border: `1px dashed ${C.border}`, borderRadius: 14, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
-          Inget loggat idag.
+          {visarIdag ? "Inget loggat idag." : `Inget loggat ${dagNamn(dagTs).toLowerCase()}.`}
         </div>
       ) : grupperaMåltider(dagensLogg, e => {
         const f = e.foodId ? FOOD_INDEX.find(x => x.id === e.foodId) : null;
@@ -347,6 +389,42 @@ function Oversikt({ dagensLogg, totaler, mål, onLogga, onSätta, onÄndra, onÄ
                     }}>
                     Spara i skafferiet
                   </button>
+                )}
+
+                {/* FLYTTA I TIDEN. Loggade man middagen först dagen efter,
+                    eller på fel dag, ska posten kunna hamna rätt utan att
+                    raderas och skrivas in på nytt.
+
+                    Klockslaget är med, inte bara datumet: måltidstypen härleds
+                    ur timmen, så en post som flyttas utan tid hade bytt från
+                    middag till frukost på köpet. */}
+                {onFlytta && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.hairline}` }}>
+                    <div style={{ ...label(), marginBottom: 6 }}>Tidpunkt</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="date" defaultValue={datumFält(e.ts)} data-flytta-datum={e.id}
+                        max={datumFält(Date.now())}
+                        aria-label="Datum"
+                        style={{ flex: 2, minWidth: 0, padding: "10px 11px", minHeight: 44, borderRadius: 10,
+                          border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13.5, fontFamily: MONO }} />
+                      <input type="time" defaultValue={tidFält(e.ts)} data-flytta-tid={e.id}
+                        aria-label="Tid"
+                        style={{ flex: 1, minWidth: 0, padding: "10px 11px", minHeight: 44, borderRadius: 10,
+                          border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13.5, fontFamily: MONO }} />
+                    </div>
+                    <button data-flytta={e.id} onClick={() => {
+                      const rot = document.querySelector(`[data-flytta-datum="${e.id}"]`);
+                      const kl = document.querySelector(`[data-flytta-tid="${e.id}"]`);
+                      onFlytta(e.id, rot && rot.value, kl && kl.value);
+                      setRedigerar(null);
+                    }} style={{
+                      width: "100%", marginTop: 8, padding: "10px 0", minHeight: 44, borderRadius: 999,
+                      border: `1px solid ${C.border}`, background: C.card2, color: C.text,
+                      fontSize: 12.5, cursor: "pointer",
+                    }}>
+                      Flytta måltiden
+                    </button>
+                  </div>
                 )}
 
                 <button onClick={() => taBort(e.id)} data-tabort="1"
@@ -1228,12 +1306,41 @@ function Recept({ onLägg, nutritionTargets, profile = {}, setProfile, bred, foo
 export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta, profile, setProfile, weights = [], supplements, egnaRecept = [], setEgnaRecept, skafferi = [], setSkafferi }) {
   const [flik, setFlik] = useState("oversikt");
   const layout = useLayout();
-  const dagens = foodLog.filter(e => e && e.ts && idag(e.ts));
-  const totaler = dagensNutrition(foodLog, Date.now(), skafferi);
-  const lägg = post => { setFoodLog(l => [...l, post]); setFlik("oversikt"); };
+  /**
+   * VILKEN DAG SOM VISAS OCH LOGGAS PÅ.
+   *
+   * null = idag, och då används `Date.now()` rakt av — vanligaste fallet ska
+   * inte kosta något. Ett valt datum är midnatt den dagen; klockslaget på en ny
+   * post kommer från `stämplaDag`, som behåller nuvarande tid på det dygnet.
+   */
+  const [valdDag, setValdDag] = useState(null);
+  const dagTs = valdDag != null ? valdDag : Date.now();
+  const visarIdag = sammaDygn(dagTs, Date.now());
+
+  const dagens = foodLog.filter(e => e && e.ts && sammaDygn(e.ts, dagTs));
+  const totaler = dagensNutrition(foodLog, dagTs, skafferi);
+
+  /**
+   * EN CENTRAL OMSTÄMPLING, inte fem.
+   *
+   * Snabbloggen, sökningen, skafferiet, recepten, streckkoden, fotot och
+   * AI-svaret bygger alla sin post med `ts: Date.now()` och skickar den hit.
+   * Att låta var och en känna till den valda dagen hade betytt sju ställen att
+   * glömma på — och en åttonde loggväg i framtiden hade tyst hamnat på fel dag.
+   *
+   * Här skrivs stämpeln om EN gång. Visas idag är `stämplaDag` en no-op.
+   */
+  const lägg = post => {
+    setFoodLog(l => [...l, { ...post, ts: stämplaDag(valdDag, post.ts || Date.now()) }]);
+    setFlik("oversikt");
+  };
 
   // Erbjudandet att spara i skafferiet: posten som just loggades, eller null.
   const [erbjudande, setErbjudande] = useState(null);
+
+  // Dagar med minst en post, nyast först — så pilarna hoppar till nästa dag som
+  // faktiskt har något, i stället för att stega genom en tom vecka.
+  const dagarMedLoggLista = useMemo(() => dagarMedLogg(foodLog), [foodLog]);
 
   /**
    * ERBJUDER ATT SPARA när maten inte fanns i databasen.
@@ -1295,6 +1402,15 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
   }));
 
   const taBortPost = id => setFoodLog(l => l.filter(e => e.id !== id));
+
+  /**
+   * Flyttar en post till ett annat datum och klockslag.
+   *
+   * Går datumet inte att tolka returnerar `flyttaPost` posten oförändrad — en
+   * felskriven tid ska inte kunna kasta en måltid till 1970.
+   */
+  const flyttaPostITiden = (id, datum, tid) =>
+    setFoodLog(l => l.map(e => (e.id === id ? flyttaPost(e, datum, tid) : e)));
 
   // Namnet är en etikett och rör inte näringen. Att låta en omdöpning räkna om
   // kalorierna vore att gissa att posten också fick nytt innehåll — och den som
@@ -1402,6 +1518,8 @@ export function FoodView({ foodLog = [], setFoodLog, nutritionTargets, onSätta,
       )}
 
       {flik === "oversikt" && <Oversikt dagensLogg={dagens} totaler={totaler} mål={nutritionTargets}
+        dagTs={dagTs} visarIdag={visarIdag} onByt={setValdDag} dagarMed={dagarMedLoggLista}
+        onFlytta={flyttaPostITiden}
         onLogga={() => setFlik("logga")} onSätta={onSätta}
         onÄndra={ändraPost} onÄndraNamn={ändraNamnPost} onSättGram={sättGramPost}
         onSättMåltid={sättMåltidPost} onSkala={skalaPost} onSättKcal={sättKcalPost}

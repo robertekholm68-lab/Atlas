@@ -87,7 +87,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-08-26)
+## Aktuella siffror (avlästa 2026-09-07)
 
 | Sak | Antal |
 |---|---|
@@ -103,11 +103,11 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | — varav kuraterade | 73 |
 | Recept | 276 |
 | Recept med bild | 140 av 276 |
-| Övningar med bild (`MED_BILD`) | 3 av 160 |
+| Övningar med bild (`MED_BILD`) | 8 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1644 i 143 filer |
-| DOM-skript | 15 |
+| Tester (vitest) | 1739 i 151 filer |
+| DOM-skript | 16 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
 till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
@@ -691,7 +691,9 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — FEMTON stycken** (alla gröna i CI 2026-08-26):
+**Askr 2.0:s DOM-skript — SEXTON stycken** (femton gröna i CI 2026-08-26;
+`verify-atlas2-matlogg.mjs` tillkom 2026-09-07 och är grön lokalt, både ensam
+och parallellt med två andra — dess första CI-körning är den som gäller):
 
 | Skript i `scripts/` | Port | Täcker |
 |---|---|---|
@@ -703,6 +705,7 @@ Verifiering: headless Chromium / vitest framför visuell läsning.
 | `verify-atlas2.mjs` | 8931 | näringsmål, snabblogg, coachchatten, persistens |
 | `verify-atlas2-tillskott.mjs` | 8963 | kryssrutor, streak, följsamhet |
 | `verify-atlas2-matakut.mjs` | 8955 | Rädda måltiden |
+| `verify-atlas2-matlogg.mjs` | 8973 | logga bakåt i tiden, flytta post, omladdning |
 | `verify-atlas2-mealprep.mjs` | 8956 | veckomeny, inköpslista |
 | `verify-atlas2-readiness.mjs` | 8957 | readiness-arket, tunt underlag |
 | `verify-atlas2-pass.mjs` | 8932 | röstknappen + viktrastret i pågående pass |
@@ -1230,8 +1233,65 @@ vet.
   midja avvisades tyst. Nu räcker ett värde; bara den helt tomma posten avvisas.
   Det befintliga testet "utan vikt finns ingen mätning" låste fast den gamla
   regeln och skrevs om — regeln ändrades med avsikt, testet följde efter.
+- **Ett eget skydd för sin egen funktion prövar sällan det som går sönder.**
+  `verify-atlas2-matlogg.mjs` kontrollerade dagsväljaren på 390 px och letade
+  efter SIDSCROLL. Det som brast var HÖJDEN på 375 px: den nya raden kostade
+  52 px och matvyn — en av vyerna som aldrig får scrolla — blev 31 px för hög.
+  Ett skript skrivet till en funktion mäter funktionens löften; det är de
+  äldre, breda skydden (`verify-atlas2-layout.mjs`) som fångar vad funktionen
+  kostade allt annat. Båda behövs, och den nya raden hörde hemma i en rad som
+  redan fanns.
+- **Ett test som inte hittar något att pröva blir grönt av tomhet.**
+  Portkontrollen läste `localhost:(\d+)` ur varje DOM-skript och jämförde med
+  porten servern binder. Ett skript som skrev `localhost:${PORT}` gav noll
+  träffar, slingan gick aldrig ett varv och kontrollen passerade — utan att ha
+  prövat något. Negativa och listbaserade kontroller måste själva kräva att det
+  fanns något att kontrollera.
+- **Samma begrepp definierat två gånger är en bugg som väntar.** `sammaDag` i
+  `store.js` och `sammaDygn` i `foodlog.js` beskrev samma lokala kalenderdygn.
+  Ingen körning kunde avslöja det så länge de var överens — men dagsväljaren
+  läser listan genom det ena och totalerna genom det andra.
 - **Kravtexters exempel kan vara självmotsägande.** Specen för detaljvyn listar
   94,0 cm som äldsta midjemätning men säger −7,5 cm sedan start, och 91,5 − 94,0
   är −2,5. Implementationen räknar ur datan, inte ur exemplet. När ett krav bär
   två tal som inte går ihop är det talen som ska ifrågasättas, inte koden som ska
   fås att visa båda.
+
+
+## Matloggen bakåt i tiden
+
+Matvyn var låst till dagens datum: `foodLog` filtrerades på `idag(e.ts)` och
+varje loggväg stämplade `Date.now()`. Man kunde alltså rätta VAD man ätit men
+aldrig NÄR — och den som glömde logga en dag kunde inte fylla i den i efterhand.
+
+**Redigeringen fanns redan.** Namn, gram, kcal, måltidstyp, skalning och
+radering låg på plats i `FoodView.jsx`. Det som saknades var enbart tiden. Att
+bygga en "redigeringsfunktion" hade blivit en andra väg till samma sak.
+
+Dagen väljs i RUBRIKRADEN över måltidslistan (`valdDag`, `null` = idag) — inte
+på en egen rad överst, vilket kostade 52 px och gjorde matvyn 31 px för hög för
+iPhone SE. Dagen är rubriken, inte en etikett ovanför den. Bakåtpilen hoppar
+till
+**föregående dag som har logg**, inte till föregående kalenderdag: att stega
+genom en tom vecka en dag i taget är sju tryck för att komma till något som
+finns. Framåt är avstängt på idag — framtida måltider loggas inte.
+
+**Klockslaget följer med, dygnet byts** (`stämplaDag` i `foodlog.js`). Det är
+inte kosmetika: `måltidAvTid()` härleder frukost/lunch/mellanmål/middag ur
+timmen. Med midnatt som stämpel hade allt man loggar i efterhand blivit frukost,
+och grupperingen blivit obrukbar för just de dagar man rättar.
+
+**En enda omstämpling täcker alla sju loggvägar.** Snabbloggen, sökningen,
+skafferiet, recepten, streckkoden, fotot och akuten går alla genom `onLägg` →
+`lägg`. Omstämplingen sitter där, inte i varje väg — nästa loggväg som byggs
+ärver beteendet utan att veta om det.
+
+**Flytt i tiden** (`flyttaPost`) ligger i redigeringspanelen: datum + tid, med
+`max` på dagens datum. Går formatet inte att tolka returneras posten oförändrad
+— en felskriven tid ska inte kunna kasta en måltid till 1970.
+
+**Dygnsbegreppet fanns i två exemplar.** `sammaDag` i `store.js` och `sammaDygn`
+i `foodlog.js` var två implementationer av samma sak. De råkade vara överens,
+men dagsväljaren BYGGER på att de är det: filtreras listan på ett dygnsbegrepp
+och summeras totalerna på ett annat, hamnar poster i listan som inte finns i
+summan. `store.js` importerar nu funktionen i stället för att upprepa den.
