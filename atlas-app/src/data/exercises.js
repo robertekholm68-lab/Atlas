@@ -233,6 +233,17 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // Källor: styrkelabbet.se/pec-deck, muscles.se/.../pec-deck,
+  // privatetrainingonline.se/pec-deck, effektimalt.se. Egna formuleringar.
+  //
+  // Sitshöjden är det källorna återkommer mest till: sitter man för lågt
+  // flyttas arbetet till axlarna i stället för bröstet, och maskinen blir
+  // både verkningslös och sliten på axelleden. Därför står den först.
+  //
+  // "Pressa med armbågarna, inte händerna" står i flera källor — händerna
+  // vilar bara, kraften kommer från överarmen.
+  pec_deck: ["Ställ sitsen så att överarmarna blir horisontella, inte högre", "Dra ihop skulderbladen och håll dem mot ryggstödet", "Pressa ihop med armbågarna, håll dem lätt böjda", "Släpp tillbaka kontrollerat, stanna när armarna är i linje med kroppen"],
+
   // Källor: styrkelabbet.se/uppatlutad-hantelpress, gymgrossisten.com/
   // lutande-hantelpress, ourfitness.se/lutande-hantelpress. Egna
   // formuleringar. 30-45 graders lutning återkommer i alla tre; över det tar

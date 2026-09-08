@@ -32,6 +32,7 @@ export const MED_BILD = [
   "db_bench_press",
   "decline_bench_bb",
   "decline_db_press",
+  "pec_deck",
   "squat",
   "deadlift",
   
