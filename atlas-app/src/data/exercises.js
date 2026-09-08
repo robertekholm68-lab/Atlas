@@ -233,6 +233,19 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // Källor: styrkelabbet.se/uppatlutad-hantelpress, gymgrossisten.com/
+  // lutande-hantelpress, ourfitness.se/lutande-hantelpress. Egna
+  // formuleringar. 30-45 graders lutning återkommer i alla tre; över det tar
+  // främre deltoideus över rörelsen och det blir en axelpress.
+  incline_db_press: ["Vinkla bänken 30-45 grader, fötterna stadigt i golvet", "Dra ihop skulderbladen bakåt och nedåt mot bänken", "Håll armbågarna 30-45 grader från kroppen, inte rakt ut", "Pressa upp tills armarna är raka över axlarna"],
+
+  // Källor: privatetrainingonline.se/hantelpress, fashionablefit.nu/hantelpress.
+  // Nedåtlutning flyttar belastningen till bröstets nedre del; många är
+  // starkare i den vinkeln.
+  decline_bench_bb: ["Ställ bänken nedåtlutande och lås fast benen", "Dra ihop skulderbladen, håll bröstet högt", "Sänk stången kontrollerat mot nedre bröstet", "Pressa upp utan att låsa armbågarna hårt"],
+
+  decline_db_press: ["Ställ bänken nedåtlutande och lås fast benen", "Håll hantlarna över nedre bröstet, handflatorna framåt", "Sänk tills du känner sträck i bröstet, armbågarna 45 grader ut", "Pressa upp och håll hantlarna över bröstet, inte över axlarna"],
+
   triceps_pushdown: ["Greppa stången eller repet i axelhöjd, armbågarna in mot kroppen", "Håll överarmarna helt stilla genom hela rörelsen", "Pressa ner tills armarna är raka, känn triceps jobba", "För tillbaka kontrollerat utan att armbågarna vandrar ut"],
   safety_bar_squat: ["Stången vilar på axlarna, greppa handtagen", "Håll bålen upprätt — stången vill fälla dig framåt", "Sänk till djup du behärskar, knäna följer tårna", "Driv upp genom hela foten"],
   db_neutral_press: ["Handflatorna mot varandra (neutralt grepp)", "Armbågarna något indragna, skonsamt för axeln", "Pressa upp och lätt ihop", "Sänk kontrollerat till brösthöjd"],

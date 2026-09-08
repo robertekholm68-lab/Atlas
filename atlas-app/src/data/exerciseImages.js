@@ -26,9 +26,15 @@
  */
 export const MED_BILD = [
   "triceps_pushdown",
+  "bench_press",
+  "incline_bench_bb",
+  "incline_db_press",
+  "db_bench_press",
+  "decline_bench_bb",
+  "decline_db_press",
   "squat",
   "deadlift",
-  "bench_press",
+  
   "wide_pulldown",
   "seated_cable_row",
   "t_bar_row",

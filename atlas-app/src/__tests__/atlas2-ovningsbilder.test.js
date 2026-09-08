@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { MED_BILD, bildFör, bildtäckning } from "../data/exerciseImages.js";
-import { EXERCISES } from "../data/exercises.js";
+import { EXERCISES, TEKNIK_CUES } from "../data/exercises.js";
 
 describe("registret och mappen är i takt", () => {
   it("varje id i MED_BILD har en fil i public/ovningar", () => {
@@ -92,5 +92,39 @@ describe("bilderna ligger där bygget når dem", () => {
   it("utan bild står punkterna som vanlig lista", () => {
     const src = readFileSync(resolve("src/atlas2/OvningsSida.jsx"), "utf8");
     expect(src).toMatch(/\) : cues \? \(/);
+  });
+});
+
+describe("bröstövningarna har bild och teknikpunkter", () => {
+  const ids = ["bench_press", "incline_bench_bb", "incline_db_press",
+    "db_bench_press", "decline_bench_bb", "decline_db_press"];
+
+  it("alla sex har en registrerad bild", () => {
+    for (const id of ids) expect(bildFör(id), id).toBeTruthy();
+  });
+
+  it("alla sex har fyra teknikpunkter", () => {
+    // Tre av dem saknade cues när bilderna lades in — bilden hade visats med
+    // ett tomt mörkt fält där texten skulle stå.
+    for (const id of ids) {
+      expect(TEKNIK_CUES[id], id).toBeDefined();
+      expect(TEKNIK_CUES[id].length, id).toBe(4);
+    }
+  });
+
+  it("lutningen står i punkterna, inte bara i namnet", () => {
+    // Källorna (styrkelabbet, gymgrossisten, ourfitness) är eniga: 30-45
+    // grader. Över det tar främre deltoideus över och det blir en axelpress.
+    expect(TEKNIK_CUES.incline_db_press.join(" ")).toMatch(/30-45 grader/);
+  });
+
+  it("varje registrerad bild har en fil", () => {
+    // En registrering utan fil ger en trasig bild-ikon; en fil utan
+    // registrering visas aldrig.
+    const reg = readFileSync(resolve("src/data/exerciseImages.js"), "utf8");
+    const idn = [...reg.matchAll(/"([a-z_0-9]+)"/g)].map(m => m[1]);
+    for (const id of idn) {
+      expect(existsSync(resolve(`public/ovningar/${id}.webp`)), id).toBe(true);
+    }
   });
 });
