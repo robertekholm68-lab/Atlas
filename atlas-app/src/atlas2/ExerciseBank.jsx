@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { C, hdr, label, btnText, btnPrimary, card, volt } from "./design.js";
-import { EXERCISES, TEKNIK_CUES } from "../data/exercises.js";
+import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
 
 /** Övningsbankens grupper på svenska. Samma nio som muskelgruppsvyn. */
@@ -72,7 +72,7 @@ function muskelNamn(id) {
  * övning. Utan den vägen tvingades man skapa ett program för att logga ett pass,
  * och då loggade man inte alls.
  */
-export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, startGrupp = null }) {
+export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, startGrupp = null, onÖppna }) {
   // Valda övningar i den ordning de plockades. Ordningen ÄR passets ordning —
   // den som väljer bänkpress först vill förmodligen börja där.
   const [valda, setValda] = useState([]);
@@ -83,7 +83,6 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
   // propen, så ett nytt gruppval från muskelgruppsvyn slog inte igenom.
   const [grupp, setGrupp] = useState(startGrupp);
   useEffect(() => { setGrupp(startGrupp); }, [startGrupp]);
-  const [öppen, setÖppen] = useState(null);
 
   // ÖVNINGENS EGEN GRUPP, INTE MUSKELNS.
   //
@@ -186,7 +185,6 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
       )}
 
       {träffar.map(e => {
-        const är = öppen === e.id;
         const akt = [...(e.activation || [])].sort((a, b) => b.factor - a.factor);
         return (
           <div key={e.id} style={{ ...rad, marginBottom: 8, overflow: "hidden" }}>
@@ -194,8 +192,7 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
                 fakta, ett tryck på plus lägger till i passet — två olika
                 avsikter som inte får dela knapp. */}
             <div style={{ display: "flex", alignItems: "stretch" }}>
-            <button onClick={() => setÖppen(är ? null : e.id)} data-övning="1"
-              aria-expanded={är}
+            <button onClick={() => onÖppna && onÖppna(e.id)} data-övning="1"
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
                 flex: 1, minWidth: 0, textAlign: "left", padding: "13px 15px", minHeight: 44,
@@ -224,8 +221,7 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
                   {[UTRUSTNING_SV[e.equipment] || e.equipment, SV[e.loadMode]].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              <span style={{ color: C.muted, fontSize: 15, flexShrink: 0,
-                transform: är ? "rotate(180deg)" : "none", transition: "transform 150ms ease-out" }}>⌄</span>
+              <span style={{ color: C.muted, fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
             </button>
             {onStarta && (
               <button onClick={() => setValda(v => v.includes(e.id) ? v.filter(x => x !== e.id) : [...v, e.id])}
@@ -239,89 +235,6 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
                 }}>{valda.includes(e.id) ? "✓" : "+"}</button>
             )}
             </div>
-
-            {är && (
-              <div style={{ padding: "0 15px 14px" }}>
-                {/* BILDEN FÖRST — den svarar på "hur ser rörelsen ut?" snabbare
-                    än någon text. Diptyk: start till vänster, slut till höger.
-
-                    Saknas bilden visas ingenting alls. En platshållare med ett
-                    kamera-ikon ser ut som en trasig bild, och 157 av 160
-                    övningar saknar bild i skrivande stund. */}
-                {/* TEXTEN LIGGER ÖVER BILDEN, INTE I DEN.
-                    Bilderna har 43–54 % mörkt utrymme under motivet, och där
-                    ryms rubrik och teknikpunkter. Att bränna in texten hade
-                    sett likadant ut men gjort den omöjlig att söka, översätta
-                    eller rätta — och osynlig för skärmläsare. Bilderna är
-                    beskurna med 275 px textfält kvar; appen ritar texten.
-
-                    Ingen gradient behövs: fältet är redan svart i bilden. */}
-                {bildFör(e.id) ? (
-                  <div style={{ position: "relative", marginBottom: 13, borderRadius: 10, overflow: "hidden" }}>
-                    <img src={bildFör(e.id)} alt={`${e.name} — utförande`} loading="lazy"
-                      style={{ width: "100%", display: "block" }} />
-                    {TEKNIK_CUES[e.id] && (
-                      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 14px 14px" }}>
-                        <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                          {TEKNIK_CUES[e.id].map((rad, i) => (
-                            <li key={i} style={{
-                              display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 7,
-                              fontSize: 12, color: C.text2, lineHeight: 1.4,
-                            }}>
-                              <span style={{
-                                flexShrink: 0, width: 17, height: 17, borderRadius: 999,
-                                background: C.lime, color: "#0A0A0A", fontSize: 10, fontWeight: 700,
-                                display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1,
-                              }}>{i + 1}</span>
-                              <span>{rad}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-                {/* Utan bild står teknikpunkterna som vanlig lista. Datan finns
-                    för 48 övningar; bilder för en handfull. */}
-                {TEKNIK_CUES[e.id] && !bildFör(e.id) && (
-                  <>
-                    <div style={{ ...label(), marginBottom: 8 }}>Utförande</div>
-                    <ol style={{ margin: "0 0 16px", padding: "0 0 0 18px" }}>
-                      {TEKNIK_CUES[e.id].map((rad, i) => (
-                        <li key={i} style={{ fontSize: 12.5, color: C.text2, lineHeight: 1.55, marginBottom: 6 }}>
-                          {rad}
-                        </li>
-                      ))}
-                    </ol>
-                  </>
-                )}
-                <div style={{ ...label(), marginBottom: 8 }}>Belastar</div>
-                {akt.map(a => (
-                  <div key={a.muscleId} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
-                    <span style={{ fontSize: 12.5, color: C.text2, flex: 1, minWidth: 0 }}>
-                      {muskelNamn(a.muscleId)}
-                    </span>
-                    {/* Stapeln är samma tal som motorn räknar med, inte en
-                        illustration. 1,0 = primär, 0,5 = sekundär. */}
-                    <span style={{ width: 74, height: 5, borderRadius: 3, background: C.border, flexShrink: 0 }}>
-                      <span style={{
-                        display: "block", height: "100%", borderRadius: 3,
-                        width: `${Math.round(Math.min(1, a.factor) * 100)}%`,
-                        background: a.factor >= 1 ? C.lime : volt(.45),
-                      }} />
-                    </span>
-                    <span style={{ fontSize: 11, color: C.muted, width: 26, textAlign: "right", flexShrink: 0 }}>
-                      {String(a.factor).replace(".", ",")}
-                    </span>
-                  </div>
-                ))}
-                {e.pattern && (
-                  <div style={{ fontSize: 11.5, color: C.muted, marginTop: 10 }}>
-                    Rörelsemönster: {e.pattern}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         );
       })}
