@@ -15,14 +15,14 @@ import { resolve } from "path";
 
 describe("teknikpunkterna finns och visas", () => {
   it("banken importerar och renderar dem", () => {
-    const src = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
+    const src = readFileSync(resolve("src/atlas2/OvningsSida.jsx"), "utf8");
     expect(src).toMatch(/import \{ EXERCISES, TEKNIK_CUES \}/);
-    expect(src).toMatch(/\{TEKNIK_CUES\[e\.id\] && \(/);
+    expect(src).toMatch(/const cues = e \? TEKNIK_CUES\[e\.id\] : null;/);
     expect(src).toMatch(/>Utförande</);
   });
 
   it("som numrerad lista — stegen sker i ordning", () => {
-    const src = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
+    const src = readFileSync(resolve("src/atlas2/OvningsSida.jsx"), "utf8");
     expect(src).toMatch(/<ol style/);
   });
 

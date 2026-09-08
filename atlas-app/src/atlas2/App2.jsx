@@ -21,6 +21,7 @@ import { SportView } from "./SportView.jsx";
 import { ProgramSheet } from "./ProgramSheet.jsx";
 import { ExerciseBank } from "./ExerciseBank.jsx";
 import { MuskelgruppsVy } from "./MuskelgruppsVy.jsx";
+import { ÖvningsSida } from "./OvningsSida.jsx";
 import { FeedbackSheet } from "./FeedbackSheet.jsx";
 import { MachineGuide } from "./MachineGuide.jsx";
 import { KnowledgeView } from "./KnowledgeView.jsx";
@@ -837,7 +838,7 @@ export function Atlas2() {
   // Läsbar etikett för arket (aria-label på dialogen).
   const arkEtikett = s =>
     s === "readiness" ? "Din readiness"
-    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "muskelgrupper" ? "Muskelgrupper" : s === "feedback" ? "Feedback" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
+    : s === "profil" ? "Om dig" : s === "mal" ? "Målresa" : s === "kost" ? "Näringsmål" : s === "ovningar" ? "Övningar" : s === "maskiner" ? "Maskiner" : s === "muskelgrupper" ? "Muskelgrupper" : s === "feedback" ? "Feedback" : String(s).startsWith("ovning:") ? "Övning" : s === "kunskap" ? "Kunskap" : s === "utveckling" ? "Utveckling" : s === "fordelning" ? "Muskelfördelning"
     : s === "import" ? "Historik"
     : s === "program" ? "Program" : (typeof s === "string" && s.startsWith("muskel:")) ? "Muskeldetalj"
     : (typeof s === "string" && s.startsWith("pass:")) ? "Redigera pass" : "Ark";
@@ -1370,6 +1371,15 @@ export function Atlas2() {
             ) : sheet === "ovningar" ? (
               <ExerciseBank onClose={() => setSheet(null)} startGrupp={bankGrupp}
                 onStarta={live ? läggTillÖvningIPass : startaFrittPass}
+                iPågåendePass={!!live}
+                onÖppna={id => setSheet("ovning:" + id)} />
+            ) : typeof sheet === "string" && sheet.startsWith("ovning:") ? (
+              // ÖVNINGSSIDAN. Stäng → tillbaka till banken, inte till fliken:
+              // man bläddrar bland flera övningar, och att hamna på passfliken
+              // efter varje vore att börja om.
+              <ÖvningsSida exId={sheet.slice(7)} sessions={sessions}
+                onClose={() => setSheet("ovningar")}
+                onStarta={id => { if (live) läggTillÖvningIPass([id]); else startaFrittPass([id]); }}
                 iPågåendePass={!!live} />
             ) : sheet === "feedback" ? (
               <FeedbackSheet profile={profile} läge={mode} onClose={() => setSheet(null)} />
