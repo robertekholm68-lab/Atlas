@@ -7,10 +7,12 @@
 // VIKTEN ENSAM LJUGER. Går den ner kan det vara fett eller muskel, och det är
 // skillnaden som avgör om en deff går bra eller illa.
 
+import { readFileSync } from "fs";
+import { resolve } from "path";
 import { describe, it, expect } from "vitest";
 import {
   byggMätning, massor, trend, tolkaOmronCsv, slåIhopMätningar,
-  bästa1RM, styrkeKurva, övningarMedKurva,
+  bästa1RM, styrkeKurva, övningarMedKurva, progressionskarta, volymKurva, kurvTrend,
 } from "../engines/utveckling.js";
 
 const NU = Date.now();
@@ -179,5 +181,83 @@ describe("styrka som uppskattat 1RM", () => {
     const ss = [pass(10, 80, 8), pass(3, 85, 8)];
     expect(övningarMedKurva(ss)).toContain("squat");
     expect(övningarMedKurva([pass(3, 85, 8)], 3)).toEqual([]);
+  });
+});
+
+describe("progressionskartan — alla övningar på en gång", () => {
+  const nu = Date.now();
+  const p = (d, ex, w, reps = 8) => ({
+    completedAt: nu - d * 864e5,
+    sets: [{ exerciseId: ex, weight: w, reps }, { exerciseId: ex, weight: w, reps }],
+  });
+  const ss = [
+    p(40, "squat", 80), p(20, "squat", 85), p(3, "squat", 90),
+    p(40, "bench_press", 70), p(20, "bench_press", 70), p(3, "bench_press", 67.5),
+    p(40, "lateral_raise", 10), p(3, "lateral_raise", 12),
+    p(40, "deadlift", 120), p(3, "deadlift", 120),
+  ];
+
+  it("sorterad efter förändring, störst rörelse först", () => {
+    // Oavsett riktning: en nedgång är något att se, och den ska inte hamna
+    // sist bara för att den är negativ.
+    const k = progressionskarta(ss, "styrka", ["squat", "bench_press", "deadlift"]);
+    const ordning = k.map(r => r.id);
+    expect(ordning.indexOf("squat")).toBeLessThan(ordning.indexOf("bench_press"));
+    expect(ordning.indexOf("bench_press")).toBeLessThan(ordning.indexOf("deadlift"));
+  });
+
+  it("styrka och volym ger olika svar", () => {
+    // 85 × 6 ger högre 1RM än 80 × 10, men lägre volym. De mäter olika saker.
+    const s = progressionskarta(ss, "styrka").find(r => r.id === "squat");
+    const v = progressionskarta(ss, "volym").find(r => r.id === "squat");
+    expect(s.fält).toBe("oneRM");
+    expect(v.fält).toBe("volym");
+    expect(v.senaste).toBe(1440);
+  });
+
+  it("volymen räknar alla set, även höga reps", () => {
+    // Volym är ett mätvärde, inte en uppskattning. 20 reps är lika mycket
+    // arbete oavsett vad de säger om maxstyrka.
+    const k = volymKurva([p(3, "squat", 40, 20)], "squat");
+    expect(k[0].volym).toBe(1600);
+  });
+
+  it("trenden ser bara 8 veckor", () => {
+    // Att jämföra dagens knäböj med den första för ett år sedan säger att man
+    // blivit starkare — vilket man vet. Frågan är om det rör sig NU.
+    const gammal = [p(200, "ohp", 40), p(3, "ohp", 50)];
+    expect(kurvTrend(volymKurva(gammal, "ohp"), "volym")).toBe(null);
+  });
+
+  it("en punkt är ingen trend", () => {
+    // "0 %" hade påstått stillastående när sanningen är att vi inte vet.
+    expect(kurvTrend([{ ts: nu, volym: 100 }], "volym")).toBe(null);
+  });
+
+  it("stora lyft markeras", () => {
+    const k = progressionskarta(ss, "styrka", ["squat"]);
+    expect(k.find(r => r.id === "squat").stort).toBe(true);
+    expect(k.find(r => r.id === "lateral_raise").stort).toBe(false);
+  });
+});
+
+describe("kartan i vyn", () => {
+  const src = readFileSync(resolve("src/atlas2/UtvecklingView.jsx"), "utf8");
+
+  it("måttvalet sparas", () => {
+    // Den som föredrar volym ska inte trycka varje gång.
+    expect(src).toMatch(/save\("progressionsmatt", v\)/);
+  });
+
+  it("ingen förvald rad — kartan är översikten", () => {
+    expect(src).toMatch(/const aktivÖvning = valdÖvning;/);
+  });
+
+  it("färgen bär riktningen", () => {
+    expect(src).toMatch(/t\.procent > 0 \? C\.ready : C\.critical/);
+  });
+
+  it("1RM redovisas som uppskattat", () => {
+    expect(src).toMatch(/Uppskattat ur Epleys formel — inte ett testat maxlyft/);
   });
 });
