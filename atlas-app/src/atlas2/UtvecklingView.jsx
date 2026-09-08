@@ -42,28 +42,44 @@ function fmtDatum(ts) {
 }
 
 /** Enkel linjegraf. Returnerar null utan minst två punkter — en punkt är ingen kurva. */
-function Kurva({ punkter, fält = "kg", färg, höjd = 96 }) {
+function Kurva({ punkter, fält = "kg", färg, höjd = 96, minSpann = 0 }) {
   if (!punkter || punkter.length < 2) return null;
   const v = punkter.map(p => p[fält]);
-  const min = Math.min(...v), max = Math.max(...v);
+  let min = Math.min(...v), max = Math.max(...v);
+
+  // SKALAN FÅR INTE VARA BRUS.
+  //
+  // Med min/max ur datan blir 82,4 och 82,6 hela höjden — 0,2 kg ritas som
+  // ett berg. Vikt varierar 0,5-1 kg dag till dag av vätska och maginnehåll,
+  // och den variationen är inte information. Kurvan får ett golv för
+  // spännvidden: för vikt 2 kg, så en trend på 1 kg syns som lutning, inte
+  // som ett sågblad.
+  if (max - min < minSpann) {
+    const mitt = (max + min) / 2;
+    min = mitt - minSpann / 2; max = mitt + minSpann / 2;
+  }
   const spann = max - min || 1;
   const t0 = punkter[0].ts, t1 = punkter[punkter.length - 1].ts;
   const bredd = t1 - t0 || 1;
-  const pts = punkter.map(p => {
-    const x = ((p.ts - t0) / bredd) * 100;
-    const y = höjd - ((p[fält] - min) / spann) * (höjd - 16) - 8;
-    return `${x.toFixed(2)},${y.toFixed(1)}`;
-  }).join(" ");
+
+  // BREDDEN I VIEWBOX MATCHAR RUTAN, inte ett fast 100.
+  //
+  // preserveAspectRatio="none" med viewBox 100 bred i en 364 px ruta gav
+  // 3,6× horisontell utsträckning: cirklarna blev 14,6×4,0 px — ovaler — och
+  // linjen fick olika tjocklek beroende på lutning. Mätt. Nu 360 bred, så
+  // förhållandet blir ~1:1 och formerna behåller sin form.
+  const W = 360;
+  const X = p => ((p.ts - t0) / bredd) * (W - 8) + 4;
+  const Y = p => höjd - ((p[fält] - min) / spann) * (höjd - 16) - 8;
+  const pts = punkter.map(p => `${X(p).toFixed(1)},${Y(p).toFixed(1)}`).join(" ");
   return (
-    <svg viewBox={`0 0 100 ${höjd}`} preserveAspectRatio="none"
+    <svg viewBox={`0 0 ${W} ${höjd}`} preserveAspectRatio="none"
       style={{ width: "100%", height: höjd, display: "block", overflow: "visible" }}>
       <polyline points={pts} fill="none" stroke={färg} strokeWidth="1.6"
         vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-      {punkter.map((p, i) => {
-        const x = ((p.ts - t0) / bredd) * 100;
-        const y = höjd - ((p[fält] - min) / spann) * (höjd - 16) - 8;
-        return <circle key={i} cx={x} cy={y} r="2" fill={färg} vectorEffect="non-scaling-stroke" />;
-      })}
+      {punkter.map((p, i) => (
+        <circle key={i} cx={X(p)} cy={Y(p)} r="2.4" fill={färg} vectorEffect="non-scaling-stroke" />
+      ))}
     </svg>
   );
 }
@@ -380,7 +396,7 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
                 Vikt · {fmtDatum(serie[0].ts)}–{fmtDatum(serie[serie.length - 1].ts)}
               </div>
               <div style={{ ...card, padding: "14px 12px" }}>
-                <Kurva punkter={serie} fält="kg" färg={C.lime} />
+                <Kurva punkter={serie} fält="kg" färg={C.lime} minSpann={2} />
               </div>
             </>
           )}
