@@ -505,6 +505,9 @@ export function Atlas2() {
   const [bankGrupp, setBankGrupp] = useState(null);
   // Vilken underflik Utveckling ska öppna på. Hem → vikt sätter "kropp".
   const [utvecklingsflik, setUtvecklingsflik] = useState(null);
+  // Listan övningssidan kom ifrån, så nästa/föregående kan bläddra i den —
+  // samma mönster som passets Nästa övning.
+  const [ovningsLista, setOvningsLista] = useState(null);
   const sättMätningar = f => setMätningar(xs => {
     const ny = typeof f === "function" ? f(xs) : f;
     save("matningar", ny);
@@ -1372,12 +1375,14 @@ export function Atlas2() {
               <ExerciseBank onClose={() => setSheet(null)} startGrupp={bankGrupp}
                 onStarta={live ? läggTillÖvningIPass : startaFrittPass}
                 iPågåendePass={!!live}
-                onÖppna={id => setSheet("ovning:" + id)} />
+                onÖppna={(id, lista) => { setOvningsLista(lista || null); setSheet("ovning:" + id); }} />
             ) : typeof sheet === "string" && sheet.startsWith("ovning:") ? (
               // ÖVNINGSSIDAN. Stäng → tillbaka till banken, inte till fliken:
               // man bläddrar bland flera övningar, och att hamna på passfliken
               // efter varje vore att börja om.
               <ÖvningsSida exId={sheet.slice(7)} sessions={sessions}
+                lista={ovningsLista}
+                onByt={id => setSheet("ovning:" + id)}
                 onClose={() => setSheet("ovningar")}
                 onStarta={id => { if (live) läggTillÖvningIPass([id]); else startaFrittPass([id]); }}
                 iPågåendePass={!!live} />

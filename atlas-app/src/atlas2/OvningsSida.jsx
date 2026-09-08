@@ -42,8 +42,23 @@ const NIVÅER = [
 
 const muskelNamn = id => (MUSCLES[id] && MUSCLES[id].name) || id;
 
-export function ÖvningsSida({ exId, sessions = [], onClose, onStarta, iPågåendePass = false }) {
+export function ÖvningsSida({ exId, sessions = [], lista = null, onByt, onClose, onStarta, iPågåendePass = false }) {
   const e = EXERCISES.find(x => x.id === exId);
+
+  // BLÄDDRA MELLAN ÖVNINGARNA I LISTAN MAN KOM IFRÅN.
+  //
+  // Robert: "jag vill kunna klicka mig tillbaka på samma sätt som jag klickar
+  // till nästa övning i ett pass". Passvyns Nästa övning stegar live.idx och
+  // spärrar vid sista posten (Math.min(idx+1, length-1)) — samma mönster här.
+  //
+  // `lista` är ID:na i den ordning de visades i banken eller muskelgruppsvyn,
+  // skickad med när sidan öppnades. Utan en lista (t.ex. öppnad direkt från
+  // en länk) finns inget att bläddra i, och pilarna visas inte alls — en pil
+  // som inte gör något är sämre än ingen pil.
+  const idx = lista ? lista.indexOf(exId) : -1;
+  const harLista = lista && lista.length > 1 && idx >= 0;
+  const föregående = harLista && idx > 0 ? lista[idx - 1] : null;
+  const nästa = harLista && idx < lista.length - 1 ? lista[idx + 1] : null;
   const bild = e ? bildFör(e.id) : null;
   const cues = e ? TEKNIK_CUES[e.id] : null;
 
@@ -65,6 +80,30 @@ export function ÖvningsSida({ exId, sessions = [], onClose, onStarta, iPågåen
 
   return (
     <div style={{ padding: "4px 0 24px" }}>
+      {/* SAMMA STEGKNAPPAR SOM I PASSET, samma plats: vid namnet, tummens
+          räckvidd. Låsta i stället för dolda vid listans ändar — precis som
+          Math.min/max i passvyn — så position i listan alltid syns
+          ("3 av 9"), och layouten inte hoppar när man når kanten. */}
+      {harLista && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <button onClick={() => föregående && onByt && onByt(föregående)} disabled={!föregående}
+            data-ovning-bak="1" aria-label="Föregående övning"
+            style={{
+              width: 40, height: 40, borderRadius: 999, cursor: föregående ? "pointer" : "default",
+              border: `1px solid ${C.border}`, background: C.card2,
+              color: föregående ? C.text2 : C.border, fontSize: 17,
+            }}>‹</button>
+          <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>{idx + 1} av {lista.length}</span>
+          <button onClick={() => nästa && onByt && onByt(nästa)} disabled={!nästa}
+            data-ovning-fram="1" aria-label="Nästa övning"
+            style={{
+              width: 40, height: 40, borderRadius: 999, cursor: nästa ? "pointer" : "default",
+              border: `1px solid ${C.border}`, background: C.card2,
+              color: nästa ? C.text2 : C.border, fontSize: 17,
+            }}>›</button>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
         <span aria-hidden style={{
           width: 44, height: 44, flexShrink: 0, borderRadius: 10, overflow: "hidden",

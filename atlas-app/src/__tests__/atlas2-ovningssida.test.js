@@ -16,7 +16,7 @@ describe("kortet blev en sida", () => {
   it("banken öppnar sidan i stället för att fälla ut", () => {
     // En utfällning i en lista med 160 rader trycker ner allt under sig, och
     // man scrollar i två riktningar samtidigt.
-    expect(bank).toMatch(/onClick=\{\(\) => onÖppna && onÖppna\(e\.id\)\} data-övning="1"/);
+    expect(bank).toMatch(/onClick=\{\(\) => onÖppna && onÖppna\(e\.id, träffar\.map\(x => x\.id\)\)\} data-övning="1"/);
     expect(bank).not.toMatch(/const \[öppen, setÖppen\]/);
   });
 
@@ -72,5 +72,37 @@ describe("tilläggen", () => {
   it("progressionskurvan visas om historik finns", () => {
     // Det Gymlify lägger under en egen flik ligger på sidan.
     expect(sida).toMatch(/\{kurva\.length >= 2 && rekord && \(/);
+  });
+});
+
+describe("bläddra mellan övningar, samma mönster som passets Nästa övning", () => {
+  it("banken skickar med listans ordning", () => {
+    // Robert: "jag vill kunna klicka mig tillbaka på samma sätt som jag
+    // klickar till nästa övning i ett pass".
+    expect(bank).toMatch(/onÖppna\(e\.id, träffar\.map\(x => x\.id\)\)/);
+  });
+
+  it("App2 lagrar listan och skickar den vidare", () => {
+    expect(app).toMatch(/const \[ovningsLista, setOvningsLista\] = useState\(null\);/);
+    expect(app).toMatch(/onÖppna=\{\(id, lista\) => \{ setOvningsLista\(lista \|\| null\); setSheet\("ovning:" \+ id\); \}\}/);
+    expect(app).toMatch(/lista=\{ovningsLista\}/);
+  });
+
+  it("pilarna spärras vid listans ändar, som Math.min i passvyn", () => {
+    // Passvyn: Math.min(live.idx + 1, live.items.length - 1). Samma idé här:
+    // föregående/nästa blir null vid kanten i stället för att index går ur
+    // gränserna.
+    expect(sida).toMatch(/const föregående = harLista && idx > 0 \? lista\[idx - 1\] : null;/);
+    expect(sida).toMatch(/const nästa = harLista && idx < lista\.length - 1 \? lista\[idx \+ 1\] : null;/);
+  });
+
+  it("utan lista visas inga pilar", () => {
+    // En pil som inte gör något är sämre än ingen pil — t.ex. öppnad direkt
+    // från en länk utan en föregående lista.
+    expect(sida).toMatch(/\{harLista && \(/);
+  });
+
+  it("positionen visas — '3 av 9', inte gissning", () => {
+    expect(sida).toMatch(/\{idx \+ 1\} av \{lista\.length\}/);
   });
 });
