@@ -192,7 +192,7 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
                 fakta, ett tryck på plus lägger till i passet — två olika
                 avsikter som inte får dela knapp. */}
             <div style={{ display: "flex", alignItems: "stretch" }}>
-            <button onClick={() => onÖppna && onÖppna(e.id)} data-övning="1"
+            <button onClick={() => onÖppna && onÖppna(e.id, träffar.map(x => x.id))} data-övning="1"
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
                 flex: 1, minWidth: 0, textAlign: "left", padding: "13px 15px", minHeight: 44,
