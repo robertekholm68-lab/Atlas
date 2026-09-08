@@ -261,3 +261,32 @@ describe("kartan i vyn", () => {
     expect(src).toMatch(/Uppskattat ur Epleys formel — inte ett testat maxlyft/);
   });
 });
+
+describe("kurvan är inte skev", () => {
+  const src = readFileSync(resolve("src/atlas2/UtvecklingView.jsx"), "utf8");
+
+  it("viewBox matchar rutans bredd", () => {
+    // Robert: "viktkurvan i utvecklingsvyn är lite skev".
+    //
+    // preserveAspectRatio="none" med viewBox 100 bred i en 364 px ruta gav
+    // 3,6× horisontell utsträckning. Mätt: cirklarna blev 14,6×4,0 px —
+    // ovaler — och linjen fick olika tjocklek beroende på lutning.
+    // Med W=360 blir förhållandet ~1:1: 4,9×4,8 efter fixen.
+    expect(src).toMatch(/const W = 360;/);
+    expect(src).toMatch(/viewBox=\{`0 0 \$\{W\} \$\{höjd\}`\}/);
+  });
+
+  it("viktkurvan har ett golv för spännvidden", () => {
+    // Med min/max ur datan blir 82,4 och 82,6 hela höjden — 0,2 kg ritas som
+    // ett berg. Vikt varierar 0,5-1 kg dag till dag av vätska, och den
+    // variationen är inte information.
+    expect(src).toMatch(/minSpann=\{2\}/);
+    expect(src).toMatch(/if \(max - min < minSpann\)/);
+  });
+
+  it("golvet centrerar kring datan", () => {
+    // Inte runt 0 — en vikt på 82 ska inte ritas i en skala 0-84.
+    const f = src.slice(src.indexOf("if (max - min < minSpann)"), src.indexOf("if (max - min < minSpann)") + 200);
+    expect(f).toMatch(/const mitt = \(max \+ min\) \/ 2;/);
+  });
+});
