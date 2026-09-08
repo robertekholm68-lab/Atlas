@@ -432,3 +432,78 @@ export function övningarMedKurva(sessions, minPunkter = 2) {
     .filter(([, n]) => n >= minPunkter)
     .map(([id]) => id);
 }
+
+/**
+ * VOLYMKURVA — set × reps × vikt per pass.
+ *
+ * Styrka (1RM) svarar på "blir jag starkare?", volym på "jobbar jag mer?".
+ * De skiljer sig: 85 kg × 6 ger högre 1RM än 80 × 10, men lägre volym. Vid
+ * en deff kan volymen sjunka medan 1RM håller — och det är bra, inte dåligt.
+ *
+ * Till skillnad från 1RM räknas alla set, även höga reps. Volym är ett
+ * mätvärde, inte en uppskattning, och 20 reps är lika mycket arbete oavsett
+ * vad de säger om maxstyrka.
+ */
+export function volymKurva(sessions, exId) {
+  const punkter = [];
+  for (const s of (sessions || []).slice().sort((a, b) => a.completedAt - b.completedAt)) {
+    let v = 0;
+    for (const x of s.sets || []) {
+      if (x.exerciseId !== exId || !x.weight || !x.reps) continue;
+      v += x.weight * x.reps;
+    }
+    if (v > 0) punkter.push({ ts: s.completedAt, volym: Math.round(v) });
+  }
+  return punkter;
+}
+
+/**
+ * Trend för en kurva: senaste värdet mot det första i fönstret.
+ *
+ * FÖNSTRET ÄR 8 VECKOR, INTE HELA HISTORIKEN. Att jämföra dagens knäböj med
+ * den första man loggade för ett år sedan säger att man blivit starkare —
+ * vilket man vet. Frågan i en progressionskarta är om det rör sig NU.
+ *
+ * Minst två punkter, annars null. En punkt är ingen trend, och "0 %" hade
+ * påstått stillastående när sanningen är att vi inte vet.
+ */
+export function kurvTrend(punkter, fält, dagar = 56, nowMs = Date.now()) {
+  const från = nowMs - dagar * 864e5;
+  const p = (punkter || []).filter(x => x.ts >= från);
+  if (p.length < 2) return null;
+  const a = p[0][fält], b = p[p.length - 1][fält];
+  if (!a) return null;
+  return {
+    från: a, till: b,
+    diff: b - a,
+    procent: Math.round((b - a) / a * 100),
+    punkter: p.length,
+  };
+}
+
+/**
+ * Hela progressionskartan: en rad per övning, sorterad efter förändring.
+ *
+ * DE STORA LYFTEN FÖRST vid lika förändring. En sorteringsordning som lägger
+ * sidolyft före knäböj för att sidolyftet råkade gå upp 2 % säger fel sak om
+ * vad som spelar roll.
+ */
+export function progressionskarta(sessions, mått = "styrka", storaLyft = [], nowMs = Date.now()) {
+  const ids = övningarMedKurva(sessions);
+  const rader = ids.map(id => {
+    const punkter = mått === "volym" ? volymKurva(sessions, id) : styrkeKurva(sessions, id);
+    const fält = mått === "volym" ? "volym" : "oneRM";
+    const trend = kurvTrend(punkter, fält, 56, nowMs);
+    const senaste = punkter.length ? punkter[punkter.length - 1][fält] : null;
+    return { id, punkter, fält, trend, senaste, stort: storaLyft.includes(id) };
+  }).filter(r => r.punkter.length >= 2);
+
+  rader.sort((a, b) => {
+    const pa = a.trend ? Math.abs(a.trend.procent) : -1;
+    const pb = b.trend ? Math.abs(b.trend.procent) : -1;
+    if (pb !== pa) return pb - pa;
+    if (a.stort !== b.stort) return a.stort ? -1 : 1;
+    return 0;
+  });
+  return rader;
+}

@@ -3,13 +3,14 @@
 // annars hamnar sista knappen — "Spara mätning" — bakom menyn. Verifieraren
 // fångade det: Playwright rapporterade att nav-svg:n fångade klicket.
 import { NAV_HÖJD } from "./layout.js";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { load, save } from "./store.js";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import {
   byggMätning, massor, trend, tolkaOmronCsv, slåIhopMätningar, förändring,
-  styrkeKurva, övningarMedKurva, bästa1RM, ändraMätning, raderaMätning,
+  bästa1RM, progressionskarta, ändraMätning, raderaMätning,
 } from "../engines/utveckling.js";
-import { EXERCISES } from "../data/exercises.js";
+import { EXERCISES, MAIN_LIFTS } from "../data/exercises.js";
 import { KROPPSMATT, KROPPSSAMMANSATTNING, GRUPPER, mattIGrupp, ALLA_INDEX } from "../data/kroppsmatt.js";
 import {
   NyMatning, MattDetalj, Historik, Nyckeltal, Asymmetri, useMättaMått, fmt, fmtDiff,
@@ -215,12 +216,13 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
   const senaste = mätningar.length ? mätningar[mätningar.length - 1] : null;
   const m = senaste ? massor(senaste) : null;
 
-  const övningar = useMemo(() => övningarMedKurva(sessions), [sessions]);
-  const aktivÖvning = valdÖvning || övningar[0] || null;
-  const kurva = useMemo(
-    () => (aktivÖvning ? styrkeKurva(sessions, aktivÖvning) : []),
-    [sessions, aktivÖvning]
-  );
+  // Styrka eller volym — valet sparas.
+  const [mått, setMått] = useState("styrka");
+  useEffect(() => { load("progressionsmatt", "styrka").then(v => { if (v === "volym" || v === "styrka") setMått(v); }); }, []);
+  const sättMått = v => { setMått(v); save("progressionsmatt", v); };
+  const karta = useMemo(() => progressionskarta(sessions, mått, MAIN_LIFTS), [sessions, mått]);
+  // Ingen förvald rad: kartan är översikten, detaljen öppnas på tryck.
+  const aktivÖvning = valdÖvning;
   const rekord = aktivÖvning ? bästa1RM(sessions, aktivÖvning) : null;
   const namnFör = id => (EXERCISES.find(e => e.id === id) || {}).name || id;
 
@@ -420,44 +422,94 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
           vid många reps mäter man uthållighet, inte maxstyrka. */}
       {flik === "styrka" && (
       <>
-      {!övningar.length ? (
+      {!karta.length ? (
         <div style={{ ...card, padding: 16, fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>
           Logga samma övning två gånger med vikt och reps, så ritas kurvan här.
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-            {övningar.slice(0, 6).map(id => (
-              <button key={id} onClick={() => setValdÖvning(id)} data-styrka-ovning={id}
+          {/* PROGRESSIONSKARTAN. Alla övningar på en gång, så mönstret syns:
+              vad går upp, vad står still, vad går ner. Inte en kurva man
+              bläddrar till — en översikt man läser på tio sekunder.
+
+              STYRKA ELLER VOLYM, ett val som gäller hela listan. Styrka (1RM)
+              svarar på "blir jag starkare?", volym på "jobbar jag mer?". Vid
+              en deff kan volymen sjunka medan 1RM håller — och det är bra.
+              Valet minns: den som föredrar volym ska inte trycka varje gång.
+
+              Sorterad efter förändring, störst rörelse först oavsett
+              riktning — en nedgång är något att se. */}
+          <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
+            {[["styrka", "Styrka"], ["volym", "Volym"]].map(([id, namn]) => (
+              <button key={id} onClick={() => sättMått(id)} data-matt-val={id}
+                aria-pressed={mått === id}
                 style={{
-                  padding: "7px 12px", minHeight: 38, borderRadius: 999, cursor: "pointer", fontSize: 12,
-                  border: `1px solid ${aktivÖvning === id ? C.lime : C.border}`,
-                  color: aktivÖvning === id ? C.lime : C.muted,
-                  background: aktivÖvning === id ? volt(.08) : C.card2,
-                }}>{namnFör(id)}</button>
+                  padding: "8px 14px", minHeight: 40, borderRadius: 999, cursor: "pointer", fontSize: 12.5,
+                  border: `1px solid ${mått === id ? C.lime : C.border}`,
+                  color: mått === id ? C.lime : C.muted,
+                  background: mått === id ? volt(.08) : C.card2,
+                }}>{namn}</button>
             ))}
+            <span style={{ fontSize: 10.5, color: C.muted, alignSelf: "center", marginLeft: "auto" }}>
+              {mått === "styrka" ? "uppskattat 1RM" : "kg × reps per pass"} · 8 veckor
+            </span>
           </div>
-          <div style={{ ...card, padding: "14px 12px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ ...label(), color: C.muted }}>Uppskattat 1RM</span>
-              {rekord && (
-                <span style={{ ...hdr(19) }}>
-                  {rekord.oneRM}<span style={{ fontSize: 12, color: C.muted }}> kg</span>
-                </span>
-              )}
-            </div>
-            {kurva.length >= 2
-              ? <Kurva punkter={kurva} fält="oneRM" färg={C.lime} />
-              : <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
-                  En punkt än — logga övningen igen så ritas kurvan.
-                </div>}
-            {rekord && (
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 9, lineHeight: 1.45 }}>
-                Bästa set: {rekord.weight} kg × {rekord.reps} reps, {fmtDatum(rekord.ts)}.
-                Uppskattat ur Epleys formel — inte ett testat maxlyft.
-              </div>
-            )}
-          </div>
+
+          {karta.map(r => {
+            const t = r.trend;
+            const färg = !t || t.procent === 0 ? C.muted : t.procent > 0 ? C.ready : C.critical;
+            const vald = aktivÖvning === r.id;
+            return (
+              <button key={r.id} onClick={() => setValdÖvning(vald ? null : r.id)} data-karta-rad={r.id}
+                aria-expanded={vald}
+                style={{
+                  ...card, width: "100%", textAlign: "left", cursor: "pointer", color: C.text,
+                  padding: "11px 13px", marginBottom: 7,
+                  borderColor: vald ? C.lime : C.border,
+                }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: r.stort ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {namnFör(r.id)}
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted, marginTop: 2 }}>
+                      {r.senaste}{mått === "styrka" ? " kg" : ""}
+                      {t && <span style={{ color: färg }}> · {t.procent > 0 ? "+" : ""}{t.procent} %</span>}
+                      {!t && <span> · {r.punkter.length} pass, för få i fönstret</span>}
+                    </div>
+                  </div>
+                  {/* Miniatyrkurva som i tidningens aktielista: formen läses
+                      utan axlar. Färgen bär riktningen. */}
+                  <div style={{ width: 76, flexShrink: 0 }}>
+                    <Kurva punkter={r.punkter.slice(-12)} fält={r.fält} färg={färg} höjd={30} />
+                  </div>
+                </div>
+
+                {/* Tryck på raden: hela kurvan med varje pass utsatt. */}
+                {vald && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                    <Kurva punkter={r.punkter} fält={r.fält} färg={C.lime} höjd={96} />
+                    {mått === "styrka" && rekord && (
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 9, lineHeight: 1.45 }}>
+                        Bästa set: {rekord.weight} kg × {rekord.reps} reps, {fmtDatum(rekord.ts)}.
+                        Uppskattat ur Epleys formel — inte ett testat maxlyft.
+                      </div>
+                    )}
+                    {mått === "volym" && (
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 9, lineHeight: 1.45 }}>
+                        Set × reps × vikt per pass. Alla set räknas, även höga reps.
+                      </div>
+                    )}
+                    {t && (
+                      <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted, marginTop: 6 }}>
+                        {t.från} → {t.till} över {t.punkter} pass
+                      </div>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </>
       )}
       </>
