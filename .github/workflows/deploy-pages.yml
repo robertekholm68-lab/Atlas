@@ -201,6 +201,7 @@ jobs:
           - verify-atlas2-matakut.mjs
           - verify-atlas2-matlogg.mjs
           - verify-atlas2-mealprep.mjs
+          - verify-atlas2-ovningsbilder.mjs
           - verify-atlas2-pass.mjs
           - verify-atlas2-passredigering.mjs
           - verify-atlas2-profil.mjs
