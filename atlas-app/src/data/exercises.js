@@ -233,6 +233,32 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // Källor: styrkelabbet.se/sidolyft-med-hantlar, gymgrossisten.com/
+  // sidolyft-med-hantlar, muscles.se/.../hantellyft-at-sidan,
+  // privatetrainingonline.se/hantellyft-sidan, mathiaszachau.com/sidolyft-hantlar.
+  // Egna formuleringar.
+  //
+  // ALLA KÄLLOR SÄGER SAMMA TRE SAKER, och de står i punkt 2-4:
+  //
+  //   LED MED ARMBÅGARNA, inte händerna. Armbågen ska vara högst i toppen.
+  //   Är handleden högre roterar man axeln utåt och träffar FRÄMRE deltoideus
+  //   i stället för den yttre.
+  //
+  //   STANNA VID AXELHÖJD. Högre kopplar ur mellersta deltoideus och låter
+  //   trapezius ta över — man gör en shrug, inte ett sidolyft.
+  //
+  //   SKULDRORNA NER. Drar man upp hela axelpartiet mot öronen tar
+  //   kappmuskeln över, och nacken får spänningar.
+  //
+  // Lätt framåtlutning och lyft i skapulaplanet (cirka 30 grader framåt)
+  // ger mest utrymme i axelleden. Rakt ut åt sidan ökar risken för
+  // impingement enligt Gymgrossisten.
+  db_lateral_raise: ["Stå med lätt böjda knän och luta överkroppen 10-15 grader framåt", "Böj armbågarna lätt och lås vinkeln — leda med armbågen, inte handen", "Lyft ut och något framåt tills överarmarna är horisontella", "Håll skuldrorna nedpressade och sänk kontrollerat"],
+
+  // Kabeln drar hela vägen, till skillnad från hantlar som är nästan
+  // avlastade i botten. Därför känns den tyngre på samma vikt.
+  cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
+
   // Källor: styrkelabbet.se/sittande-axelpress-med-skivstang,
   // mathiaszachau.com/sittande-axelpress-skivstang, muscles.se/.../axelpress,
   // privatetrainingonline.se/axelpress. Egna formuleringar.
@@ -243,6 +269,11 @@ const CUES = {
   // SVANKNING ÄR DET FARLIGASTE FELET enligt muscles.se — man kompenserar för
   // stel axel eller för tung vikt, och övningen blir en lutande bänkpress
   // medan ländryggen tar smällen. Därför står bålen i punkt 2.
+  // Smithmaskinen låser banan, så bålen behöver inte stabilisera — man kan
+  // ta tyngre. Priset är att banan är rak medan en fri press går i en svag
+  // båge; sitt därför så stången passerar nära ansiktet, inte framför.
+  smith_shoulder_press: ["Ställ bänken så att stången hamnar strax framför ansiktet", "Fäll ryggstödet ett snäpp bakåt och spänn bålen", "Pressa rakt upp längs skenan till nästan raka armar", "Sänk till axelhöjd utan att låta stången gå bakom huvudet"],
+
   seated_bb_press: ["Fäll ryggstödet ett snäpp bakåt, inte rakt 90 grader", "Spänn bålen och sätet så ryggen inte svankar från stödet", "Greppa stången strax bredare än axelbrett och pressa rakt upp", "Sänk kontrollerat till axelhöjd utan att låsa armbågarna i toppen"],
 
   // DECLINE I MASKIN: det som gör den till en decline-press är att armarna rör

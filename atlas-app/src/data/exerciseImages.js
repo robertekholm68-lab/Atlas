@@ -47,6 +47,9 @@ export const MED_BILD = [
   "ohp",
   "db_shoulder_press",
   "seated_bb_press",
+  "db_lateral_raise",
+  "cable_lateral_raise",
+  "smith_shoulder_press",
   "squat",
   "deadlift",
   
