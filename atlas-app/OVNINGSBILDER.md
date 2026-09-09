@@ -92,8 +92,20 @@ npx eslint src
 npx vite build --config vite.atlas2.config.js
 ```
 
-Verifiera i webbläsare genom att bläddra igenom gruppen med pilarna på
-övningssidan (`data-ovning-fram`), och räkna hur många som har både bild och
-fyra steg.
+Verifiera sedan i webbläsare:
+
+```
+node scripts/verify-atlas2-ovningsbilder.mjs Shoulders db_front_raise bb_front_raise
+```
+
+Skriptet serverar `dist-atlas2` + `public/ovningar/` över http, mäter
+`naturalWidth` för varje id i `MED_BILD` och öppnar övningssidan (Pass →
+Övningar → grupp → övning) för de id:n som anges, och räknar `<li>` i den
+lista som ligger över den stora bilden. Ett grönt bygge säger inget om att
+bilderna laddas — bara mätningen gör det.
+
+**Känt i formatet:** på 390 px-skärm blir fyra tvåradiga punkter ~170 px
+höga, textfältet 340 px blir ~160 px. Punkt 1 börjar därför 10–30 px in på
+skorna. Antingen 400 px textfält eller kortare punkter — ej beslutat.
 
 Uppdatera sedan status i `bildbank.md`.

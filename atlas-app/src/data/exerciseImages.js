@@ -50,9 +50,11 @@ export const MED_BILD = [
   "db_lateral_raise",
   "cable_lateral_raise",
   "smith_shoulder_press",
+  "db_front_raise",
+  "bb_front_raise",
+  "bent_over_lateral",
   "squat",
   "deadlift",
-  
   "wide_pulldown",
   "seated_cable_row",
   "t_bar_row",

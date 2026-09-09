@@ -259,6 +259,49 @@ const CUES = {
   // avlastade i botten. Därför känns den tyngre på samma vikt.
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
+  // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,
+  // styrkelabbet.se/framatlyft-med-skivstang, mathiaszachau.com/
+  // framatlyft-hantlar. Egna formuleringar.
+  //
+  // Alla tre säger samma två saker, och de bär punkt 3 och 4:
+  //
+  //   STANNA VID AXELHÖJD. Lyfts hantlarna högre går arbetet över till
+  //   trapezius — främre deltoideus har gjort sitt när armen är horisontell.
+  //
+  //   LÄTT VIKT, STRIKT. Övningen är lätt att fuska med genom att luta sig
+  //   bakåt och svinga upp vikten; det ger mer kilo på hanteln men mindre
+  //   belastning på just den muskel övningen finns till för. Sänk
+  //   kontrollerat — släpp inte.
+  //
+  // Bara främre deltoideus i aktiveringen, som i datan. Källorna beskriver
+  // en isolationsövning; känns den i kappmuskeln har man lyft för högt.
+  db_front_raise: ["Stå stadigt med hantlarna hängande framför låren, lätt böjda armbågar", "Spänn bålen och håll överkroppen stilla — ingen gungning bakåt", "Lyft kontrollerat rakt fram tills armarna är horisontella, inte högre", "Sänk lika kontrollerat, hellre lättare vikt än sämre form"],
+
+  // Stången tvingar båda armarna att gå i takt och tar bort möjligheten att
+  // alternera, i övrigt samma regler som hantelvarianten.
+  bb_front_raise: ["Håll stången med överhandsgrepp ungefär axelbrett, hängande mot låren", "Spänn bålen och undvik att luta dig bakåt när stången lämnar låren", "Lyft med nästan raka armar tills stången är i axelhöjd, inte över", "Sänk kontrollerat hela vägen ner utan att släppa spänningen"],
+
+  // BENT-OVER LATERAL / OMVÄNDA HANTELFLYES. Källor: muscles.se/.../
+  // omvanda-hantelflyes, mathiaszachau.com/omvanda-flyes-hantlar,
+  // privatetrainingonline.se/omvanda-flyes. Egna formuleringar.
+  //
+  // Källorna är eniga om tre saker:
+  //
+  //   FÄLL I HÖFTEN MED RAK RYGG tills överkroppen är nära horisontell —
+  //   det är fällningen som vänder lyftet bakåt och träffar bakre deltoideus.
+  //
+  //   LÅS ARMBÅGSVINKELN OCH LED MED ARMBÅGARNA. Böjer och sträcker man
+  //   blir det en rodd, och ryggen tar över.
+  //
+  //   LÄTT VIKT. Bakre deltoideus är liten; för tungt och latsen och
+  //   kappmuskeln gör jobbet i stället. Svingar man upp vikten tränar man
+  //   andra muskler.
+  //
+  // Trapezius 0,4 i datan stämmer med källorna — de nämner att skulderbladen
+  // dras ihop i toppen. Ingen rygg-/latsaktivering läggs till: den ska
+  // uttryckligen INTE vara med om tekniken håller.
+  bent_over_lateral: ["Fäll i höften med rak rygg tills överkroppen är nära horisontell, lätt böjda knän", "Låt hantlarna hänga rakt ner, armbågarna lätt böjda och vinkeln låst", "Lyft ut åt sidorna och led med armbågarna tills överarmarna är i linje med ryggen", "Sänk kontrollerat — lätt vikt, annars tar ryggen och nacken över"],
+
   // Källor: styrkelabbet.se/sittande-axelpress-med-skivstang,
   // mathiaszachau.com/sittande-axelpress-skivstang, muscles.se/.../axelpress,
   // privatetrainingonline.se/axelpress. Egna formuleringar.
