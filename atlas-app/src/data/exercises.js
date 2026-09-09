@@ -310,6 +310,77 @@ const CUES = {
   // står med är rätt enligt källorna.
   push_press: ["Stå axelbrett med stången vilande mot främre axlarna, bålen spänd", "Dippa kort och grunt med knäna, överkroppen kvar upprätt", "Sträck benen explosivt och låt armarna ta över och låsa ut rakt upp", "Sänk kontrollerat tillbaka till axlarna innan nästa repetition"],
 
+  // KETTLEBELL: CLEAN, SNATCH, CLEAN & PRESS, HALO. Källor: styrkelabbet.se/
+  // kettlebell-clean, /kettlebell-snatch, /kettlebellpress, /kettlebells-ovningar,
+  // styrkeprogrammet.se/ovningsarkiv (halo), gymkompaniet.se/kettlebell-ovningar,
+  // mygreatness.com/guide-sa-tranar-du-med-kettlebells. Egna formuleringar.
+  //
+  // TRE SAKER GÅR IGEN I ALLA KETTLEBELL-KÄLLORNA och styr punkterna nedan:
+  //
+  //   KRAFTEN KOMMER FRÅN HÖFTEN, inte armen. Källorna beskriver clean och
+  //   snatch som svingens släktingar — armen styr banan, höften driver.
+  //   Görs de som en curl slår klotet hårt mot underarm och axel.
+  //
+  //   RAK HANDLED. Nämns uttryckligen för både clean och press.
+  //
+  //   KLOTET SKA VÄLTA, INTE SLÅ. Vid övergången smyger man in armen under
+  //   handtaget i stället för att låta klotet falla runt handen.
+  //
+  // Clean: rackpositionen ÄR övningens slutläge — klotet vilar mot underarm
+  // och bröst, inte i ett hårt grepp.
+  // KETTLEBELLPRESS. Källor: styrkelabbet.se/kettlebellpress och
+  // /kettlebells-ovningar, gymkompaniet.se/kettlebellovningar,
+  // linabjorkskog.com (rackpositionen). Egna formuleringar.
+  //
+  // Raden fanns inte — min grep räknade träffar på "kb_press" i program- och
+  // id-tabellerna och trodde att punkterna fanns. Verifieringsskriptet fångade
+  // det: bild registrerad, noll punkter i DOM. Det är precis det tomma mörka
+  // fält som processen varnar för.
+  //
+  // Källorna framhåller två saker som är särskilda för kettlebellpressen:
+  //
+  //   AXELN SKA VARA SÄNKT genom hela lyftet — den är starkast och stabilast
+  //   där, och åker den upp ur sitt läge både ökar skaderisken och orkar man
+  //   mindre.
+  //
+  //   PRESSA MED AXELN, INTE BENEN. Skjuter man ifrån med benen är det push
+  //   press, en annan övning (som nu finns med egen bild och egna punkter).
+  //
+  // Bålen står med i aktiveringen och det stämmer: med ett klot i en hand
+  // måste de sneda magmusklerna kontra den ensidiga belastningen.
+  kb_press: ["Frivänd klotet till rackposition mot underarm och bröst, rak handled", "Stå något bredare än axelbrett, spänn mage och säte", "Pressa upp till rak arm med axeln sänkt — skjut inte ifrån med benen", "Sänk kontrollerat tillbaka till rackposition med spänd lats"],
+
+  kb_clean: ["Stå brett med kettlebellen en halvmeter framför dig, greppa med en hand", "Skicka klotet bakåt mellan benen och res dig explosivt med höften", "Styr klotet nära kroppen och smyg in armen under handtaget", "Fånga i rackposition mot underarm och bröst, med rak handled"],
+
+  // Snatch: samma start som clean, men klotet går hela vägen upp. Styrkelabbet
+  // beskriver draget som att starta en motorgräsklippare — det ändrar banan så
+  // klotet seglar upp i stället för att fortsätta framåt. Källorna är eniga om
+  // att enhandssvingen måste sitta först; övningen kallas den tekniskt
+  // svåraste av kettlebellövningarna.
+  kb_snatch: ["Sätt fart på klotet med en enhandssving bakåt mellan benen", "Res dig explosivt med höften och dra klotet in mot kroppen", "Vrid handen runt handtaget så klotet vänder utan att slå mot underarmen", "Lås ut armen rakt över huvudet med sänkt axel och rak handled"],
+
+  // Clean & press: clean upp, press över huvudet, en repetition. Styrkelabbet
+  // om pressdelen: håll axeln sänkt (den är starkast där), spänn mage och
+  // rumpa, och pressa med axeln — hjälper benen till är det push press, en
+  // annan övning.
+  kb_clean_press: ["Frivänd klotet till rackposition med rak handled och sänkt axel", "Spänn mage och säte, knyt den fria handen hårt", "Pressa upp till rak arm utan att skjuta ifrån med benen", "Sänk till rackposition igen och gör en ny clean inför nästa rep"],
+
+  // Halo: rörlighetsövning, inte styrkeövning. Källorna kallar den uppvärmning
+  // inför tyngre kettlebellarbete, och säger att den inte ska tvingas fram —
+  // känns det stopp i axeln är rörligheten inte där än.
+  kb_halo: ["Håll kettlebellen upp och ner i handtaget med båda händerna", "För klotet runt huvudet nära, ett varv åt vardera hållet", "Håll huvud och bål stilla — det är bara armarna som rör sig", "Lätt vikt och långsamt; tvinga aldrig igenom ett stopp i axeln"],
+
+  // SIDOLYFT I MASKIN. Källor: styrkelabbet.se/sidolyft-i-maskin,
+  // fitnessclubcenter.se/artikel/sidolyft, muscles.se/.../hantellyft-at-sidan.
+  // Egna formuleringar.
+  //
+  // Maskinen tar bort svängningen men inte de två felen som gäller allt
+  // sidolyft: för tung vikt, och att lyfta högre än axelhöjd så trapezius tar
+  // över. Det maskinspecifika är INSTÄLLNINGEN — dynorna mot armbågarna och
+  // vridpunkten i linje med axelleden; sitter man fel går rörelsen inte där
+  // axeln vill.
+  lateral_raise_m: ["Ställ sitshöjden så maskinens vridpunkt ligger i linje med axeln", "Placera armbågarna mot dynorna, inte händerna", "Lyft ut åt sidorna tills överarmarna är horisontella, inte högre", "Sänk kontrollerat — hellre lätt vikt och kontakt än tung och sving"],
+
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
   // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,
