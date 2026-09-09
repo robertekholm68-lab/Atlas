@@ -40,6 +40,10 @@ export const MED_BILD = [
   "push_ups",
   "db_neutral_press",
   "kb_floor_press",
+  "iso_chest_press_m",
+  "half_kneel_cable_press",
+  "incline_chest_press_m",
+  "decline_chest_press_m",
   "squat",
   "deadlift",
   
