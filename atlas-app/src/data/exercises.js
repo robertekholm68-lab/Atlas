@@ -286,6 +286,30 @@ const CUES = {
   // vad källorna beskriver, och biceps 0,3 följer av armböjningen.
   upright_row: ["Stå höftbrett med stången mot låren, överhandsgrepp ungefär axelbrett — inte smalare", "Spänn bålen och stå stolt med bröstet upp, ryggen neutral", "Dra med armbågarna uppåt och något utåt, händerna bara håller stången", "Stanna vid horisontella överarmar och sänk kontrollerat — aldrig över axelhöjd"],
 
+  // PUSH PRESS / STÖTPRESS. Källor: privatetrainingonline.se/stotpress,
+  // mmsports.se/blogg/push-press-teknik-och-tips, privatetrainingonline.se/
+  // militarpress (jämförelsen), mathiaszachau.com/thrusters-stang,
+  // styrketraningonline.se/push-press. Egna formuleringar.
+  //
+  // DET SOM SKILJER FRÅN MILITÄRPRESS ÄR HELA POÄNGEN, och källorna säger det
+  // rakt ut: i militärpress får benen inte hjälpa till, i push press ska de.
+  // Kraften hämtas från underkroppen så att axlar och triceps kan belastas
+  // tyngre än de klarar strikt.
+  //
+  // Rörelsen kallas "dip and drive" och de två delarna bär punkt 2 och 3:
+  //
+  //   DIPPEN ÄR KORT OCH GRUND. En djup knäböj gör det till en thruster —
+  //   en annan övning. Överkroppen ska stå upprätt genom dippen, annars
+  //   hamnar stången framför lodlinjen.
+  //
+  //   DRIVET ÄR EXPLOSIVT. Benen sträcks först, armarna tar över och låser ut.
+  //   Stången går rakt upp; framåt eller bakåt är fel bana (Zachau om
+  //   militärpressens bana, gäller lika här).
+  //
+  // Aktiveringen rörs inte — quadriceps 0,3 är just bendrivet, och att det
+  // står med är rätt enligt källorna.
+  push_press: ["Stå axelbrett med stången vilande mot främre axlarna, bålen spänd", "Dippa kort och grunt med knäna, överkroppen kvar upprätt", "Sträck benen explosivt och låt armarna ta över och låsa ut rakt upp", "Sänk kontrollerat tillbaka till axlarna innan nästa repetition"],
+
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
   // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,
