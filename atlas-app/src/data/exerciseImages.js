@@ -55,6 +55,7 @@ export const MED_BILD = [
   "bent_over_lateral",
   "upright_row",
   "face_pull",
+  "push_press",
   "squat",
   "deadlift",
   "wide_pulldown",
