@@ -39,6 +39,7 @@ export const MED_BILD = [
   "incline_db_fly",
   "push_ups",
   "db_neutral_press",
+  "kb_floor_press",
   "squat",
   "deadlift",
   

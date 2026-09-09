@@ -233,6 +233,17 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // Källor: styrkelabbet.se/floor-press-med-hantlar, ourfitness.se/floor-press,
+  // mathiaszachau.com/golvpress. Egna formuleringar.
+  //
+  // POÄNGEN ÄR ATT GOLVET STOPPAR RÖRELSEN. Överarmarna tar emot, banan blir
+  // kortare än i bänkpress, och axelleden belastas mindre i botten — därför
+  // väljs övningen ofta vid axelbesvär. Triceps får jobba mer.
+  //
+  // Ourfitness varnar särskilt för att låta armbågarna SLÅ i golvet; de ska
+  // ta emot mjukt och vända, inte studsa.
+  kb_floor_press: ["Ligg på rygg med böjda knän, kettlebellsen över bröstet", "Håll armbågarna cirka 45 grader från kroppen, inte rakt ut", "Sänk tills överarmarna mjukt tar emot golvet — låt dem inte slå i", "Pressa upp utan att låsa armbågarna helt"],
+
   // Källor: styrkelabbet.se/hantelflyes, gymgrossisten.com/hantelflyes,
   // muscles.se/styrkeovningar/flyes. Egna formuleringar.
   //
