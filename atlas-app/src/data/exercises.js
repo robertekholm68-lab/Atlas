@@ -257,6 +257,35 @@ const CUES = {
 
   // Kabeln drar hela vägen, till skillnad från hantlar som är nästan
   // avlastade i botten. Därför känns den tyngre på samma vikt.
+  // UPPRÄTT RODD / DRAG TILL HAKAN. Källor: gymgrossisten.com/
+  // drag-till-hakan-med-skivstang, mathiaszachau.com/uppratt-rodd,
+  // privatetrainingonline.se/uppratt-rodd, proteinpannkaka.se/ovningar/
+  // staende-rodd-upright-row. Egna formuleringar.
+  //
+  // Övningen är den mest omdiskuterade i axelbanken — källorna kallar den
+  // kontroversiell och nämner inklämning (impingement) i axeln. De är eniga om
+  // exakt vad som skiljer en bra upprätt rodd från en dålig, och de tre
+  // sakerna bär punkt 1–3:
+  //
+  //   INTE FÖR SMALT GREPP. Händerna tätt ihop tvingar axelleden i en onaturlig
+  //   vinkel. Axelbrett eller strax innanför är det källorna landar i.
+  //
+  //   LED MED ARMBÅGARNA. Händerna håller bara stången; armbågarna drar uppåt
+  //   och något utåt — inte rakt bakåt.
+  //
+  //   ARMBÅGARNA ALDRIG ÖVER AXELHÖJD. Stanna när överarmarna är horisontella.
+  //   Högre gör det till en trapezius-övning och är just där inklämningen
+  //   uppstår.
+  //
+  // Punkt 4 höll först med att för tung vikt tvingar fram en sving — sant enligt
+  // källorna, men meningen blev 118 tecken mot 62–85 för de andra och gick till
+  // tre rader i kortet. Mätt i skärmbild: listan sköts upp så punkt 1 hamnade
+  // vid knäna. Kortad till 76 tecken; viktresonemanget ryms i punkt 3–4 ändå.
+  //
+  // Aktiveringen rörs inte: deltoid_lateral 0,8 och trapezius 0,7 är precis
+  // vad källorna beskriver, och biceps 0,3 följer av armböjningen.
+  upright_row: ["Stå höftbrett med stången mot låren, överhandsgrepp ungefär axelbrett — inte smalare", "Spänn bålen och stå stolt med bröstet upp, ryggen neutral", "Dra med armbågarna uppåt och något utåt, händerna bara håller stången", "Stanna vid horisontella överarmar och sänk kontrollerat — aldrig över axelhöjd"],
+
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
   // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,
