@@ -233,6 +233,33 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // Källor: styrkelabbet.se/hantelflyes, gymgrossisten.com/hantelflyes,
+  // muscles.se/styrkeovningar/flyes. Egna formuleringar.
+  //
+  // ARMBÅGSVINKELN LÅSES — det är den punkt alla källor återkommer till. Böjer
+  // och sträcker man armarna blir det en pressövning för triceps i stället för
+  // en fly. Styrkelabbet påpekar också att hävarmen blir lång i bottenläget,
+  // vilket gör att man lätt tar för tungt.
+  db_fly: ["Ligg på plan bänk, hantlarna över bröstet, handflatorna mot varandra", "Böj armbågarna lätt och LÅS vinkeln genom hela rörelsen", "Sänk i en båge tills överarmarna är i linje med bänken", "För ihop i samma båge, kläm bröstet i toppen"],
+
+  incline_db_fly: ["Vinkla bänken 30-45 grader, fötterna stadigt i golvet", "Böj armbågarna lätt och håll vinkeln oförändrad", "Sänk i en båge tills du känner sträck i övre bröstet", "För ihop utan att räta ut armarna — då blir det en press"],
+
+  // Källor: styrkelabbet.se/kabelflyes, gymgrossisten.com/flyes-i-kabelmaskin,
+  // privatetrainingonline.se/kryssdrag.
+  //
+  // Kabelns fördel är JÄMN belastning: hantelflyes är nästan avlastade i
+  // toppläget, kabeln drar hela vägen. Skuldrorna får inte följa med framåt —
+  // då tar axlarna över arbetet.
+  cable_crossover: ["Ställ dig i gångstående mellan trissorna, luta lätt framåt", "Håll armbågarna lätt böjda och vinkeln låst", "Dra i en vid båge tills händerna möts framför kroppen", "Släpp tillbaka kontrollerat utan att skuldrorna åker fram"],
+
+  // Källa: styrkelabbet.se/armhavningar. Cirka 70 % av kroppsvikten lyfts;
+  // händerna tätare flyttar arbetet mot triceps, bredare mot bröstet.
+  push_ups: ["Händerna något bredare än axlarna, kroppen rak från nacke till häl", "Spänn bålen och sätet så höften inte sjunker", "Sänk tills bröstet är strax över golvet, armbågarna 45 grader ut", "Pressa upp utan att höften leder rörelsen"],
+
+  // Maskinen styr banan, så det som återstår är sitshöjd och skuldror. Samma
+  // fel som i pec deck: sitter man fel går arbetet till axlarna.
+  chest_press_machine: ["Ställ sitsen så att handtagen är i bröstvårtehöjd", "Dra ihop skulderbladen mot ryggstödet och håll dem där", "Pressa fram tills armarna är nästan raka", "Släpp tillbaka tills du känner sträck, utan att axlarna åker fram"],
+
   // Källor: styrkelabbet.se/pec-deck, muscles.se/.../pec-deck,
   // privatetrainingonline.se/pec-deck, effektimalt.se. Egna formuleringar.
   //
