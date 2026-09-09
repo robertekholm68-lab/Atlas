@@ -34,7 +34,11 @@ function chromiumBin() {
   throw new Error("Hittar ingen Chromium — sätt PW_CHROMIUM till sökvägen.");
 }
 
-const [grupp = "Shoulders", ...senaste] = process.argv.slice(2);
+// Utan argument (som i CI) kontrolleras de tre senast registrerade bilderna i
+// gruppen — MED_BILD fylls på i den ordning bilderna läggs in.
+const [grupp = "Shoulders", ...angivna] = process.argv.slice(2);
+const senaste = angivna.length ? angivna
+  : MED_BILD.filter(id => EXERCISES.find(e => e.id === id)?.group === grupp).slice(-3);
 const html = readFileSync("dist-atlas2/atlas2.html", "utf8");
 const srv = http.createServer((q, s) => {
   const m = /^\/ovningar\/([a-z0-9_]+\.webp)$/.exec(q.url.split("?")[0]);
