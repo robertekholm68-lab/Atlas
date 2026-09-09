@@ -233,6 +233,18 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // Källor: styrkelabbet.se/sittande-axelpress-med-skivstang,
+  // mathiaszachau.com/sittande-axelpress-skivstang, muscles.se/.../axelpress,
+  // privatetrainingonline.se/axelpress. Egna formuleringar.
+  //
+  // RYGGSTÖDET SKA INTE STÅ I 90 GRADER. Flera källor säger 75-85: det ger en
+  // naturligare pressvinkel och är skonsammare för axelleden.
+  //
+  // SVANKNING ÄR DET FARLIGASTE FELET enligt muscles.se — man kompenserar för
+  // stel axel eller för tung vikt, och övningen blir en lutande bänkpress
+  // medan ländryggen tar smällen. Därför står bålen i punkt 2.
+  seated_bb_press: ["Fäll ryggstödet ett snäpp bakåt, inte rakt 90 grader", "Spänn bålen och sätet så ryggen inte svankar från stödet", "Greppa stången strax bredare än axelbrett och pressa rakt upp", "Sänk kontrollerat till axelhöjd utan att låsa armbågarna i toppen"],
+
   // DECLINE I MASKIN: det som gör den till en decline-press är att armarna rör
   // sig framåt och NEDÅT, inte att kroppen lutar bakåt. Handtagen sitter vid
   // nedre bröstet och maskinens armar går snett ned — banan gör jobbet, precis
