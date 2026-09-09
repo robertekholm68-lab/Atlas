@@ -233,6 +233,25 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // ISO-LATERAL: armarna rör sig OBEROENDE av varandra, vilket är hela
+  // poängen — den starka sidan kan inte hjälpa den svaga, som den gör med
+  // skivstång. Ourfitness påpekar samma sak om floor press med hantlar.
+  //
+  // I övrigt samma som chest_press_machine: sitshöjden avgör om arbetet
+  // hamnar i bröstet eller i axlarna.
+  iso_chest_press_m: ["Ställ sitsen så att handtagen är i bröstvårtehöjd", "Dra ihop skulderbladen mot ryggstödet och håll dem där", "Pressa fram en sida i taget eller båda samtidigt, till nästan raka armar", "Släpp tillbaka tills du känner sträck — låt inte den starka sidan leda"],
+
+  // Lutande maskinpress träffar övre bröstet, som lutande bänkpress. Vinkeln
+  // är fast i maskinen, så det som återstår är sitshöjd och skuldror.
+  incline_chest_press_m: ["Ställ sitsen så att handtagen hamnar vid övre bröstet", "Dra ihop skulderbladen och håll bröstet högt", "Pressa uppåt och framåt tills armarna är nästan raka", "Släpp tillbaka kontrollerat utan att axlarna åker fram"],
+
+  // Källa: styrkelabbet.se/kabelflyes för kabelns jämna belastning.
+  //
+  // KNÄSTÅENDE TAR BORT BENEN ur rörelsen — man kan inte skjuta ifrån med
+  // fötterna, så bålen måste hålla emot kabelns drag. Det är övningens syfte,
+  // inte en begränsning.
+  half_kneel_cable_press: ["Stå på ett knä med trissan i brösthöjd bakom dig", "Spänn bålen och sätet så höften inte vrids av kabeln", "Pressa handtaget rakt framåt tills armen är nästan rak", "För tillbaka kontrollerat utan att överkroppen roterar"],
+
   // Källor: styrkelabbet.se/floor-press-med-hantlar, ourfitness.se/floor-press,
   // mathiaszachau.com/golvpress. Egna formuleringar.
   //
