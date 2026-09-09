@@ -444,7 +444,32 @@ const CUES = {
   chest_supported_row: ["Bröstet mot dynan, undvik att kasta med kroppen", "Dra med armbågarna bakåt/nedåt", "Kläm ihop skulderbladen i toppen", "Sänk kontrollerat till full sträckning"],
   pallof_press: ["Stå sidledes mot kabeln, handtaget vid bröstet", "Spänn bålen och motstå rotationen", "Pressa rakt ut och håll emot", "För in mot bröstet igen utan att vrida"],
   landmine_press: ["Stångänden i ett hörn, greppa andra änden i axelhöjd", "Bålen spänd, pressa upp och lätt framåt", "Skonsam vinkel för axeln — pressa inte rakt över huvudet", "Sänk kontrollerat till axeln"],
-  face_pull: ["Rep i ansiktshöjd, dra mot pannan", "För armbågarna högt och brett", "Rotera ut axlarna i slutläget", "Släpp fram kontrollerat"],
+  // FACE PULL. Källor: styrkelabbet.se/facepull, muscles.se/styrkeovningar/
+  // axelovningar/face-pull, gymgrossisten.com/facepull, mathiaszachau.com/
+  // face-pull, traningsgladje.se/traning/ovningar/face-pulls. Egna
+  // formuleringar.
+  //
+  // Punkterna fanns redan men i den korta stilen (fyra fragment på 25-30
+  // tecken, utan källkommentar). Skrevs om när bilden lades in: bredvid ett
+  // foto blir "Dra mot pannan" för tunt, och sex källor säger mer än så.
+  //
+  // Det de är eniga om:
+  //
+  //   HÖGA ARMBÅGAR. Armbågarna till axelhöjd eller något över är det som gör
+  //   det till en bakre-axel-övning i stället för en rodd.
+  //
+  //   MOT ANSIKTET, inte mot bröstet eller halsen.
+  //
+  //   UTÅTROTATION I SLUTLÄGET. Underarmarna vrids uppåt — det är där
+  //   rotatorkuffen kommer in.
+  //
+  //   LÄTT VIKT. Blir den för tung tar övre trapezius över och axlarna åker
+  //   upp mot öronen; flera källor kallar det övningens vanligaste fel.
+  //
+  // Aktiveringen rörs inte. Källorna nämner rhomboider och rotatorkuff, men
+  // ingen av dem finns i 21-muskeltaxonomin — de får inte tryckas in i
+  // närmaste granne.
+  face_pull: ["Rep i högt fäste, kliv bakåt tills kabeln är spänd från start", "Dra mot pannan med armbågarna i axelhöjd eller något över", "Rotera underarmarna uppåt i slutläget och håll axlarna nere", "Lätt vikt — åker axlarna upp mot öronen har trapezius tagit över"],
   squat: ["Fötter axelbrett, tår lätt utåt", "Bröst upp, neutral rygg, spänn bålen", "Höften bakåt och ner, knän i linje med tår", "Minst till parallell, tryck ifrån genom hälarna"],
   front_squat: ["Stången vilar på främre axeln, armbågar högt", "Håll bålen upprätt genom hela lyftet", "Knän utåt, djup till parallell", "Tryck ifrån genom mitten av foten"],
   bench_press: ["Skulderbladen ihopdragna och nedåt", "Lätt svank, fötterna stadigt i golvet", "Sänk stången mot nedre bröstet", "Pressa upp och lätt bakåt, lås inte armbågarna hårt"],
