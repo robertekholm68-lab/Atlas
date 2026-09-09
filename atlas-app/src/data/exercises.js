@@ -233,6 +233,15 @@ const CUES = {
   // att pushdown är en renodlad isolationsövning, och att man känner den i
   // bröst eller rygg är ett tecken på att TEKNIKEN brustit — inte på att de
   // musklerna belastas. Att lägga in dem hade varit att skriva in ett fel.
+  // DECLINE I MASKIN: det som gör den till en decline-press är att armarna rör
+  // sig framåt och NEDÅT, inte att kroppen lutar bakåt. Handtagen sitter vid
+  // nedre bröstet och maskinens armar går snett ned — banan gör jobbet, precis
+  // som i pec deck där sitsen är upprätt men rörelsen ändå isolerar bröstet.
+  //
+  // Nedre bröstet får därför mer arbete än i plan maskinpress, utan att man
+  // behöver ligga med huvudet lägre än höften.
+  decline_chest_press_m: ["Ställ sitsen så att handtagen hamnar vid nedre bröstet", "Dra ihop skulderbladen mot ryggstödet och håll dem där", "Pressa framåt och nedåt längs maskinens bana, till nästan raka armar", "Släpp tillbaka kontrollerat tills du känner sträck i bröstet"],
+
   // ISO-LATERAL: armarna rör sig OBEROENDE av varandra, vilket är hela
   // poängen — den starka sidan kan inte hjälpa den svaga, som den gör med
   // skivstång. Ourfitness påpekar samma sak om floor press med hantlar.
