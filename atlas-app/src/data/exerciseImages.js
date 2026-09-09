@@ -44,6 +44,9 @@ export const MED_BILD = [
   "half_kneel_cable_press",
   "incline_chest_press_m",
   "decline_chest_press_m",
+  "ohp",
+  "db_shoulder_press",
+  "seated_bb_press",
   "squat",
   "deadlift",
   
