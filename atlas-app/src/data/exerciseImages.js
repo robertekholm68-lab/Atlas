@@ -53,6 +53,7 @@ export const MED_BILD = [
   "db_front_raise",
   "bb_front_raise",
   "bent_over_lateral",
+  "upright_row",
   "squat",
   "deadlift",
   "wide_pulldown",
