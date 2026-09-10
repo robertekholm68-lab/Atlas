@@ -406,6 +406,37 @@ const CUES = {
   // källorna. Rhomboiderna nämns också men finns inte i taxonomin.
   rear_delt_fly: ["Stå mellan två höga trissor och korsa kablarna — vänster vajer i höger hand", "Håll armarna framför dig i axelhöjd med låst, lätt böjd armbågsvinkel", "Dra isär rakt ut åt sidorna och tryck ihop skulderbladen i slutläget", "Låt kablarna dra tillbaka armarna kontrollerat utan att armbågarna böjs"],
 
+  // Lutande hantelcurl: bänkens lutning är övningen. Med ryggen mot ett stöd
+  // i 45-60 grader hamnar armbågen BAKOM kroppslinjen, vilket sträcker biceps
+  // långa huvud i bottenläget — det källorna anger som skälet att välja den.
+  // Den sittande positionen tar dessutom bort all möjlighet att fuska med
+  // höften. Källorna varnar för att låta överarmarna glida framåt: gör de det
+  // försvinner stretchen som är hela poängen.
+  incline_curl: ["Ställ bänken i 45-60 grader och luta dig tillbaka mot stödet", "Låt armarna hänga rakt ner bakom kroppslinjen med handflatorna framåt", "Curla upp mot axlarna utan att dra överarmarna framåt", "Sänk hela vägen ner och behåll stretchen i botten"],
+
+  // Koncentrationscurl. Källorna är eniga om det vanligaste felet, och det
+  // bär punkt 2: armbågens SPETS ska inte ligga ovanpå låret eller knäskålen.
+  // Då blir leden en gungbräda och man kan hjälpa till med benet. Den köttiga
+  // baksidan av överarmen ska pressas mot lårets insida så armen låses.
+  //
+  // Gymgrossisten beskriver också supinationsvarianten: vrid underarmen på
+  // vägen upp så tummen pekar mot knät i toppen, vilket får biceps att arbeta
+  // mer. Den är med i punkt 3.
+  concentration_curl: ["Sitt brett med fötterna stadigt och en hantel i ena handen", "Pressa överarmens baksida mot lårets insida — inte armbågsspetsen på låret", "Curla upp mot axeln och vrid handflatan uppåt på vägen", "Kläm biceps i toppen och sänk långsamt utan att gunga med benet"],
+
+  // Kabelcurl: kabelns fördel enligt källorna är att belastningsriktningen är
+  // diagonal mot golvet, så biceps aldrig får vila — till skillnad från stång
+  // och hantel där spänningen försvinner i bottenläget. Den fördelen kräver
+  // att man står tillräckligt långt fram för att kabeln ska dra hela vägen.
+  cable_curl: ["Fäst stången i den lägsta trissan och ta ett steg framåt", "Stå med spänd bål och armbågarna intill sidorna", "Curla upp mot bröstet utan att låta armbågarna glida bakåt", "Släpp tillbaka mot kabelns drag utan att tappa spänningen"],
+
+  // Handledscurl: rörelsen sker i handleden, inte armbågen. Källorna beskriver
+  // att stången ska tillåtas rulla ut på fingrarna i bottenläget och sedan
+  // dras in med fingrarna igen — det är det som ger underarmarna fullt
+  // arbete. Vanligaste felet är att underarmarna vinklas snett utåt, vilket
+  // belastar handleder och fingrar ojämnt.
+  wrist_curl: ["Sitt med underarmarna på låren och händerna utanför knäna", "Håll underarmarna parallella, inte snett utåt", "Låt stången rulla ut på fingrarna och böj handlederna nedåt", "Dra in stången med fingrarna och curla upp knogarna så högt som möjligt"],
+
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
   // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,
