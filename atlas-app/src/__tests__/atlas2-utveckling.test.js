@@ -290,3 +290,25 @@ describe("kurvan är inte skev", () => {
     expect(f).toMatch(/const mitt = \(max \+ min\) \/ 2;/);
   });
 });
+
+describe("ändra senaste mätningen", () => {
+  const src = readFileSync(resolve("src/atlas2/UtvecklingView.jsx"), "utf8");
+
+  it("knappen finns bredvid Ny mätning", () => {
+    // Robert: "Jag vill kunna ändra vikt i utvecklingsvyn".
+    //
+    // Redigering fanns bara under Historik: Utveckling → Historik → hitta rätt
+    // datum → Ändra. Fyra steg för att rätta en siffra man nyss slog in fel.
+    expect(src).toMatch(/data-andra-senaste="1"/);
+    expect(src).toMatch(/setFormulär\(senasteMätning\)/);
+  });
+
+  it("visas bara när det finns en mätning", () => {
+    // En knapp utan något att ändra vore ett löfte om något som inte går.
+    expect(src).toMatch(/\{senasteMätning && \(/);
+  });
+
+  it("senaste är den nyaste, inte den först inlagda", () => {
+    expect(src).toMatch(/sort\(\(a, b\) => b\.ts - a\.ts\)\[0\] \|\| null/);
+  });
+});

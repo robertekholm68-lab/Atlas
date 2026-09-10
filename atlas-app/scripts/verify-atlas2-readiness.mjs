@@ -51,7 +51,17 @@ await klick("Demo"); await page.waitForTimeout(900);
 let t = await text();
 steg.push(`${/varför/i.test(t) ? "OK " : "FEL"} readiness-talet erbjuder "varför"`);
 
-await klick("Varför"); await page.waitForTimeout(500);
+// Nyckeltalen med "Varför?"-knappen ligger i hemkortets uppfällda läge sedan
+// #188. Kortet startar uppfällt men kan ha sparats minimerat — fäll upp först.
+const fällUpp = async () => {
+  await page.evaluate(() => {
+    const k = document.querySelector('[data-hemkort="1"]');
+    if (k && k.dataset.kortlage === "0") k.click();
+  });
+  await page.waitForTimeout(300);
+};
+
+await fällUpp(); await klick("Varför"); await page.waitForTimeout(500);
 t = await text();
 steg.push(`${/din readiness/i.test(t) ? "OK " : "FEL"} arket öppnas`);
 steg.push(`${/träningsåterhämtning/i.test(t) ? "OK " : "FEL"} basen redovisas`);
@@ -69,7 +79,7 @@ await page.evaluate(() => {
   localStorage.setItem("atlas.v3.nutritionTargets", JSON.stringify({ kcal: 2400, protein: 180 }));
 });
 await page.reload(); await page.waitForTimeout(1100);
-await klick("Varför"); await page.waitForTimeout(600);
+await fällUpp(); await klick("Varför"); await page.waitForTimeout(600);
 t = await text();
 steg.push(`${/räknas in/i.test(t) && !/räknas\s*inte\s*in/i.test(t) ? "OK " : "FEL"} kosten räknas in med fyra loggade dagar`);
 steg.push(`${/protein/i.test(t) ? "OK " : "FEL"} protein-avdraget namnges`);

@@ -143,7 +143,12 @@ steg.push(`${spill <= 1 ? "OK " : "FEL"} hemvyn spiller inte över (${Math.round
 // Målraden ligger i hemkortets uppfällda läge sedan #164: kartan tar hela ytan
 // och kortet visar det man behöver varje gång — starta pass och readiness.
 // Målet läser man ibland, inte alltid, så kortet fälls upp först.
-await page.evaluate(() => document.querySelector('[data-hemkort="1"]')?.click());
+// Kortet har två lägen sedan #179 och startar uppfällt. Ett blint klick
+// STÄNGER det då. Klicka bara om det faktiskt är minimerat.
+await page.evaluate(() => {
+  const k = document.querySelector('[data-hemkort="1"]');
+  if (k && k.dataset.kortlage === "0") k.click();
+});
 await page.waitForTimeout(500);
 await klick("Sätt ett mål"); await page.waitForTimeout(900);
 t = await text();

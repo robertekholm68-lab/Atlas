@@ -319,21 +319,41 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
   // Höjden låses till skärmen minus bottennaven, och kartan är `flex: 1`.
   // Webbläsaren räknar då ut kartans höjd åt oss vid varje skärmstorlek —
   // säkrare än en pixelbudget som blir fel på nästa telefon.
-  // TRE LÄGEN, INTE TVÅ.
+  // TVÅ LÄGEN, INTE TRE — OCH SVEP I STÄLLET FÖR CYKEL.
   //
-  // Kortet täckte 250 px av kartans 720 — 35 %, alltså låren och nedåt — även
-  // när man bara ville se kroppen. Nu går det att dra NER också: kvar blir
-  // draghandtaget och startknappen, och benen syns.
+  // Tre lägen betydde att ett klick gick från minimerat till halvt till helt,
+  // och man fick trycka två gånger för att se allt. Robert: kortet ska
+  // "komma upp hela i stället för i två steg".
   //
-  //   0  minimerat   handtag + startknapp   (~90 px)
-  //   1  normalt     + nyckeltal            (~250 px)
-  //   2  uppfällt    + mål och besked
+  //   0  minimerat   handtag + startknapp        (~117 px)
+  //   1  uppfällt    allt: mål, nyckeltal, besked
   //
-  // Läget sparas: den som drar ner vill ha det nerdraget nästa gång också.
+  // Ett klick växlar mellan dem. Svep upp öppnar, svep ner stänger — samma
+  // gest som i kart- och musikappar, och den som redan har kortet uppe ska
+  // inte stänga det genom att svepa åt fel håll.
   const [kortläge, setKortläge] = useState(1);
   useEffect(() => { load("kortlage", 1).then(v => { if (v === 0 || v === 1 || v === 2) setKortläge(v); }); }, []);
   const sättKortläge = v => { setKortläge(v); save("kortlage", v); };
-  const uppdraget = kortläge === 2;
+  const uppdraget = kortläge === 1;
+
+  // SVEP. Vertikal rörelse över 40 px räknas; mindre är en darrning eller ett
+  // klick som gled. Riktningen bestämmer, inte var man släpper: svep upp
+  // öppnar alltid, svep ner stänger alltid.
+  const svep = useRef(null);
+  const svepStart = e => {
+    const t = e.touches && e.touches[0];
+    svep.current = t ? { y: t.clientY, tid: Date.now() } : null;
+  };
+  const svepSlut = e => {
+    const s = svep.current; svep.current = null;
+    if (!s) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    const d = s.y - t.clientY;
+    if (Math.abs(d) < 40) return;      // för kort — låt klicket gälla i stället
+    e.preventDefault();
+    sättKortläge(d > 0 ? 1 : 0);
+  };
   if (mobil) return (
     <div style={{
       padding: "12px 18px 8px", boxSizing: "border-box",
@@ -369,11 +389,13 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
             svagt igenom, så man förstår att kortet ligger ÖVER kartan och går
             att flytta. Helt täckt hade sett ut som en vägg. */}
         <div
-          onClick={() => sättKortläge((kortläge + 1) % 3)}
+          onClick={() => sättKortläge(kortläge === 1 ? 0 : 1)}
+          onTouchStart={svepStart}
+          onTouchEnd={svepSlut}
           data-hemkort="1" data-kortlage={kortläge} role="button" tabIndex={0}
           aria-expanded={uppdraget}
-          aria-label={["Visa nyckeltal", "Visa mål och besked", "Visa bara kroppen"][kortläge]}
-          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sättKortläge((kortläge + 1) % 3); } }}
+          aria-label={uppdraget ? "Visa bara kroppen" : "Visa mål, nyckeltal och besked"}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sättKortläge(kortläge === 1 ? 0 : 1); } }}
           style={{
             // Kortet får inte täcka figurens fötter helt. -8 lät det gå
             // utanför skärmkanten; 0 låter det sluta där navigationen börjar.
@@ -400,27 +422,23 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
 
               MED mål satt räcker det i uppfällt läge: då är det en statusrad
               man läser ibland, inte en uppmaning. */}
-          {!mål && kortläge > 0 && <MålRad />}
+          {/* ALLT I ETT STEG.
+              Förut kom nyckeltalen i mellanläget och målet först i det tredje —
+              man fick trycka två gånger för att se allt. Nu är kortet antingen
+              minimerat (handtag + startknapp) eller helt uppe.
 
-          <Start visaFörslag={kortläge > 0} />
+              Nyckeltalen är STATUS, inte handling: readiness syns redan som
+              färg på kroppen ovanför. Därför ligger de i det uppfällda läget,
+              inte i det minimerade. */}
+          {uppdraget && <MålRad />}
 
-          {/* NYCKELTALEN LIGGER UPPFÄLLT.
-              Mätt: kortet täckte 263 px av kartans 720 — 37 %, alltså knäna och
-              nedåt. Nyckeltalsraden tog 76 px av dem, mest av allt i kortet.
-
-              Men den är STATUS, inte handling: readiness syns redan som färg på
-              kroppen ovanför, och veckans pass är sällan det man öppnar appen
-              för. Det som måste synas varje gång är beslutet — starta pass.
-
-              Vikten var undantaget. Den var poängen med hela raden ("ett tryck
-              från Hem"), så den ligger kvar som en smal rad bredvid readiness. */}
-          {kortläge > 0 && <Nyckeltal kompakt />}
+          <Start visaFörslag={uppdraget} />
 
           {uppdraget && (
-            <div style={{ marginTop: 14 }}>
-              {mål && <MålRad />}
-              <Besked />
-            </div>
+            <>
+              <Nyckeltal kompakt />
+              <div style={{ marginTop: 14 }}><Besked /></div>
+            </>
           )}
         </div>
       </div>
