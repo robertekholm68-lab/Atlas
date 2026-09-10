@@ -610,6 +610,51 @@ const CUES = {
   wide_pulldown: ["Brett grepp, dra ner skulderbladen först", "Dra stången mot övre bröstet", "Led med armbågarna, luta bålen lätt bak", "Släpp upp kontrollerat till full sträckning"],
   parallel_dip: ["Starta med raka armar, axlar nedåt", "Luta bålen lätt framåt för bröst", "Sänk tills axlar är i armbågshöjd", "Pressa upp utan att rycka"],
   curl: ["Armbågarna stilla vid sidorna", "Lyft utan att svinga med kroppen", "Kläm biceps i toppen", "Sänk långsamt till raka armar"],
+
+  // BICEPSCURLENS FAMILJ. Källor: styrkelabbet.se/bicepscurl och /hantelcurl,
+  // gymgrossisten.com/bicepscurl-med-skivstang, privatetrainingonline.se/
+  // hantelcurl-biceps och /preacher-curls, muscles.se/.../hammercurls-med-hantlar,
+  // ourfitness.se/preacher-curls-teknik-tips, filbornaarena.se/bra-bicepsovningar.
+  // Egna formuleringar.
+  //
+  // ALLA KÄLLOR SÄGER SAMMA TVÅ SAKER om varje curlvariant, och de står redan
+  // i curl-posten ovan:
+  //
+  //   ÖVERARMEN FÅR INTE GÅ BAKÅT. Styrkelabbet skriver det för både stång,
+  //   hantel och kabel: håll överarmen vid sidan eller svagt framåt. Går
+  //   armbågen bakom kroppens lodlinje tar axeln över.
+  //
+  //   INGEN GUNGNING. Svingar man upp vikten gör ryggen jobbet, och man kan
+  //   lyfta mer utan att armarna tränas mer.
+  //
+  // Punkterna nedan lägger till det som är SPECIFIKT för varje variant, i
+  // stället för att upprepa de två ovan fyra gånger.
+
+  // EZ-stångens hela poäng: den vågiga stången ger handlederna en svagt
+  // inåtroterad vinkel, vilket källorna anger som skälet att välja den framför
+  // rak stång vid besvär i handled eller armbåge.
+  ez_curl: ["Greppa den vinklade delen med handflatorna snett uppåt", "Håll överarmarna vid sidorna — låt dem inte gå bakåt", "Curla upp till brösthöjd och spänn biceps kort i toppen", "Sänk långsamt; svingar du med kroppen är vikten för tung"],
+
+  // Hantelcurl: supinationen är fördelen mot stången. Biceps både böjer
+  // armbågen och vrider underarmen, och källorna är tydliga med att den som
+  // curlar utan att vrida handleden missar halva muskelns funktion.
+  // Alternerande utförande enligt namnet i banken.
+  db_curl: ["Låt hantlarna hänga längs sidorna med neutralt grepp", "Curla upp en arm i taget och vrid handflatan uppåt på vägen", "Håll överarmen stilla vid sidan genom hela lyftet", "Sänk kontrollerat och vrid tillbaka innan nästa arm"],
+
+  // Hammercurl: neutralt grepp hela vägen. Källorna framhåller att arbetet
+  // flyttas till brachialis och brachioradialis, vilket syns i aktiveringen
+  // (forearms 0,6 mot 0,4 för vanlig curl) — den skillnaden fanns redan i
+  // datan och stämmer med källorna.
+  hammer_curl: ["Håll hantlarna med tummarna uppåt, handflatorna mot varandra", "Behåll det neutrala greppet hela vägen — vrid inte handleden", "Curla upp mot axeln med överarmen stilla vid sidan", "Sänk långsamt utan att låta armbågen glida bakåt"],
+
+  // Preacher curl: dynan är övningen. Med baksidan av överarmarna låsta mot
+  // en lutande dyna går det inte att luta sig bakåt eller skjuta fram axeln,
+  // vilket källorna kallar den ärligaste bicepsövningen. Därför står bara
+  // biceps i aktiveringen.
+  //
+  // Källorna varnar samstämmigt för att släppa ner vikten okontrollerat i
+  // bottenläget: med armen låst mot dynan tar armbågsleden smällen.
+  preacher_curl: ["Ställ dynan så att armhålorna vilar mot överkanten", "Greppa EZ-stången axelbrett med handflatorna uppåt", "Curla upp mot hakan tills biceps är helt spänd", "Sänk långsamt — släpp aldrig ner armarna okontrollerat"],
   kettlebell_swing: ["Höftgångjärn, inte knäböj", "Kettlebell svingas av höftens kraft", "Neutral rygg, spänn bål och säte", "Toppen når brösthöjd — armarna är bara krokar"],
   plank: ["Armbågar under axlarna", "Rak linje från huvud till häl", "Spänn bål och säte, andas lugnt", "Låt inte höften sjunka eller lyftas"],
   // Nya v2.0
