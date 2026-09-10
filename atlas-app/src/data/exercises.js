@@ -381,6 +381,31 @@ const CUES = {
   // axeln vill.
   lateral_raise_m: ["Ställ sitshöjden så maskinens vridpunkt ligger i linje med axeln", "Placera armbågarna mot dynorna, inte händerna", "Lyft ut åt sidorna tills överarmarna är horisontella, inte högre", "Sänk kontrollerat — hellre lätt vikt och kontakt än tung och sving"],
 
+  // OMVÄNDA FLYES I KABELKORS. Källor: gymgrossisten.com/
+  // omvanda-flyes-i-kabelmaskin, privatetrainingonline.se/omvanda-flyes,
+  // muscles.se/.../omvanda-hantelflyes, fitnessclubcenter.se/artikel/
+  // omvanda-flyes. Egna formuleringar.
+  //
+  // KORSNINGEN ÄR HELA UPPSTÄLLNINGEN och måste stå först: vänster vajer i
+  // höger hand, höger vajer i vänster. Källorna beskriver den så uttryckligen.
+  // Utan korsning finns inget motstånd i den riktning armarna ska gå.
+  //
+  // Källorna är eniga om resten:
+  //
+  //   HORISONTELL ABDUKTION MED IHOPTRYCKTA SKULDERBLAD är det som gör att
+  //   bakre deltoideus och mellersta trapezius jobbar. Gymgrossisten skriver
+  //   att det är hela syftet med övningen.
+  //
+  //   ARMBÅGSVINKELN LÅSES. Böjs och sträcks armbågarna blir det en rodd.
+  //
+  //   KABELNS FÖRDEL ÄR JÄMN BELASTNING genom hela banan, till skillnad från
+  //   hantlar där det är lättast i botten. Den fördelen går förlorad om man
+  //   svingar — därför lätt vikt och kontrollerad återgång.
+  //
+  // Aktiveringen rörs inte: deltoid_posterior 1 och trapezius 0,4 stämmer med
+  // källorna. Rhomboiderna nämns också men finns inte i taxonomin.
+  rear_delt_fly: ["Stå mellan två höga trissor och korsa kablarna — vänster vajer i höger hand", "Håll armarna framför dig i axelhöjd med låst, lätt böjd armbågsvinkel", "Dra isär rakt ut åt sidorna och tryck ihop skulderbladen i slutläget", "Låt kablarna dra tillbaka armarna kontrollerat utan att armbågarna böjs"],
+
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
   // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,
