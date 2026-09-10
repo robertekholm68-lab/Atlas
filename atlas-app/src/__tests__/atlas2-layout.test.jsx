@@ -202,13 +202,24 @@ describe("appen väljer skal efter bredd", () => {
     for (const el of [mobil, desktop]) expect(/readiness/i.test(el.textContent)).toBe(true);
   });
 
-  it("kortet har tre lägen — minimerat, normalt, uppfällt", () => {
-    // Kortet täckte 35 % av kartan även när man bara ville se kroppen. Med ett
-    // tredje läge blir det 16 %: bara handtag och startknapp, och benen syns.
+  it("kortet har TVÅ lägen — ett klick ger allt", () => {
+    // Tre lägen betydde att man fick trycka två gånger för att se allt.
+    // Robert: kortet ska "komma upp hela i stället för i två steg".
+    // Mätt: 117 px minimerat, 313 px uppfällt.
     const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
-    expect(src).toMatch(/sättKortläge\(\(kortläge \+ 1\) % 3\)/);
+    expect(src).toMatch(/sättKortläge\(kortläge === 1 \? 0 : 1\)/);
+    expect(src).not.toMatch(/% 3\)/);
     // Läget sparas: den som drar ner vill ha det nerdraget nästa gång också.
     expect(src).toMatch(/save\("kortlage", v\)/);
+  });
+
+  it("svep upp öppnar, svep ner stänger", () => {
+    // Riktningen bestämmer, inte var man släpper. Under 40 px räknas som
+    // darrning eller ett klick som gled — då ska klicket gälla i stället.
+    const src = readFileSync(resolve("src/atlas2/App2.jsx"), "utf8");
+    expect(src).toMatch(/onTouchStart=\{svepStart\}/);
+    expect(src).toMatch(/if \(Math\.abs\(d\) < 40\) return;/);
+    expect(src).toMatch(/sättKortläge\(d > 0 \? 1 : 0\)/);
   });
 
   it("beskedet finns i mobilens hemkort, om än bakom en dragning", async () => {
@@ -220,8 +231,10 @@ describe("appen väljer skal efter bredd", () => {
     // Målraden finns på TVÅ ställen: alltid synlig när mål saknas, och i det
     // uppfällda läget när det är satt. Verifieraren fångade att den försvann
     // helt för den som ännu inte satt ett mål — och målet driver hela appen.
-    expect(kort).toMatch(/\{!mål && kortläge > 0 && <MålRad \/>\}/);
-    expect(kort).toMatch(/\{mål && <MålRad \/>\}/);
+    // Målraden ligger i det uppfällda läget. Att den FANNS var en riktig
+    // regression en gång — verifieraren fångade att den försvann helt för den
+    // som ännu inte satt ett mål.
+    expect(kort).toMatch(/\{uppdraget && <MålRad \/>\}/);
   });
 });
 

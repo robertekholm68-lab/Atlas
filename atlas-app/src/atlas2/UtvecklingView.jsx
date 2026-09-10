@@ -237,6 +237,11 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
   useEffect(() => { load("progressionsmatt", "styrka").then(v => { if (v === "volym" || v === "styrka") setMått(v); }); }, []);
   const sättMått = v => { setMått(v); save("progressionsmatt", v); };
   const karta = useMemo(() => progressionskarta(sessions, mått, MAIN_LIFTS), [sessions, mått]);
+  // Senaste mätningen — den man oftast vill rätta.
+  const senasteMätning = useMemo(
+    () => [...(mätningar || [])].filter(Boolean).sort((a, b) => b.ts - a.ts)[0] || null,
+    [mätningar]
+  );
   // Ingen förvald rad: kartan är översikten, detaljen öppnas på tryck.
   const aktivÖvning = valdÖvning;
   const rekord = aktivÖvning ? bästa1RM(sessions, aktivÖvning) : null;
@@ -314,10 +319,26 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
       {/* EN primär CTA per vy. Den hör till kroppsflikarna — i Pass-fliken
           vore "Ny mätning" fel handling. */}
       {(flik === "kropp" || flik === "matt") && (
-        <button onClick={() => setFormulär({})} data-ny-matning="1"
-          style={{ ...btnPrimary, marginBottom: 14 }}>
-          + Ny mätning
-        </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <button onClick={() => setFormulär({})} data-ny-matning="1"
+            style={{ ...btnPrimary, flex: 1, marginTop: 0 }}>
+            + Ny mätning
+          </button>
+          {/* ÄNDRA SENASTE, ett tryck bort.
+              Redigering fanns bara under Historik-fliken: Utveckling → Historik
+              → hitta rätt datum → Ändra. Fyra steg för att rätta en siffra man
+              nyss slog in fel. Vikten är det mest loggade måttet, så den ska
+              gå att rätta där man ser den.
+
+              Knappen visas bara när det FINNS en mätning — annars vore den ett
+              löfte om något som inte går att göra. */}
+          {senasteMätning && (
+            <button onClick={() => setFormulär(senasteMätning)} data-andra-senaste="1"
+              style={{ ...btnGhost, flex: "0 0 auto", marginTop: 0, padding: "0 16px" }}>
+              Ändra
+            </button>
+          )}
+        </div>
       )}
 
       {flik === "matt" && (
