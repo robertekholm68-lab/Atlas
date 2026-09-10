@@ -41,6 +41,31 @@ im.save(f"public/ovningar/{exId}.webp", "WEBP", quality=82, method=6)
 Ger 25–45 kB per bild. **Beskär efter motivet, inte på fast höjd** — de
 uppladdade bilderna har 40–55 % tomrum nedtill och motivet slutar olika högt.
 
+### När ljushetsmåttet inte fungerar
+
+Metoden ovan letar efter nedersta ljusa pixeln och förutsätter att golvet är
+nästan svart. Det stämmer inte alltid. På `rear_delt_fly` gick rackets stolpar
+ända ner till bildkanten och golvet hade ljusa reflektioner — måttet gav rad
+1671 av 1672, alltså ingen beskärning alls.
+
+Mät då på hudton i stället, med **hög tröskel**:
+
+```python
+R, G, B = a[:,:,0], a[:,:,1], a[:,:,2]
+hud = ((R > 150) & (R > G + 15) & (G > B + 5)).sum(axis=1)
+vad = max(i for i, v in enumerate(hud) if v > 25)   # nedersta vaden
+sula = vad + int(0.055 * h)                          # skorna, ~5,5 % av höjden
+```
+
+Tröskeln spelar roll: med `R > 90` fastnar måttet i **golvreflektionen av
+benen**, som också är hudfärgad. Mätt på samma bild gav 90 → rad 1348 och 150 →
+rad 1126, en skillnad på 222 px.
+
+Räcker inte tomrummet under sulan, eller är golvet för ljust för att texten ska
+synas: förläng duken till `sula + 340` och lägg en toning mot svart över de
+sista ~170 px. Det ger ett rent textfält och döljer skarven mot den tillagda
+ytan. Gör det bara när originalet kräver det.
+
 ## Två steg, båda krävs
 
 1. Filen till `public/ovningar/<exId>.webp`

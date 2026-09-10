@@ -65,6 +65,7 @@ export const MED_BILD = [
   "kb_clean_press",
   "kb_snatch",
   "kb_halo",
+  "rear_delt_fly",
   "squat",
   "deadlift",
   "wide_pulldown",
