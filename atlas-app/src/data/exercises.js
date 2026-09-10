@@ -437,6 +437,28 @@ const CUES = {
   // belastar handleder och fingrar ojämnt.
   wrist_curl: ["Sitt med underarmarna på låren och händerna utanför knäna", "Håll underarmarna parallella, inte snett utåt", "Låt stången rulla ut på fingrarna och böj handlederna nedåt", "Dra in stången med fingrarna och curla upp knogarna så högt som möjligt"],
 
+  // OMVÄND SKIVSTÅNGSCURL. Källor: gymgrossisten.com/
+  // skivstangscurl-med-omvant-grepp och /omvand-kabelcurl,
+  // styrkeprogrammet.se/ovningsarkiv/94, effektimalt.se/omvand-bicepscurl,
+  // exrx.net/WeightExercises/Brachioradialis/BBReverseCurl. Egna formuleringar.
+  //
+  // GREPPET ÄR HELA ÖVNINGEN och det förklarar aktiveringen, som är den enda
+  // i bicepsgruppen där forearms (0,7) väger tyngre än biceps (0,6):
+  //
+  //   Med handflatorna NEDÅT slackas biceps brachii och hamnar i ett
+  //   ofördelaktigt läge — gymgrossisten kallar det aktiv insufficiens.
+  //   Brachioradialis på underarmens ovansida får då ta över armbågsböjningen.
+  //   Datan stämmer alltså med källorna; inget ändras.
+  //
+  // Två saker källorna återkommer till:
+  //
+  //   HANDLEDEN FÅR INTE VIKA SIG BAKÅT. Det är det som begränsar vikten.
+  //   Övningen kräver uttryckligen lättare vikt än vanlig curl.
+  //
+  //   ARMBÅGARNA STILLA VID SIDORNA. Glider de framåt blir det en axelrörelse
+  //   i stället för en armbågsböjning — samma regel som för hela curlfamiljen.
+  reverse_curl: ["Greppa stången med handflatorna nedåt, händerna axelbrett", "Stå stolt med spänd bål och armbågarna intill sidorna", "Curla upp mot bröstet med raka, fasta handleder", "Sänk långsamt till raka armar — lättare vikt än vanlig curl"],
+
   cable_lateral_raise: ["Ställ dig med trissan i lågt läge på motsatt sida om armen", "Böj armbågen lätt och håll vinkeln genom hela lyftet", "Lyft ut åt sidan tills överarmen är horisontell, inte högre", "Håll skuldran nere och släpp tillbaka kontrollerat mot kabelns drag"],
 
   // FRAMÅTLYFT. Källor: styrkelabbet.se/framatlyft-med-hantlar,

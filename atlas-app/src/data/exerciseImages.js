@@ -76,6 +76,7 @@ export const MED_BILD = [
   "cable_curl",
   "wrist_curl",
   "bayesian_curl",
+  "reverse_curl",
   "squat",
   "deadlift",
   "wide_pulldown",
