@@ -206,14 +206,23 @@ export function ExerciseBank({ onClose, onStarta, iPågåendePass = false, start
 
                   Ersätts tyst av ett riktigt foto den dagen ett sådant finns:
                   bildFör(id) prövas först. */}
+              {/* 56 px, inte 34. Raden är 71 px hög eftersom TEXTEN sätter
+                  höjden — två rader namn plus utrustningsraden tar ~56 px. Med
+                  34 px bild låg drygt halva utrymmet oanvänt, och fotot blev en
+                  fläck där man inte såg vilken rörelse det var.
+
+                  56 ryms utan att raden växer: bild + padding = 56 + 28 = 84,
+                  men texten höll redan 71, så nettot blir 13 px per rad. */}
               <span aria-hidden style={{
-                width: 34, height: 34, flexShrink: 0, borderRadius: 8,
+                width: 56, height: 56, flexShrink: 0, borderRadius: 9,
                 border: `1px solid ${C.hairline}`, background: C.card2,
                 display: "flex", alignItems: "center", justifyContent: "center", color: C.text2,
+                overflow: "hidden",
               }}>
                 {bildFör(e.id)
-                  ? <img src={bildFör(e.id)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 7 }} />
-                  : <MuskelIkon exercise={e} size={30} />}
+                  ? <img src={bildFör(e.id)} alt="" loading="lazy"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <MuskelIkon exercise={e} size={48} />}
               </span>
               <span style={{ minWidth: 0 }}>
                 <span style={{ ...hdr(13.5), display: "block" }}>{e.name}</span>
