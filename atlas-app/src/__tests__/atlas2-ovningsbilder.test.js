@@ -128,3 +128,24 @@ describe("bröstövningarna har bild och teknikpunkter", () => {
     }
   });
 });
+
+describe("miniatyren i listan", () => {
+  const bank = readFileSync(resolve("src/atlas2/ExerciseBank.jsx"), "utf8");
+
+  it("56 px, inte 34", () => {
+    // Robert: "Miniatyrbilderna i övningarna skulle nästan få plats i dubbel
+    // storlek". Mätt: raden var 71 px hög och bilden 34 — drygt halva
+    // utrymmet oanvänt, och fotot blev en fläck där rörelsen inte syntes.
+    expect(bank).toMatch(/width: 56, height: 56, flexShrink: 0/);
+  });
+
+  it("muskelikonen följer med upp", () => {
+    // En 30 px ikon i en 56 px ruta hade lämnat en ram av tomrum.
+    expect(bank).toMatch(/<MuskelIkon exercise=\{e\} size=\{48\} \/>/);
+  });
+
+  it("bilden beskärs, sträcks inte", () => {
+    // objectFit cover: bilden är stående, rutan kvadratisk.
+    expect(bank).toMatch(/objectFit: "cover"/);
+  });
+});
