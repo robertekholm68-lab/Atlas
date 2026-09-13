@@ -15,6 +15,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import { save, load } from "./store.js";
 import { restDoneCue, DEFAULT_CUES } from "../engines/cues.js";
+import { coachKommentar } from "../engines/coachKommentar.js";
+import { bästa1RM } from "../engines/utveckling.js";
 import { workoutExercises, alternativesFor } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
@@ -33,8 +35,21 @@ export function buildLive(program, workout, sessions) {
     const bias = (reasonSignal(sessions) || {}).progressionBias || 0;
     const sug = progressionSuggestion(x.exId, sessions, x.repMax, bias);
     const lp = lastPerformance(sessions, x.exId);
+    // FÖRRA PASSETS ALLA SET på övningen, i ordning. Coachen jämför set 2 med
+    // förra passets set 2, inte med sista setet — annars säger den "2,5 kg
+    // mer" om ett uppvärmningsset jämfört med förra passets tyngsta.
+    const förraPass = (sessions || [])
+      .filter(s => s && s.completedAt && (s.sets || []).some(t => t.exerciseId === x.exId))
+      .sort((a, b) => b.completedAt - a.completedAt)[0];
+    const senaste = förraPass
+      ? (förraPass.sets || []).filter(t => t.exerciseId === x.exId && t.weight && t.reps)
+          .map(t => ({ vikt: t.weight, reps: t.reps }))
+      : null;
+    const rekord = bästa1RM(sessions, x.exId);
     return {
       exId: x.exId,
+      senaste: senaste && senaste.length ? senaste : null,
+      bästa1RM: rekord ? rekord.oneRM : null,
       namn: (x.exercise && x.exercise.name) || x.exId,
       // Kräver övningen yttre vikt? Då får den inte loggas utan en — annars
       // blir volymen noll, muskellasten noll, och appen tror att passet aldrig
@@ -193,6 +208,9 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   // som räknas ur `startad` i stället för att tickas upp.
   const slutTid = useRef(0);
   const [byter, setByter] = useState(false);
+  // Coachens rad om senaste setet. Nollas när vilan är slut — den gäller det
+  // set som just loggats, inte nästa.
+  const [coachRad, setCoachRad] = useState(null);
   const [musik, setMusik] = useState(false);
   // Ljud och vibration på som standard, röst och notis av — samma DEFAULT_CUES
   // som 1.0. Röst kräver att man vill höra appen tala i ett gym, notiser kräver
@@ -357,13 +375,22 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     });
   };
 
+  // Coachraden gäller setet som just loggades. När vilan tar slut — genom
+  // timern eller Hoppa över — ska nästa set börja rent.
+  useEffect(() => { if (vila === 0) setCoachRad(null); }, [vila]);
+
   const avslutaSet = () => {
     if (saknarVikt) return;
+    const nyLoggad = { vikt, reps, ts: Date.now() };
     const nya = live.items.map((x, i) => i === live.idx
       // ts på varje loggat set. Utan den går det inte att veta NÄR passet
       // faktiskt pågick, bara när det startades — och ett pass som startats och
       // glömts ser då ut att ha tagit flera dygn.
-      ? { ...x, loggade: [...x.loggade, { vikt, reps, ts: Date.now() }] } : x);
+      ? { ...x, loggade: [...x.loggade, nyLoggad] } : x);
+    // COACHEN KOMMENTERAR SETET. Räknas nu, visas under vilan. Posten med det
+    // nya setet inräknat, så setnumret stämmer.
+    const kommentar = coachKommentar(nyLoggad, nya[live.idx], it.bästa1RM);
+    setCoachRad(kommentar);
     const sista = klara + 1 >= it.set;
     const nästaIdx = sista ? Math.min(live.idx + 1, live.items.length - 1) : live.idx;
     // Klockslaget läggs på LIVE-passet, som redan sparas vid varje ändring.
@@ -691,6 +718,20 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
 
       {vila > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 20 }}>
+          {/* COACHENS RAD OM SETET. Under vilan, ovanför ringen — det är den
+              enda stunden i passet man tittar på skärmen utan att göra något.
+              Visas bara när det finns något att säga: ett set som är exakt
+              som förra gången ger tystnad, inte "samma som sist". */}
+          {coachRad && (
+            <div data-coach-rad="1" style={{
+              fontSize: 13, color: C.text, textAlign: "center", lineHeight: 1.5,
+              padding: "10px 16px", marginBottom: 14, maxWidth: 300,
+              borderLeft: `2px solid ${C.lime}`, background: volt(.05), borderRadius: "0 10px 10px 0",
+              animation: "askrIn 220ms ease-out",
+            }}>
+              {coachRad}
+            </div>
+          )}
           <Ring kvar={vila} av={it.vila} />
           <button onClick={() => {
             avbröt.current = true; slutTid.current = 0;

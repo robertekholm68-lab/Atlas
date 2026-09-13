@@ -387,6 +387,15 @@ export function vikterUrMätningar(weights, mätningar) {
 }
 
 /**
+ * Epley: vikt × (1 + reps/30). Utbruten så coachKommentar räknar med samma
+ * formel som kurvan — annars kan coachen säga "nytt bästa" om ett set kurvan
+ * inte räknar som det.
+ */
+export function epley1RM(vikt, reps) {
+  return Math.round(vikt * (1 + reps / 30));
+}
+
+/**
  * Bästa uppskattade 1RM per övning, med tidpunkt.
  *
  * Epley: vikt × (1 + reps/30). Uppskattningen blir sämre ju fler reps — vid 15
@@ -398,7 +407,7 @@ export function bästa1RM(sessions, exId) {
   for (const s of sessions || []) {
     for (const x of s.sets || []) {
       if (x.exerciseId !== exId || !x.weight || !x.reps || x.reps > 12) continue;
-      const e = Math.round(x.weight * (1 + x.reps / 30));
+      const e = epley1RM(x.weight, x.reps);
       if (!bäst || e > bäst.oneRM) bäst = { oneRM: e, ts: s.completedAt, weight: x.weight, reps: x.reps };
     }
   }
@@ -489,13 +498,16 @@ export function kurvTrend(punkter, fält, dagar = 56, nowMs = Date.now()) {
  * vad som spelar roll.
  */
 export function progressionskarta(sessions, mått = "styrka", storaLyft = [], nowMs = Date.now()) {
+  // MAIN_LIFTS är [id, namn]-par. Utan uppackningen matchade `stort` aldrig,
+  // och de stora lyften fick ingen fetstil i kartan. Upptäckt via nudgarna.
+  const storaIds = (storaLyft || []).map(x => Array.isArray(x) ? x[0] : x);
   const ids = övningarMedKurva(sessions);
   const rader = ids.map(id => {
     const punkter = mått === "volym" ? volymKurva(sessions, id) : styrkeKurva(sessions, id);
     const fält = mått === "volym" ? "volym" : "oneRM";
     const trend = kurvTrend(punkter, fält, 56, nowMs);
     const senaste = punkter.length ? punkter[punkter.length - 1][fält] : null;
-    return { id, punkter, fält, trend, senaste, stort: storaLyft.includes(id) };
+    return { id, punkter, fält, trend, senaste, stort: storaIds.includes(id) };
   }).filter(r => r.punkter.length >= 2);
 
   rader.sort((a, b) => {
