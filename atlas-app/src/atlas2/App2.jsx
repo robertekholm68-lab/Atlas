@@ -635,9 +635,23 @@ export function Atlas2() {
     return ny;
   });
   const nudge = useMemo(() => {
-    const alla = buildNudges({ sessions, foodLog, nutritionTargets });
+    // Frånvaro-nudgen behöver readiness per muskel: "4 dagar sedan senaste
+    // passet, quadriceps och bröst är återhämtade". Utan muscleStates
+    // triggar den aldrig — vilket är rätt, inte fel: hellre tyst än gissning.
+    const muscleStates = sessions.length ? bodyState(sessions, Date.now()).states : null;
+    const alla = buildNudges({ sessions, foodLog, nutritionTargets, muscleStates });
     return activeNudges(alla, avfärdade)[0] || null;
   }, [sessions, foodLog, nutritionTargets, avfärdade]);
+  // Varje nudge säger vart dess knapp ska. Protein → mat, rekord → utveckling,
+  // frånvaro → pass. Förut gick alla till mat, eftersom protein var den enda.
+  const nudgeCta = () => {
+    const mål = nudge && nudge.ctaMål;
+    if (mål === "utveckling") { setUtvecklingsflik("styrka"); setFlik("utveckling"); }
+    else if (mål === "pass") setFlik("pass");
+    else if (mål === "program") setSheet("program");
+    else if (mål === "ovningar") setSheet("muskelgrupper");
+    else setFlik("mat");
+  };
   const avfärda = id => setAvfärdade(d => {
     const ny = pruneDismissed({ ...d, [id]: Date.now() });
     save("nudgesDismissed", ny);
@@ -1224,7 +1238,7 @@ export function Atlas2() {
     if (flik === "hem") return (
       <Home sessions={sessions} activeProgram={activeProgram}
         onStart={startaPass} onOpen={setSheet} layout={layout} nutRec={nutRec}
-        nudge={nudge} onAvfärda={avfärda} onNudgeCta={() => setFlik("mat")}
+        nudge={nudge} onAvfärda={avfärda} onNudgeCta={nudgeCta}
         mål={mål} weights={weights} mätningar={mätningar} onMål={öppnaMål} sex={sex}
         onVikt={() => { setUtvecklingsflik("kropp"); setFlik("utveckling"); }} />
     );
