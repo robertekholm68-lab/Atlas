@@ -3,12 +3,13 @@
 // Visar ALLTID vad som hittats innan något skrivs. Användaren ska kunna se
 // exakt vad som kommer in, och avgöra de fall appen inte kan avgöra själv.
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { C, MONO, hdr, label, btnPrimary, btnGhost, card, volt } from "./design.js";
 import { scanna, förbered, genomför } from "./import.js";
 import { buildV3Backup, v3BackupFilename, inspectV3Backup, restoreV3Backup } from "./backup2.js";
 import { formatBuildTime } from "../engines/index.js";
 import { ProfilLucka } from "./ProfileSheet.jsx";
+import { installLäge, installera } from "../engines/platform.js";
 
 const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
@@ -19,6 +20,75 @@ const dat = ts => ts ? new Date(ts).toLocaleDateString("sv-SE", { day: "numeric"
  */
 const byggeLäsbart = () =>
   formatBuildTime(typeof __ATLAS_BUILD__ !== "undefined" ? __ATLAS_BUILD__ : "");
+
+/**
+ * INSTALLERA APPEN — kortet i Mer-menyn.
+ *
+ * Det som installeras via Chrome är en WebAPK: en app i applådan som kör i
+ * Chrome. Det är vägen till en installerad app som kan para pulsband, eftersom
+ * WebView-skalet saknar Web Bluetooth. Kortet säger olika saker beroende på
+ * var man är, och visas inte alls där webbläsaren inte erbjuder något.
+ *
+ * Modulnivå med flit — en komponent inuti ImportSheet hade rivits vid varje
+ * render (samma fel som gjorde viktfältet oskrivbart, #147).
+ */
+function InstallKort() {
+  const [läge, setLäge] = useState(() => installLäge());
+  const [visaSteg, setVisaSteg] = useState(false);
+  const [utfall, setUtfall] = useState(null);
+  useEffect(() => {
+    const upp = () => setLäge(installLäge());
+    window.addEventListener("atlas:installable", upp);
+    window.addEventListener("atlas:installed", upp);
+    return () => { window.removeEventListener("atlas:installable", upp); window.removeEventListener("atlas:installed", upp); };
+  }, []);
+  if (läge.läge === "ingen") return null;
+
+  const text = { fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 8 };
+  return (
+    <div data-install-lage={läge.läge}>
+      <div style={{ ...label(), margin: "22px 0 8px" }}>Appen</div>
+      {läge.läge === "installerad" && (
+        <div style={{ ...text, marginTop: 0 }}>Askr kör som installerad app.</div>
+      )}
+      {läge.läge === "prompt" && (
+        <>
+          {!utfall && (
+            <button onClick={async () => setUtfall(await installera())} data-mer="installera" style={btnPrimary}>
+              Installera appen
+            </button>
+          )}
+          <div style={text}>
+            {utfall === "accepterad" ? "Installerad — öppna Askr från hemskärmen härefter."
+              : utfall === "avböjd" ? "Ingen installation den här gången. Knappen kommer tillbaka när Chrome erbjuder det igen."
+              : "Egen ikon, startar utan webbläsarens ram — och allt Chrome kan, som pulsband, följer med."}
+          </div>
+        </>
+      )}
+      {läge.läge === "ios" && (
+        <>
+          <button onClick={() => setVisaSteg(v => !v)} data-mer="installera" style={btnGhost}
+            aria-expanded={visaSteg} aria-controls="install-steg">
+            Installera appen
+          </button>
+          {visaSteg && (
+            <ol id="install-steg" style={{ ...text, paddingLeft: 18, margin: "10px 0 0" }}>
+              {läge.steg.map(s => <li key={s} style={{ marginBottom: 4 }}>{s}</li>)}
+            </ol>
+          )}
+          {!visaSteg && <div style={text}>På iPhone görs det från Safari — tryck så visas stegen.</div>}
+        </>
+      )}
+      {läge.läge === "webview" && (
+        <div style={{ ...text, marginTop: 0 }}>
+          Du kör Askr i det gamla app-skalet. Skalet saknar det Chrome har — pulsband,
+          till exempel. Öppna Askr i Chrome och installera därifrån. Ta en backup
+          nedan först: skalets data följer inte med av sig själv.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, profile, onOpenProfil, onOpen, onClose }) {
   const [steg, setSteg] = useState("scan");
@@ -120,6 +190,8 @@ export function ImportSheet({ sessions, setSessions, setWeights, setFoodLog, pro
         )}
 
         {/* ── DATASÄKERHET: v3-datans egen väg ut och in ── */}
+        <InstallKort />
+
         <div style={{ ...label(), margin: "22px 0 8px" }}>Datasäkerhet</div>
         <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>
           Allt du loggar i Askr 2.0 bor i den här webbläsaren. Rensas webbläsar-

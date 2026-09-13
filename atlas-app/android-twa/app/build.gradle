@@ -1,0 +1,53 @@
+// SAMMA PAKET-ID OCH SAMMA NYCKEL SOM WEBVIEW-SKALET. Då installeras den här
+// appen ÖVER den gamla i stället för bredvid, och ingen behöver avinstallera.
+// Byts något av dem ser Android det som en ny app.
+plugins {
+    id "com.android.application"
+}
+
+def keystoreFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystoreFile.exists()) keystoreProps.load(new FileInputStream(keystoreFile))
+
+android {
+    namespace "se.atlas.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "se.atlas.app"
+        minSdk 24
+        targetSdk 34
+        // Högre än WebView-skalets 1, annars vägrar Android uppdatera.
+        versionCode 2
+        versionName "2.1"
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile file(keystoreProps["storeFile"])
+                storePassword keystoreProps["storePassword"]
+                keyAlias keystoreProps["keyAlias"]
+                keyPassword keystoreProps["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // LauncherActivity, sessionen mot Chrome och verifieringen — allt bor här.
+    // Ingen egen Java behövs.
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

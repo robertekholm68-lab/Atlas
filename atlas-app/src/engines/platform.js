@@ -93,3 +93,71 @@ export function installAdvice() {
   };
   return { installed: false, kind, needed: false, steps: [], why: null };
 }
+
+// ── INSTALLERA APPEN ────────────────────────────────────────────────────────
+//
+// Chrome (Android och desktop) skickar `beforeinstallprompt` när sajten är
+// installerbar: manifest, service worker, https. Eventet kommer EN gång och
+// tidigt — fångas det inte innan React hunnit montera är det borta, och
+// knappen kan aldrig visas. Därför anropas fångaInstallPrompt() i main2.jsx
+// före första render, och eventet ligger kvar här i modulen tills knappen
+// använder det.
+//
+// DET SOM INSTALLERAS ÄR EN WEBAPK — en riktig app i applådan som KÖR I
+// CHROME. Det är hela skillnaden mot WebView-skalet: Web Bluetooth,
+// mikrofonen, notiser — allt Chrome har finns i den installerade appen,
+// utan en enda rad Java och utan signeringsnyckel.
+
+let installPrompt = null;
+let installerad = false;
+
+export function fångaInstallPrompt() {
+  if (typeof window === "undefined") return;
+  window.addEventListener("beforeinstallprompt", e => {
+    // Chromes egen minibanner ska inte dyka upp ovanpå vår knapp.
+    if (e && e.preventDefault) e.preventDefault();
+    installPrompt = e;
+    window.dispatchEvent(new CustomEvent("atlas:installable"));
+  });
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null; installerad = true;
+    window.dispatchEvent(new CustomEvent("atlas:installed"));
+  });
+}
+
+/**
+ * Vad installationsknappen ska göra just här — eller om den ska finnas alls.
+ *
+ *   installerad  kör redan som app (standalone) — inget att göra
+ *   prompt       Chrome har erbjudit installation: knappen installerar direkt
+ *   ios          Safari: inget erbjudande finns, stegen visas i stället
+ *   webview      appens gamla WebView-skal: kan inte installera härifrån
+ *   ingen        webbläsaren erbjuder inget — knappen visas inte
+ */
+export function installLäge() {
+  if (installerad || isStandalone()) return { läge: "installerad", steg: [] };
+  if (installPrompt) return { läge: "prompt", steg: [] };
+  if (isAndroidWebView()) return { läge: "webview", steg: [] };
+  const råd = installAdvice();
+  if (råd.kind === "ios" && råd.needed) return { läge: "ios", steg: råd.steps };
+  return { läge: "ingen", steg: [] };
+}
+
+/**
+ * Visar Chromes installationsdialog. "accepterad", "avböjd" eller null om
+ * inget erbjudande finns. Ett erbjudande går bara att använda EN gång —
+ * avböjer man kommer Chrome med ett nytt senare, och då syns knappen igen.
+ */
+export async function installera() {
+  const p = installPrompt;
+  if (!p) return null;
+  installPrompt = null;
+  try {
+    p.prompt();
+    const val = await p.userChoice;
+    return val && val.outcome === "accepted" ? "accepterad" : "avböjd";
+  } catch (e) { return "fel"; }
+}
+
+/** Bara för tester: nollställer modulens minne mellan fall. */
+export function _återställInstall() { installPrompt = null; installerad = false; }

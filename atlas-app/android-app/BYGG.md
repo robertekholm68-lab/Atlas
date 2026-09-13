@@ -1,5 +1,10 @@
 # ATLAS som Android-app
 
+> **Ersätts av `../android-twa/`** (2026-09-13). WebView saknar Web Bluetooth
+> och kan aldrig para ett pulsband; TWA:n är Chrome som app och kan det. Det
+> här skalet ligger kvar tills TWA:n är verifierad på telefon. Se
+> `../android-twa/BYGG.md`.
+
 Ett tunt skal som kör den publicerade appen i en WebView. Ingen kod från
 `src/` dupliceras här — skalet pekar bara på `atlas2.html` på GitHub Pages.
 

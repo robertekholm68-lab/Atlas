@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "se.atlas.app",
+    "sha256_cert_fingerprints": ["B1:12:F6:60:E4:D1:07:55:44:51:0E:14:96:C9:D7:16:40:A7:39:C8:33:CC:6B:B6:5F:4B:C3:E8:D0:30:E2:F0"]
+  }
+}]
