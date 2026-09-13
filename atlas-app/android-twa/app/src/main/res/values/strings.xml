@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Askr</string>
+    <!-- Appens anspråk på sajten. Sajten svarar med assetlinks.json. -->
+    <string name="asset_statements">
+        [{ \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+           \"target\": { \"namespace\": \"web\", \"site\": \"https://robertekholm68-lab.github.io\" } }]
+    </string>
+</resources>

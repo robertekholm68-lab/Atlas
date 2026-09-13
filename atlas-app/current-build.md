@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1839 i 155 filer |
+| Tester (vitest) | 1859 i 156 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -603,8 +603,25 @@ registrera sig. Priset är att första starten kräver nät.
 **WebViewens lagring är skild från Chromes.** Data loggad i Chrome syns inte i
 appen och tvärtom. Välj ett ställe att logga på.
 
-**TWA valdes bort:** kräver `assetlinks.json` på domänens rot, som tillhör ett
-annat repo. Blir möjlig med `askr.body`.
+**TWA:n är skriven — `android-twa/` — och ersätter skalet när den är
+verifierad på telefon.** Skälet är pulsbandet: WebView saknar Web Bluetooth
+och kan aldrig para ett band; en Trusted Web Activity ÄR Chrome som app och
+kan det, liksom mikrofon utan brygga och notiser. Ingen egen Java —
+`LauncherActivity` ur android-browser-helper öppnar samma adress som skalet
+hade hårdkodad. Samma paket-id (`se.atlas.app`) och samma nyckel, så den
+installeras ÖVER skalet utan avinstallation; `versionCode` 2.
+
+Det gamla skälet att välja bort TWA — `assetlinks.json` "tillhör ett annat
+repo" — höll inte: roten `robertekholm68-lab.github.io` serveras av ett repo
+med exakt det namnet, som Robert kan skapa. Filen ligger färdig i
+`android-twa/assetlinks.json` med nyckelns avtryck ur `android-app/BYGG.md`,
+och `installera.test.jsx` kräver att de två är identiska. Utan filen fungerar
+appen ändå, med Chromes verktygsfält överst.
+
+**Skalets lagring följer inte med till Chrome.** Backup före, inläsning efter.
+Se `android-twa/BYGG.md`. Bygget kräver Gradle och Android SDK på Roberts
+maskin och kan inte kontrolleras i CI — det som låses i sviten är att
+manifest, gradle, assetlinks och skalet pekar på samma adress, paket och nyckel.
 
 **Fallgrop:** `d8` i build-tools 34 kraschar på anonyma inre klasser här
 (NPE i R8:s klassgraf). Därför namngivna `AtlasWebViewClient`/`AtlasChromeClient`
@@ -908,6 +925,13 @@ avinstallation och all data i skalet försvinner.
 *Låses upp av: signeringsnyckeln + en riktig telefon + `adb`.* Se
 `android-app/BYGG.md`; kräver **JDK 17** (d8 i build-tools 34 kraschar under
 JDK 21).
+
+- **TWA-bygget** (`android-twa/`, 2026-09-13). Kräver Gradle + Android SDK +
+  `keystore.properties` med samma nyckel, och repot
+  `robertekholm68-lab.github.io` med `.well-known/assetlinks.json` (filen
+  ligger färdig). Tills TWA:n är verifierad på telefon ligger WebView-skalet
+  kvar. Installationsknappen i Mer-menyn väntar däremot på ingenting — den
+  ger samma sak (Chrome som app) utan APK.
 
 - **App-ikonerna i Android-skalet.** Filerna ÄR bytta — alla fem
   `ic_launcher.png` i `android-app/res/mipmap-*` (`b133ef0`), och
@@ -1517,6 +1541,30 @@ inte Web Bluetooth. Det är inte mätt — sessionen kan inte köra skalet. Mät
 så här: öppna den installerade appen, starta ett pass, tryck på ♡. Kommer
 väljaren fungerar det; kommer skälet "Skalet saknar…" behövs en
 Bluetooth-brygga i Java i skalet, samma sorts brygga som mikrofonen fick.
+
+### Vägen till en installerad app som kan para
+
+Två vägar, båda "Chrome som app", och båda byggda 2026-09-13:
+
+**Installera appen — knappen i Mer-menyn** (`InstallKort` i `ImportSheet.jsx`,
+motorn i `engines/platform.js`). Chrome skickar `beforeinstallprompt` en gång,
+tidigt; `fångaInstallPrompt()` i `main2.jsx` tar det före första render, och
+knappen visar Chromes egen dialog. Det som installeras är en WebAPK: en riktig
+app i applådan som kör i Chrome — ingen Java, ingen nyckel, ingen APK att
+sprida. Kortet säger olika saker beroende på var man är:
+
+| Läge | Kortet |
+|---|---|
+| Chrome har erbjudit | knappen "Installera appen" → Chromes dialog |
+| iPhone | knappen fäller ut Safaris fyra steg |
+| gamla WebView-skalet | besked: öppna i Chrome, ta backup först |
+| redan installerad | "Askr kör som installerad app." |
+| inget erbjudande | kortet visas inte |
+
+Ett förbrukat erbjudande ger ingen knapp förrän Chrome skickar ett nytt — det
+är Chromes regel, inte vår.
+
+**TWA:n** (`android-twa/`) — se Android-avsnittet. För den som vill ha en APK.
 
 **Fejkad GATT i stället för riktigt band.** Både `puls.test.jsx` och
 DOM-skriptet ersätter `navigator.bluetooth` med en attrapp som gör samma anrop
