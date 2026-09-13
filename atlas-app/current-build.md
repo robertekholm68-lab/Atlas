@@ -1291,6 +1291,14 @@ vet.
   träffar, slingan gick aldrig ett varv och kontrollen passerade — utan att ha
   prövat något. Negativa och listbaserade kontroller måste själva kräva att det
   fanns något att kontrollera.
+- **Mät inte samma löfte i två skript.** Pulsskriptet fick en egen kopia av
+  "passvyn ryms på SE" och föll i CI med 686 px av 667 — men 686 både före och
+  efter att bandet kopplades. Kopian mätte en annan väg (riktig profil, första
+  programmallen) på runnerns typsnitt, medan layoutskriptet mäter demoläget
+  och var grönt i samma körning. Kopian togs bort: ett skript prövar SITT
+  löfte (raden växer inte), och löftet om att rymmas har en ägare.
+  Observation att följa upp: på CI:s Chrome är passvyn med första
+  programmallen 19 px för hög på SE — det täcks inte av layoutskriptet.
 - **En upprensning som väntar in något sker en mikrotask senare.** Motorns
   `disconnect()` gör `await stopNotifications()` innan den släpper GATT:en.
   Ett test som läste räknaren direkt efter `unmount()` såg noll och pekade ut
@@ -1474,8 +1482,11 @@ in den. Nu:
 - **Chipet i rubrikraden**, bredvid musikknappen. ♡ okopplad, ♥ + tal kopplad,
   ett tryck kopplar, ett till kopplar ner. INGEN NY RAD: passvyn är den enda vy
   som måste rymmas utan scroll, och en rad hade kostat just den höjden — samma
-  läxa som matvyns dagsväljare. Mätt i `verify-atlas2-puls.mjs`: 667 → 667 px
-  på iPhone SE med bandet kopplat.
+  läxa som matvyns dagsväljare. Mätt i `verify-atlas2-puls.mjs`: samma höjd
+  före och efter kopplingen (667 → 667 lokalt, 686 → 686 på CI:s Chrome).
+  Löftet att vyn RYMS ägs av `verify-atlas2-layout.mjs` och mäts inte en gång
+  till i pulsskriptet — en kopia av det föll i CI och kunde inte skilja på
+  chipets kostnad och vägen dit.
 - **Pulsen under vilan**, med zon när åldern är känd. Utan ålder finns ingen
   maxpuls att räkna mot, och då står talet ensamt — inte en gissad zon.
 - **På passet** sparas `avgHr`, `maxHr`, `hrSamples` och (med ålder) `hrZones`
