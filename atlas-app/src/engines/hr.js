@@ -64,3 +64,50 @@ export function hrIntensity(avgBpm, age) {
   const p = avgBpm / (220 - age);
   return p >= 0.85 ? "Hård" : p >= 0.7 ? "Medel" : "Lätt";
 }
+
+// ── ASKR 2.0 ────────────────────────────────────────────────────────────────
+
+import { platformKind, isAndroidWebView } from "./platform.js";
+
+/**
+ * Går det att koppla ett band HÄR — och om inte, varför.
+ *
+ * Skälet är hela poängen. "Bluetooth saknas" är sant men obrukbart: den som
+ * står på gymmet med ett band på bröstet behöver veta om det är telefonen,
+ * webbläsaren eller appens skal som säger nej, och vad som går att göra åt det.
+ *
+ *   iOS            Apple har inte implementerat Web Bluetooth. Inget att göra.
+ *   Android/WebView Skalet saknar det Chrome har. Öppna i Chrome tills en
+ *                  brygga finns i skalet — samma sorts brygga som mikrofonen.
+ *   annat          Webbläsaren saknar det. Chrome på Android eller desktop.
+ */
+export function bluetoothStatus() {
+  if (bluetoothSupported()) return { ok: true, skäl: null };
+  const os = platformKind();
+  if (os === "ios") return { ok: false, skäl: "Apple har inte implementerat Web Bluetooth, så pulsband går inte att koppla på iPhone." };
+  if (isAndroidWebView()) return { ok: false, skäl: "Appens skal saknar Bluetooth. Öppna Askr i Chrome för att koppla bandet." };
+  return { ok: false, skäl: "Den här webbläsaren saknar Web Bluetooth. Chrome på Android eller dator har det." };
+}
+
+/**
+ * Det som sparas PÅ PASSET av en pulsmätning — eller ingenting.
+ *
+ * Fälten är samma som mobilkompanjonen skrivit sedan 2025 (`avgHr`, `maxHr`),
+ * så importerad historik och nya pass ser likadana ut. Zonerna och antalet
+ * prover är nya och additiva. Utan ett enda prov returneras ett tomt objekt:
+ * ett pass utan band ska inte bära `avgHr: null` som ser ut som ett fält
+ * någon glömt fylla i.
+ *
+ * Råproverna sparas INTE. En timme ger 3 600 tal per pass; snitt, max och
+ * zonfördelning är det som går att läsa efteråt, och de räknas här.
+ */
+export function sessionPulsFält(samples, age = null) {
+  const s = hrSummary(samples, { age: typeof age === "number" && age > 0 ? age : null });
+  if (!s) return {};
+  return {
+    avgHr: s.avg,
+    maxHr: s.max,
+    hrSamples: s.samples,
+    ...(s.zones ? { hrZones: s.zones } : {}),
+  };
+}

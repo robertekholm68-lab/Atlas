@@ -1054,7 +1054,7 @@ export function Atlas2() {
         );
       }
       if (live) return (
-        <WorkoutView live={live} setLive={setLive} sessions={sessions} setSessions={setSessions}
+        <WorkoutView live={live} setLive={setLive} sessions={sessions} setSessions={setSessions} profile={profile}
           avslutaDirekt={avslutaDirekt}
           onLäggTillÖvning={() => setSheet("ovningar")}
           onDone={r => { setLive(null); setAvslutaDirekt(false); setKlart(r); }}
@@ -1370,7 +1370,7 @@ export function Atlas2() {
             {sheet === "sport" ? (
               // Sportpasset läggs i samma lista som gympassen och stämplas med
               // id av stämplaLista i effekten — utan det tappar v3-backupen det.
-              <SportView
+              <SportView profile={profile}
                 onLogg={p => {
                   setSessions(s => [...s, p]);
                   setSheet(null);
