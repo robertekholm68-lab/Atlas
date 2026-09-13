@@ -10,7 +10,8 @@
 import { describe, it, expect } from "vitest";
 import { buildNudges } from "../engines/nudges.js";
 import { coachKommentar } from "../engines/coachKommentar.js";
-import { epley1RM, progressionskarta } from "../engines/utveckling.js";
+import { epley1RM, progressionskarta, styrkeKurva } from "../engines/utveckling.js";
+import { epley1RM as epleyUrIndex } from "../engines/index.js";
 import { MAIN_LIFTS } from "../data/exercises.js";
 
 const nu = Date.now(); const D = 864e5;
@@ -26,6 +27,32 @@ describe("nivå 1 — nudges på hemvyn", () => {
     expect(n[0].kind).toBe("rekord");
     expect(n[0].text).toMatch(/Back Squat.*114 kg.*upp från 108/);
     expect(n[0].ctaMål).toBe("utveckling");
+  });
+
+  it("dagsordet kommer ur kalendern, inte ur timfönstret", () => {
+    // FÖNSTRET ÄR 12–36 TIMMAR, MEN TEXTEN PÅSTÅR ETT DYGN. Det stämde inte
+    // i båda ändarna, mätt före rättelsen:
+    //
+    //   pass 07:00 + app 19:30 SAMMA dag (12,5 h)  → sa "i går" om i morse
+    //   pass mån 20:00 + app ons 08:00 (36 h)      → sa "i går" om i förrgår
+    //
+    // Fasta klockslag med flit: med Date.now() hade fallet bara fallit vissa
+    // tider på dygnet, vilket är värre än att inte testa alls.
+    const kl = (dag, timme, min = 0) => new Date(2026, 8, dag, timme, min, 0).getTime();
+    const pass = (slut, w) => ({ id: "p" + slut, completedAt: slut, sets: [{ exerciseId: "squat", weight: w, reps: 8 }] });
+    const gammalt = pass(kl(1, 18), 80);
+
+    const sammaDag = buildNudges({ sessions: [gammalt, pass(kl(7, 7), 100)], now: kl(7, 19, 30) });
+    expect(sammaDag[0].kind).toBe("rekord");
+    expect(sammaDag[0].text).toContain("i dag");
+
+    const iFörrgår = buildNudges({ sessions: [gammalt, pass(kl(7, 20), 100)], now: kl(9, 8) });
+    expect(iFörrgår[0].kind).toBe("rekord");
+    expect(iFörrgår[0].text).toContain("i förrgår");
+
+    // Och det vanliga fallet ska fortfarande heta i går.
+    const iGår = buildNudges({ sessions: [gammalt, pass(kl(7, 18), 100)], now: kl(8, 9) });
+    expect(iGår[0].text).toContain("i går");
   });
 
   it("rekord kräver ett tidigare värde att slå", () => {
@@ -151,6 +178,27 @@ describe("nivå 2 — coachen under passet", () => {
 
   it("epley1RM är samma formel som kurvan", () => {
     expect(epley1RM(80, 8)).toBe(101);
-    expect(epley1RM(100, 1)).toBe(103);
+    // ETT ENREPSSET ÄR MÄTT, INTE UPPSKATTAT.
+    //
+    // Testet låste tidigare 103 här. Epley är anpassad för flerrepsset och ger
+    // vikt × 1,033 vid en rep — en uppskattning av något man faktiskt lyft.
+    // Den som tar 100 kg en gång har ett 1RM på 100, inte 103.
+    //
+    // Undantaget fanns redan i index.js. Det var alltså de två formlerna som
+    // inte var överens, och 103 var den som avvek.
+    expect(epley1RM(100, 1)).toBe(100);
+    expect(epley1RM(100, 0)).toBe(100);
+  });
+
+  it("båda motorerna räknar 1RM med SAMMA funktion", () => {
+    // Formeln stod i tre exemplar: utveckling.js, index.js och inskriven rakt
+    // i styrkeKurva. Att jämföra tal hade bara visat att de råkade vara lika
+    // just nu — det här kräver att det är samma funktion, så de inte kan
+    // driva isär igen.
+    expect(epleyUrIndex).toBe(epley1RM);
+    for (const [v, r] of [[100, 1], [80, 8], [120, 3], [60, 12]]) {
+      expect(styrkeKurva([{ completedAt: 1, sets: [{ exerciseId: "x", weight: v, reps: r }] }], "x")[0].oneRM)
+        .toBe(epley1RM(v, r));
+    }
   });
 });

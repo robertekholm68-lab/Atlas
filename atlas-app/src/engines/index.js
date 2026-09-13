@@ -6,6 +6,7 @@ import { styckvikt } from "../data/portions.js";
 import { portionNutrition } from "../data/portions.js";
 import { ACT_RANK, BODY_ZONES, GROUP_SOURCES, GROUP_SV, MUSCLES, SLUG2ID, VOLUME_LANDMARKS } from "../data/muscles.js";
 import { H, T, now } from "../data/tokens.js";
+import { epley1RM } from "./utveckling.js";
 
 // Modulkonstant — deklareras högst upp eftersom den läses tidigare i filen än
 // den stod förut (TDZ: const är inte hoistad till undefined, den kastar).
@@ -1622,7 +1623,12 @@ function subExercise(ex, equip) {
   return best;
 }
 
-function epley1RM(weight, reps) { return reps <= 1 ? weight : Math.round(weight * (1 + reps / 30)); }
+// 1RM-FORMELN BOR I utveckling.js — en enda, importerad hit.
+//
+// Den här filen hade sin egen kopia med undantaget för enrepssets, medan
+// utveckling.js hade en utan. Samma set gav olika tal i de två apparna, och
+// coachen kunde fira ett rekord kurvan räknade annorlunda. Beteendet här är
+// oförändrat: undantaget följde med dit.
 
 /**
  * Kvantiserar en vikt till 0,25 kg, förankrat i HELA KILON.

@@ -25,6 +25,7 @@
 // "du har inte loggat mat idag" vore att bygga en tjatmaskin, inte en coach.
 
 import { styrkeKurva } from "./utveckling.js";
+import { startOfLocalDay } from "./index.js";
 import { EXERCISES, MAIN_LIFTS } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
 
@@ -37,6 +38,24 @@ const namnFör = id => (EXERCISES.find(e => e.id === id) || {}).name || id;
 // tills det upptäcktes. Samma bugg fanns i progressionskartan.
 const STORA_LYFT = MAIN_LIFTS.map(x => Array.isArray(x) ? x[0] : x);
 const muskelNamn = id => (MUSCLES[id] && MUSCLES[id].name) || id;
+
+/**
+ * "i dag", "i går" eller "i förrgår" — räknat i KALENDERDYGN, inte i timmar.
+ *
+ * Rekordnudgen fyrar i ett timfönster (12–36 h efter passet) och skrev
+ * "i går" rakt ut. Mätt: ett pass som avslutades 07:00 och en app som öppnades
+ * 19:30 samma dag ligger 12,5 h isär — och nudgen påstod "i går" om ett pass
+ * man kört samma morgon. Åt andra hållet blir 36 h efter ett kvällspass
+ * i förrgår.
+ *
+ * Fönstret är rätt (då är man mottaglig och inte längre trött); det var ordet
+ * som gissade. Nu kommer det ur `startOfLocalDay` — samma dygnsbegrepp som
+ * resten av motorn räknar med.
+ */
+function dagsord(ts, now) {
+  const d = Math.round((startOfLocalDay(now) - startOfLocalDay(ts)) / DAG);
+  return d <= 0 ? "i dag" : d === 1 ? "i går" : d === 2 ? "i förrgår" : `för ${d} dagar sedan`;
+}
 
 /** Loggades det någon mat efter tidpunkten ts? */
 function matEfter(foodLog, ts) {
@@ -86,9 +105,12 @@ export function buildNudges({ sessions = [], foodLog = [], nutritionTargets, mus
     }
   }
 
-  // ── Rekord dagen efter ────────────────────────────────────────────────────
-  // Händelsen är passet; tidpunkten är dagen efter, när man är mottaglig och
-  // inte längre trött. Ett rekord i stunden syns redan på kvittot — det här
+  // ── Rekord efter passet ───────────────────────────────────────────────────
+  // Händelsen är passet; tidpunkten är 12–36 timmar senare, när man är
+  // mottaglig och inte längre trött. Det är oftast men inte alltid dagen
+  // efter — ett morgonpass och en kvällskoll ryms i samma dygn — så ordet
+  // kommer ur `dagsord()` och inte ur fönstret. Ett rekord i stunden syns
+  // redan på kvittot — det här
   // är för den som inte tittade. Bara de stora lyften: ett rekord i sidolyft
   // med 0,5 kg är sant men inte värt en rad.
   //
@@ -104,7 +126,7 @@ export function buildNudges({ sessions = [], foodLog = [], nutritionTargets, mus
         ut.push({
           id: `rekord:${pass.id}:${exId}`,
           kind: "rekord",
-          text: `Du slog ditt bästa i ${namnFör(exId)} i går: ${senaste.oneRM} kg uppskattat 1RM, upp från ${tidigare}.`,
+          text: `Du slog ditt bästa i ${namnFör(exId)} ${dagsord(pass.completedAt, now)}: ${senaste.oneRM} kg uppskattat 1RM, upp från ${tidigare}.`,
           // Inte "Se kurvan" — substrängen matchade en ordagrann sökning på
           // "Van" (träningsvana) i en annan verifierare och tystade ett annat
           // test i tur och ordning. Levde bara som en krock mellan två knappars
