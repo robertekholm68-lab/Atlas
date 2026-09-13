@@ -107,8 +107,8 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1822 i 154 filer |
-| DOM-skript | 17 |
+| Tester (vitest) | 1839 i 155 filer |
+| DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
 till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
@@ -130,7 +130,9 @@ rekommendation, nutrition, systemisk fatigue, dataConfidence,
 formatterarna), `session.js`, `programs.js`, `goal.js`,
 `mission.js`, `bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
 `voice.js`, `post-session.js`, `geofence.js`, `nfc.js`, `hr.js`, `platform.js`,
-`bridge.js`, `backup.js`, `cues.js`, `nudges.js` (händelsedrivna påminnelser),
+`bridge.js`, `backup.js`, `cues.js`, `hr.js` (pulsband över BLE — sedan
+2026-09-13 inkopplad i 2.0, inte bara i mobilkompanjonen), `nudges.js`
+(händelsedrivna påminnelser),
 `supplements.js` (följsamhet för dagliga tillskott).
 
 Tillkomna i augusti: `facts.js` och `journey.js` (flyttade hit från `atlas2/`),
@@ -711,8 +713,9 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — SJUTTON stycken** (alla sjutton gröna i CI
-2026-09-13, körning på `04781c7`):
+**Askr 2.0:s DOM-skript — ARTON stycken** (sjutton gröna i CI 2026-09-13 på
+`04781c7`; `verify-atlas2-puls.mjs` tillkom 2026-09-13 och är grön lokalt — dess
+första CI-körning är den som gäller):
 
 | Skript i `scripts/` | Port | Täcker |
 |---|---|---|
@@ -732,6 +735,7 @@ Verifiering: headless Chromium / vitest framför visuell läsning.
 | `verify-atlas2-backup.mjs` | 8934 | v3-backup: export, granska, ersätt |
 | `verify-atlas2-malresa.mjs` | 8961 | målresan |
 | `verify-atlas2-profil.mjs` | 8967 | profilarket |
+| `verify-atlas2-puls.mjs` | 8975 | pulsband via fejkad GATT: skäl utan Bluetooth, chip, vila, kvitto, lagring |
 | `verify-atlas2-malprogram.mjs` | 8965 | målprogram |
 
 Steg-antalen som stod här var avlästa 2026-08-11 och gick inte att lita på
@@ -889,9 +893,10 @@ och sport- och cardiologgning.
 - **Synk-motorn:** `updatedAt` bumpas ännu inte vid *redigering* (sätts vid
   skapande/migrering), och programmen stämplas inte. Hör till själva
   synkmotorn, som medvetet inte byggts.
-- **Struken:** återhämtningsvy (skiss 5). Sömn, HRV och vilopuls har ingen
-  datakälla. En vy med tomma fält är sämre än ingen vy. Tas upp igen först när
-  en klocka kopplas in.
+- **Struken tills vidare:** återhämtningsvy (skiss 5). Sömn, HRV och vilopuls
+  har ingen datakälla. En vy med tomma fält är sämre än ingen vy. Vägen dit är
+  bestämd (se "Pulsband och klockor"): först filimport ur Garmin/Polar/Apple
+  Hälsa, sedan en automatisk koppling. Vyn byggs när indata finns.
 
 **BLOCKERAT (utanför repot) — inte beslutat bort:**
 
@@ -1286,6 +1291,15 @@ vet.
   träffar, slingan gick aldrig ett varv och kontrollen passerade — utan att ha
   prövat något. Negativa och listbaserade kontroller måste själva kräva att det
   fanns något att kontrollera.
+- **En upprensning som väntar in något sker en mikrotask senare.** Motorns
+  `disconnect()` gör `await stopNotifications()` innan den släpper GATT:en.
+  Ett test som läste räknaren direkt efter `unmount()` såg noll och pekade ut
+  koden — men det var testet som inte väntat. Läs asynkrona följder efter en
+  tick, annars testar man ordningen i händelseloopen i stället för beteendet.
+- **Ett regex som stannar vid första `)` ser aldrig sista argumentet.**
+  `byggSportpass\([^)]*pulsGiltig\)` matchade inte anropet, eftersom det bär
+  `Date.now()` och `parseFloat(…)` inuti. En ordagrann delsträng är tråkigare
+  och rätt.
 - **En lista kan ha en annan form än man antar.** `MAIN_LIFTS` är `[id, namn]`-
   par, inte id:n. Loopar man över paren matchar `find(e => e.id === par)` aldrig
   — rekordnudgen och stagnationsnudgen var HELT TYSTA, och i progressionskartan
@@ -1433,6 +1447,73 @@ Komponenten `Falt` definierades INUTI `NyMatning`. Vid varje tangenttryck körde
 IDENTITET, såg en ny typ och rev fältet i stället för att uppdatera det. Fokus
 försvann med det gamla elementet — och på mobil åker tangentbordet ner när fokus
 försvinner. Man kunde skriva en siffra i taget. `Falt` ligger nu på modulnivå.
+
+## Pulsband och klockor
+
+Robert har Garmin; testarna har blandat, bland annat Apple. "Koppla klockan"
+är tre olika problem, och de är olika svåra:
+
+1. **Livepuls under passet** — pulsband, eller klockor som sänder puls över
+   Bluetooth. Standardprofil (BLE 0x180D), inga konton, ingen molntjänst.
+   **BYGGT 2026-09-13** (steg 1, nedan).
+2. **Sömn, HRV och vilopuls till readiness** — det är här klockan gör skillnad,
+   men datan ligger i tillverkarens moln. Planerad väg: filimport enligt
+   Omron-mönstret (Garmin Connect, Polar Flow, Apple Hälsa exporterar alla;
+   tolkas på telefonen, datan lämnar den aldrig), därefter EN automatisk
+   koppling — Polar AccessLink (öppet API, OAuth) eller Fitbit (öppet API, går
+   helt utan server). **Inte lova:** Garmins API (kräver partnergodkännande),
+   Apple Hälsa direkt (bara native iOS), Samsung utan native kod i skalet.
+3. **Passimport** (Strava m.fl.) — minst viktigt för en styrkeapp. Inte planerat.
+
+### Steg 1: pulsband i passvyn
+
+`engines/hr.js` har funnits sedan mobilkompanjonen — `connectHeartRate`,
+`parseHeartRate`, `hrSummary` med zoner ur ålder — men 2.0 hade aldrig kopplat
+in den. Nu:
+
+- **Chipet i rubrikraden**, bredvid musikknappen. ♡ okopplad, ♥ + tal kopplad,
+  ett tryck kopplar, ett till kopplar ner. INGEN NY RAD: passvyn är den enda vy
+  som måste rymmas utan scroll, och en rad hade kostat just den höjden — samma
+  läxa som matvyns dagsväljare. Mätt i `verify-atlas2-puls.mjs`: 667 → 667 px
+  på iPhone SE med bandet kopplat.
+- **Pulsen under vilan**, med zon när åldern är känd. Utan ålder finns ingen
+  maxpuls att räkna mot, och då står talet ensamt — inte en gissad zon.
+- **På passet** sparas `avgHr`, `maxHr`, `hrSamples` och (med ålder) `hrZones`
+  via `sessionPulsFält()`. Samma fältnamn som mobilkompanjonen skrivit sedan
+  2025, så importerad historik och nya pass ser likadana ut. Ett pass utan band
+  bär INGA pulsfält — inte `avgHr: null` som ser ut som något man glömt. Råprover
+  sparas inte: en timme är 3 600 tal, och det som går att läsa efteråt är
+  snitt, max och zoner.
+- **Kvittot** visar snitt, max och zonfördelning — en rad, inte en fjärde cell
+  (fyra celler blir för trånga på SE). Bara när passet bär puls.
+- **Sportarket** har fått ett frivilligt fält för snittpuls från klockan. Med
+  känd ålder VÄLJER pulsen intensiteten (`hrIntensity`: <70 % lätt, <85 % medel,
+  annars hård) och talet sparas som `avgHr`. Det är Garmin-vägen som fungerar i
+  dag utan något API: klockan visar snittet efter passet, man skriver in det.
+  Belastningen räknas fortfarande ur intensiteten — pulsen är det som valde den.
+
+**`bluetoothStatus()` säger VARFÖR när det inte går.** "Bluetooth saknas" är
+sant men obrukbart för den som står med bandet på bröstet:
+
+| Läge | Skäl som visas |
+|---|---|
+| iPhone | Apple har inte implementerat Web Bluetooth. Inget att göra. |
+| Android, appens WebView-skal | Skalet saknar det Chrome har. Öppna Askr i Chrome. |
+| annan webbläsare | Web Bluetooth saknas. Chrome på Android eller dator har det. |
+
+**DET ÄRLIGA OKÄNDA: WebView-skalet.** Så vitt känt exponerar Android WebView
+inte Web Bluetooth. Det är inte mätt — sessionen kan inte köra skalet. Mät det
+så här: öppna den installerade appen, starta ett pass, tryck på ♡. Kommer
+väljaren fungerar det; kommer skälet "Skalet saknar…" behövs en
+Bluetooth-brygga i Java i skalet, samma sorts brygga som mikrofonen fick.
+
+**Fejkad GATT i stället för riktigt band.** Både `puls.test.jsx` och
+DOM-skriptet ersätter `navigator.bluetooth` med en attrapp som gör samma anrop
+som ett band (requestDevice → gatt.connect → service → characteristic →
+notifications) och avger riktiga Heart Rate Measurement-paket. Det prövar hela
+kedjan från knapptryck till sparat pass — bara datan är påhittad, inte anropen.
+Det som INTE är prövat är själva radion: att ett Polar H10 faktiskt dyker upp i
+väljaren. Det kräver en telefon och ett band.
 
 ## Hemvyn, övningssidan och coachen (#164–#191)
 

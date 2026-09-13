@@ -17,6 +17,7 @@ import { harDistans, tempoPerKm } from "../data/sportDistans.js";
 import { resolveActivity, SPORT_INTENSITY } from "../data/exercises.js";
 import { computeSportLoad, computeCardioLoad } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
+import { hrIntensity } from "../engines/hr.js";
 import { MUSCLES } from "../data/muscles.js";
 import { sportIcons, ensureSportIcons, onSportIcons } from "../data/sport-icons.js";
 
@@ -67,7 +68,7 @@ export function aktiviteterPerKategori() {
  * `schemaV` och `createdAt`, och respekterar `muscleLoads` när de skickas in.
  * Utan id tappar v3-backupen posten och synken kan inte se den.
  */
-export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.now(), km = null) {
+export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.now(), km = null, avgHr = null) {
   if (!aktivitet || !(minuter > 0)) return null;
   const im = SPORT_INTENSITY[intensitet];
   if (!im) return null;
@@ -87,6 +88,12 @@ export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.no
     // just den här personen springer, alltså en gissning förklädd till mätning.
     // Den sparas för att den är sann, och för att tempot går att räkna ur den.
     ...(km > 0 ? { distanceKm: km } : {}),
+    // SNITTPULSEN FRÅN KLOCKAN. Sparas som avgHr — samma fält som pulsbandet
+    // skriver på gympass — bara när den angavs. Belastningen räknas
+    // fortfarande ur intensiteten; pulsen är det som VALDE intensiteten när
+    // åldern är känd, och det är därför den ska stå kvar på passet: annars går
+    // det inte att se efteråt varför passet blev "Hård".
+    ...(avgHr > 0 ? { avgHr: Math.round(avgHr) } : {}),
     cardioLoad: computeCardioLoad(aktivitet, minuter, im, hiit),
     muscleLoads: computeSportLoad(aktivitet, minuter, im, hiit),
     source: "sport",
@@ -95,7 +102,7 @@ export function byggSportpass(aktivitet, minuter, intensitet, hiit, nu = Date.no
 
 const INTENSITETER = Object.keys(SPORT_INTENSITY);
 
-export function SportView({ onLogg, onClose }) {
+export function SportView({ onLogg, onClose, profile = null }) {
   const kategorier = useMemo(aktiviteterPerKategori, []);
   const [öppen, setÖppen] = useState(kategorier[0] ? kategorier[0].id : null);
   const [valdId, setValdId] = useState(null);
@@ -103,11 +110,24 @@ export function SportView({ onLogg, onClose }) {
   const [intensitet, setIntensitet] = useState(INTENSITETER[1] || INTENSITETER[0]);
   const [hiit, setHiit] = useState(false);
   const [km, setKm] = useState("");
+  // Snittpuls ur klockan, frivillig. Garmin, Polar, Apple — alla visar den
+  // efter passet, och den är sannare än en gissning om "Medel".
+  const [snittpuls, setSnittpuls] = useState("");
+  const ålder = profile && typeof profile.age === "number" && profile.age > 0 ? profile.age : null;
+  const pulsTal = parseInt(String(snittpuls).replace(/\D/g, ""), 10);
+  const pulsGiltig = pulsTal >= 40 && pulsTal <= 220 ? pulsTal : null;
+  const urPulsen = pulsGiltig != null ? hrIntensity(pulsGiltig, ålder) : null;
+
+  // PULSEN SÄTTER INTENSITETEN — när åldern är känd. Utan ålder finns ingen
+  // maxpuls att räkna mot, och då sparas talet men väljaren rörs inte: att
+  // gissa en zon ur ett tal utan referens vore precis den påhittade siffran
+  // appen inte visar.
+  useEffect(() => { if (urPulsen) setIntensitet(urPulsen); }, [urPulsen]);
 
   const aktivitet = useMemo(() => (valdId ? resolveActivity(valdId) : null), [valdId]);
   const förhands = useMemo(
-    () => (aktivitet ? byggSportpass(aktivitet, minuter, intensitet, hiit, Date.now(), parseFloat(String(km).replace(",", ".")) || null) : null),
-    [aktivitet, minuter, intensitet, hiit, km]
+    () => (aktivitet ? byggSportpass(aktivitet, minuter, intensitet, hiit, Date.now(), parseFloat(String(km).replace(",", ".")) || null, pulsGiltig) : null),
+    [aktivitet, minuter, intensitet, hiit, km, pulsGiltig]
   );
   const tempo = useMemo(
     () => tempoPerKm(parseFloat(String(km).replace(",", ".")), minuter),
@@ -243,6 +263,25 @@ export function SportView({ onLogg, onClose }) {
                 }}>{k}</button>
             ))}
           </div>
+
+          {/* ── SNITTPULS UR KLOCKAN ── Frivilligt. Fältet finns för att
+              klockan redan har talet, och för att "Medel" är en gissning
+              medan 148 är en mätning. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+            <span style={{ color: C.critical, fontSize: 15 }}>♥</span>
+            <input value={snittpuls} onChange={e => setSnittpuls(e.target.value)}
+              inputMode="numeric" placeholder="Snittpuls från klockan" aria-label="Snittpuls"
+              data-snittpuls="1"
+              style={{ flex: 1, minWidth: 0, background: C.card2, color: C.text, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, boxSizing: "border-box" }} />
+            <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>slag/min</span>
+          </div>
+          {pulsGiltig != null && (
+            <div data-puls-not="1" style={{ fontSize: 11.5, color: urPulsen ? C.lime : C.muted, marginTop: 6, lineHeight: 1.5 }}>
+              {urPulsen
+                ? `${urPulsen} enligt pulsen — ${Math.round(pulsGiltig / (220 - ålder) * 100)} % av din beräknade maxpuls.`
+                : "Pulsen sparas på passet. Fyll i ålder i Om dig så väljer den intensiteten åt dig."}
+            </div>
+          )}
 
           {/* ── UPPLÄGG ── */}
           <div style={{ ...label(), marginTop: 16 }}>Upplägg</div>

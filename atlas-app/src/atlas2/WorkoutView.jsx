@@ -12,10 +12,11 @@
 // muskellast, inte en attrapp.
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { C, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
+import { C, HFONT, BFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import { save, load } from "./store.js";
 import { restDoneCue, DEFAULT_CUES } from "../engines/cues.js";
 import { coachKommentar } from "../engines/coachKommentar.js";
+import { bluetoothStatus, connectHeartRate, hrIntensity, sessionPulsFält } from "../engines/hr.js";
 import { bästa1RM } from "../engines/utveckling.js";
 import { workoutExercises, alternativesFor } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
@@ -26,6 +27,45 @@ import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
 import { tempoPerKm } from "../data/sportDistans.js";
+
+/**
+ * PULSCHIPET I RUBRIKRADEN. Utan band: ett hjärta att trycka på. Med band:
+ * talet, i samma höjd som musikknappen så raden inte växer.
+ *
+ * Ligger på modulnivå med flit. En komponent definierad inuti WorkoutView
+ * hade fått ny identitet vid varje render och rivits — samma fel som gjorde
+ * viktfältet oskrivbart (#147).
+ */
+function PulsKnapp({ puls, kopplad, ålder, onClick }) {
+  const zon = kopplad && puls != null ? hrIntensity(puls, ålder) : null;
+  return (
+    <button onClick={onClick} data-puls="1"
+      aria-label={kopplad ? `Puls ${puls != null ? puls : "—"} slag/min — tryck för att koppla ner` : "Koppla pulsband"}
+      title={zon || undefined}
+      style={{
+        background: "none", border: "none", cursor: "pointer", padding: 6, minWidth: 34, minHeight: 34,
+        display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3,
+        color: kopplad ? C.critical : C.text2, fontFamily: MONO,
+      }}>
+      <span style={{ fontSize: 17, lineHeight: 1 }}>{kopplad ? "♥" : "♡"}</span>
+      {kopplad && <span style={{ fontSize: 14, color: C.text }}>{puls != null ? puls : "—"}</span>}
+    </button>
+  );
+}
+
+/** Skälet till att bandet inte gick att koppla. En rad, går att stänga. */
+function PulsNot({ text, onStäng }) {
+  return (
+    <div data-puls-fel="1" role="status" style={{
+      display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 12px",
+      borderLeft: `2px solid ${C.recovering}`, background: C.card2, borderRadius: "0 10px 10px 0",
+      fontSize: 12, color: C.text2, lineHeight: 1.5,
+    }}>
+      <span style={{ flex: 1 }}>{text}</span>
+      <button onClick={onStäng} aria-label="Stäng" style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 16, padding: "2px 4px" }}>×</button>
+    </div>
+  );
+}
 
 /** Bygger passets övningslista med förslag ur historiken. */
 export function buildLive(program, workout, sessions) {
@@ -188,7 +228,7 @@ function Steg({ värde, sätt, steg, enhet, min = 0, valbart = false, smal = fal
 
 
 
-export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort, avslutaDirekt = false, onLäggTillÖvning }) {
+export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAbort, avslutaDirekt = false, onLäggTillÖvning, profile = null }) {
   // Hooks före villkorade returer (projektlag). Bredden avgör sifferstorleken i
   // stegarna: träffytorna är låsta vid 44 px, så det är talet som får ge vika
   // när skärmen är smal.
@@ -211,6 +251,55 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   // Coachens rad om senaste setet. Nollas när vilan är slut — den gäller det
   // set som just loggats, inte nästa.
   const [coachRad, setCoachRad] = useState(null);
+
+  // ── PULSBAND ──────────────────────────────────────────────────────────────
+  // Motorn (engines/hr.js) har funnits sedan mobilkompanjonen; 2.0 hade aldrig
+  // kopplat in den. Proverna ligger i en ref, inte i state: bandet skickar
+  // ett värde i sekunden, och en omritning per prov är brus. Bara det som
+  // VISAS (senaste bpm) går genom state.
+  //
+  // Proverna överlever inte en omladdning. Det är ärligt: BLE kräver ett
+  // knapptryck för att koppla, så anslutningen är ändå borta efter en omstart,
+  // och ett snitt över halva passet hade sett ut som ett snitt över hela.
+  const [puls, setPuls] = useState(null);
+  const [pulsEnhet, setPulsEnhet] = useState(null);
+  const [pulsFel, setPulsFel] = useState(null);
+  const pulsProver = useRef([]);
+  const pulsHandle = useRef(null);
+  const ålder = profile && typeof profile.age === "number" && profile.age > 0 ? profile.age : null;
+
+  const kopplaPuls = async () => {
+    setPulsFel(null);
+    if (pulsHandle.current) {
+      // Redan kopplad: ett tryck till kopplar ner. Ingen bekräftelsefråga —
+      // bandet går att koppla igen med ett tryck.
+      try { await pulsHandle.current.disconnect(); } catch (e) { /* redan nere */ }
+      pulsHandle.current = null; setPulsEnhet(null); setPuls(null);
+      return;
+    }
+    // FÖRST SKÄLET, SEDAN FÖRSÖKET. Den som står med bandet på bröstet ska
+    // få veta om det är iPhone, appens skal eller webbläsaren som säger nej —
+    // inte en väljare som aldrig dyker upp.
+    const st = bluetoothStatus();
+    if (!st.ok) { setPulsFel(st.skäl); return; }
+    try {
+      const h = await connectHeartRate({
+        onBpm: b => { setPuls(b); pulsProver.current.push(b); },
+        onDisconnect: () => { pulsHandle.current = null; setPulsEnhet(null); setPuls(null); },
+      });
+      pulsHandle.current = h; setPulsEnhet(h.name);
+    } catch (e) {
+      // Stängde man väljaren utan att välja är det inget fel — bara tystnad.
+      if (e && e.name === "NotFoundError") return;
+      setPulsFel("Ingen anslutning. Kontrollera att bandet sitter på och inte redan är kopplat till en annan app.");
+    }
+  };
+
+  // Bandet följer inte med ut ur vyn: kopplas ner när passet lämnas, oavsett
+  // hur. Utan det fortsätter proverna att strömma in i en vy som inte finns.
+  useEffect(() => () => {
+    if (pulsHandle.current) { try { pulsHandle.current.disconnect(); } catch (e) { /* redan nere */ } }
+  }, []);
   const [musik, setMusik] = useState(false);
   // Ljud och vibration på som standard, röst och notis av — samma DEFAULT_CUES
   // som 1.0. Röst kräver att man vill höra appen tala i ett gym, notiser kräver
@@ -481,6 +570,9 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
     const session = buildSession({
       sets, source: "training", title: live.namn,
       programId: live.programId, workoutId: live.workoutId, completedAt: Date.now(),
+      // Snitt, max och zoner ur bandet — eller inga fält alls. Ett pass utan
+      // band ska inte bära avgHr: null som ser ut som något man glömt.
+      ...sessionPulsFält(pulsProver.current, ålder),
     });
     setSessions(s => [...s, session]);
     save("live", null);
@@ -511,8 +603,9 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <button onClick={onAbort} style={{ background: "none", border: "none", color: C.text, fontSize: 22, cursor: "pointer", padding: 6 }} aria-label="Tillbaka">‹</button>
         <div style={hdr(15)}>Pågående pass</div>
-        <span style={{ width: 34 }} />
+        <PulsKnapp puls={puls} kopplad={!!pulsEnhet} ålder={ålder} onClick={kopplaPuls} />
       </div>
+      {pulsFel && <PulsNot text={pulsFel} onStäng={() => setPulsFel(null)} />}
 
       <div style={{ ...card, padding: 20, marginTop: 18, textAlign: "center" }}>
         <div style={{ ...hdr(16), marginBottom: 8 }}>Passet är igång</div>
@@ -547,10 +640,18 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             Platshållaren på 34 px fanns kvar — den balanserade tillbakapilen —
             så knappen tar ingen extra höjd. Det spelar roll: passvyn är den
             enda vy som måste rymmas utan scroll. */}
-        <button onClick={() => setMusik(true)} data-musik="1" aria-label="Träningsmusik"
-          style={{ background: "none", border: "none", color: C.text2, fontSize: 19,
-            cursor: "pointer", padding: 6, width: 34 }}>♫</button>
+        {/* PULSEN BOR I RUBRIKRADEN, inte på en egen rad. Passvyn är den enda
+            vy som måste rymmas utan scroll (verify-atlas2-layout.mjs), och en
+            ny rad hade kostat just den höjden — samma läxa som matvyns
+            dagsväljare. Chipet delar raden med musikknappen. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <PulsKnapp puls={puls} kopplad={!!pulsEnhet} ålder={ålder} onClick={kopplaPuls} />
+          <button onClick={() => setMusik(true)} data-musik="1" aria-label="Träningsmusik"
+            style={{ background: "none", border: "none", color: C.text2, fontSize: 19,
+              cursor: "pointer", padding: 6, width: 34 }}>♫</button>
+        </div>
       </div>
+      {pulsFel && <PulsNot text={pulsFel} onStäng={() => setPulsFel(null)} />}
 
       {/* Setprogression: en stapel per set i hela passet */}
       <div style={{ display: "flex", gap: 3, marginTop: 12 }}>
@@ -732,6 +833,19 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
               {coachRad}
             </div>
           )}
+          {/* PULSEN UNDER VILAN. Det är då man tittar: ser man 150 när vilan
+              tar slut vet man att kroppen inte är klar, oavsett vad klockan
+              säger. Zonen sätts bara när åldern är känd — utan ålder finns
+              ingen maxpuls att räkna mot, och då står talet ensamt. */}
+          {puls != null && (
+            <div data-puls-vila="1" style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 12 }}>
+              <span style={{ color: C.critical, fontSize: 16 }}>♥</span>
+              <span style={{ ...hdr(22), color: C.text }}>{puls}</span>
+              <span style={{ fontSize: 11.5, color: C.muted }}>
+                slag/min{hrIntensity(puls, ålder) ? ` · ${hrIntensity(puls, ålder).toLowerCase()}` : ""}
+              </span>
+            </div>
+          )}
           <Ring kvar={vila} av={it.vila} />
           <button onClick={() => {
             avbröt.current = true; slutTid.current = 0;
@@ -895,6 +1009,25 @@ export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = 
           </div>
         ))}
       </div>
+
+      {/* PULSEN PÅ KVITTOT — en rad, inte en fjärde cell (fyra celler blir
+          för trånga på en iPhone SE). Visas bara när passet bär puls: ett
+          pass utan band ska inte visa "— slag/min" som om något saknades. */}
+      {session.avgHr != null && (
+        <div data-puls-kvitto="1" style={{ ...card, marginTop: 10, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ color: C.critical, fontSize: 17 }}>♥</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: MONO, fontSize: 13, color: C.text }}>
+              Snitt {session.avgHr} · max {session.maxHr} slag/min
+            </div>
+            {session.hrZones && (
+              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
+                {session.hrZones.hard} % hårt · {session.hrZones.medel} % medel · {session.hrZones.latt} % lätt
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {post.lines.length > 0 && (
         <>
