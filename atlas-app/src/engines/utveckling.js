@@ -387,12 +387,22 @@ export function vikterUrMätningar(weights, mätningar) {
 }
 
 /**
- * Epley: vikt × (1 + reps/30). Utbruten så coachKommentar räknar med samma
- * formel som kurvan — annars kan coachen säga "nytt bästa" om ett set kurvan
- * inte räknar som det.
+ * Epley: vikt × (1 + reps/30). PROJEKTETS ENDA 1RM-FORMEL.
+ *
+ * Den fanns i tre exemplar: här, i `index.js` och inskriven rakt i
+ * `styrkeKurva` nedan. De var inte överens — `index.js` hade undantaget för
+ * enrepssets, de andra två inte. Ett tungt singelset på 100 kg blev 100 i
+ * gamla appen och 103 i den nya, och coachen kunde fira ett rekord kurvan
+ * räknade annorlunda. Nu importerar båda motorerna den här.
+ *
+ * ETT ENREPSSET ÄR SITT EGET MAX. Epley är anpassad för flerrepsset och ger
+ * vikt × 1,033 vid en rep — en uppskattning av något man faktiskt MÄTT. Den
+ * som lyfter 100 kg en gång har ett 1RM på 100 kg, inte 103. Undantaget stod
+ * i `index.js` och är det som är rätt; det är därför det följde med hit och
+ * inte tvärtom.
  */
 export function epley1RM(vikt, reps) {
-  return Math.round(vikt * (1 + reps / 30));
+  return reps <= 1 ? vikt : Math.round(vikt * (1 + reps / 30));
 }
 
 /**
@@ -421,7 +431,10 @@ export function styrkeKurva(sessions, exId) {
     let bäst = 0;
     for (const x of s.sets || []) {
       if (x.exerciseId !== exId || !x.weight || !x.reps || x.reps > 12) continue;
-      bäst = Math.max(bäst, Math.round(x.weight * (1 + x.reps / 30)));
+      // Anropar formeln i stället för att skriva av den. Kurvan och rekordet
+      // var överens av en slump så länge båda råkade ha samma rad — det är
+      // inte samma sak som att vara överens av konstruktion.
+      bäst = Math.max(bäst, epley1RM(x.weight, x.reps));
     }
     if (bäst > 0) punkter.push({ ts: s.completedAt, oneRM: bäst });
   }
