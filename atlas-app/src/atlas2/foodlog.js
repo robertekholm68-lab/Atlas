@@ -74,8 +74,15 @@ export function flyttaPost(post, datum, tid) {
 /**
  * Dagar som har minst en loggad post, nyast först.
  *
- * Används för att kunna hoppa till "förra dagen jag loggade" i stället för att
- * stega en dag i taget genom en tom vecka.
+ * MARKERAR vilka dagar som bär loggning — en prick under datumnamnet i
+ * dagsväljaren. Den styr inte vart pilarna går.
+ *
+ * Först gjorde den det: pilarna hoppade till närmaste dag med loggning, för
+ * att slippa stega genom en tom vecka. Det gjorde två saker omöjliga. Man såg
+ * inte VILKA dagar man missat, och man kunde inte logga i efterhand på en tom
+ * dag — eftersom man aldrig kom dit, vilket var hela poängen med att bläddra
+ * bakåt. Utan pricken ser en tom dag likadan ut som en dag man inte hunnit
+ * fram till, och det är den luckan den här listan fyller.
  */
 export function dagarMedLogg(foodLog) {
   const set = new Set();

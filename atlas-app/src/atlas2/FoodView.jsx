@@ -120,8 +120,6 @@ function Oversikt({ dagensLogg, totaler, mål, dagTs, visarIdag, onByt, dagarMed
   const t = totaler;
   const kvar = mål && mål.kcal ? mål.kcal - t.kcal : null;
 
-  // Föregående DAG MED LOGG, inte föregående kalenderdag. Att stega genom en
-  // tom vecka en dag i taget är sju tryck för att komma till något som finns.
   // PILARNA GÅR EN DAG I TAGET, inte till närmaste dag med loggning.
   //
   // Förut hoppade de över tomma dagar: hade man loggat idag och för fem dagar

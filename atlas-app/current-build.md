@@ -22,8 +22,8 @@
 Datalagret. Koden i `atlas-app/` är ground truth — den här filen sammanfattar,
 den bestämmer inte. Uppdatera filen i samma PR som ändringen, inte efteråt.
 
-*Senast verifierad mot koden: 2026-08-26 (mot `85dfffc`, #142). Alla siffror nedan är avlästa
-ur källan, inte ihågkomna.*
+*Senast verifierad mot koden: 2026-09-13 (mot `04781c7`, #191). Alla siffror
+nedan är avlästa ur källan, inte ihågkomna.*
 
 ## Namnet
 
@@ -87,7 +87,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
   bär synkfält (`id`, `userId`, `deviceId`, `updatedAt`); se synk-form i
   backloggen. Näringsmål under `atlas.v3.nutritionTargets`.
 
-## Aktuella siffror (avlästa 2026-09-07)
+## Aktuella siffror (avlästa 2026-09-13)
 
 | Sak | Antal |
 |---|---|
@@ -103,11 +103,12 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | — varav kuraterade | 73 |
 | Recept | 276 |
 | Recept med bild | 140 av 276 |
-| Övningar med bild (`MED_BILD`) | 8 av 160 |
+| Övningar med bild (`MED_BILD`) | 58 av 160 |
+| Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1739 i 151 filer |
-| DOM-skript | 16 |
+| Tester (vitest) | 1822 i 154 filer |
+| DOM-skript | 17 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
 till 2026-08-26 och gick inte att härleda ur någon enskild export — den var
@@ -124,8 +125,9 @@ Sporter med cardio-load: innebandy, Muay Thai.
 ## Struktur
 
 ### `src/engines/` — rena funktioner
-34 filer. `index.js` (recovery, readiness, rekommendation, nutrition, systemisk
-fatigue, dataConfidence, formatterarna), `session.js`, `programs.js`, `goal.js`,
+35 filer (räknade 2026-09-13). `index.js` (recovery, readiness,
+rekommendation, nutrition, systemisk fatigue, dataConfidence,
+formatterarna), `session.js`, `programs.js`, `goal.js`,
 `mission.js`, `bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
 `voice.js`, `post-session.js`, `geofence.js`, `nfc.js`, `hr.js`, `platform.js`,
 `bridge.js`, `backup.js`, `cues.js`, `nudges.js` (händelsedrivna påminnelser),
@@ -138,7 +140,10 @@ identifiering ut — motorn räknar, användaren bekräftar), `skafferi.js` (egn
 varor och favoritmat), `mealSuggest.js`, `deklaration.js` (näringsdeklaration
 ur förpackning), `portioner` via `data/portions.js`, `intervju.js` (målintervjun),
 `malplan.js` och `malprogram.js`, `profil.js`, `utveckling.js` (kropp och styrka
-över tid, med Omron-import).
+över tid, med Omron-import — och `epley1RM`, projektets enda 1RM-formel).
+
+Tillkommen i september: `coachKommentar.js` (coachens rad under vilan i passet —
+ren funktion, ett set in, en mening eller null ut).
 
 **Varför-svaren får konsekvenser.** `reasonSignal` (ur `post-session.js`, kräver
 ≥3 svar inom 21 dagar) styr två saker — och två saker den INTE gör:
@@ -178,7 +183,8 @@ synk-form), `layout.js` (brytpunkt, dvh, navhöjd), `Nav.jsx`, `Shell.jsx`
 (skrivbordsskal), `backnav.js` (OS-bakåtbeslut, rent), `backup2.js`,
 `import.js` (historikimport), `body_regions.json`, `body_regions_female.json`.
 
-*Kropp och träning:* `BodyMap2.jsx`, `MuskelgruppsVy.jsx`, `MuscleSheet.jsx`,
+*Kropp och träning:* `BodyMap2.jsx`, `MuskelgruppsVy.jsx`, `OvningsSida.jsx`,
+`MuscleSheet.jsx`,
 `MuscleSplit.jsx`, `muscleIcon.jsx`, `WorkoutView.jsx`, `SessionSheet.jsx`,
 `ProgramSheet.jsx`, `CustomProgram.jsx`, `ExerciseBank.jsx`, `MachineGuide.jsx`,
 `SkannaMaskin.jsx`, `SportView.jsx`, `ReadinessSheet.jsx`.
@@ -705,9 +711,8 @@ saknar workflow-scope, och den gränsen ska inte vidgas.
 
 Verifiering: headless Chromium / vitest framför visuell läsning.
 
-**Askr 2.0:s DOM-skript — SEXTON stycken** (femton gröna i CI 2026-08-26;
-`verify-atlas2-matlogg.mjs` tillkom 2026-09-07 och är grön lokalt, både ensam
-och parallellt med två andra — dess första CI-körning är den som gäller):
+**Askr 2.0:s DOM-skript — SJUTTON stycken** (alla sjutton gröna i CI
+2026-09-13, körning på `04781c7`):
 
 | Skript i `scripts/` | Port | Täcker |
 |---|---|---|
@@ -720,6 +725,7 @@ och parallellt med två andra — dess första CI-körning är den som gäller):
 | `verify-atlas2-tillskott.mjs` | 8963 | kryssrutor, streak, följsamhet |
 | `verify-atlas2-matakut.mjs` | 8955 | Rädda måltiden |
 | `verify-atlas2-matlogg.mjs` | 8973 | logga bakåt i tiden, flytta post, omladdning |
+| `verify-atlas2-ovningsbilder.mjs` | 8937 | att varje bild i `MED_BILD` laddas (naturalWidth > 0) |
 | `verify-atlas2-mealprep.mjs` | 8956 | veckomeny, inköpslista |
 | `verify-atlas2-readiness.mjs` | 8957 | readiness-arket, tunt underlag |
 | `verify-atlas2-pass.mjs` | 8932 | röstknappen + viktrastret i pågående pass |
@@ -870,8 +876,9 @@ och sport- och cardiologgning.
   finns.
 - Knowledge-banken till coachen, så råd kan motiveras med källa via `SL()`.
 - LLM-coach (BYOK, desktop): **grundad i §13 + utdata-grindad** (se "Coachens
-  faktakälla"). Grunden är byggd; en mer proaktiv/måldriven coaching ovanpå
-  målresan är kvar om det önskas.
+  faktakälla"). Grunden är byggd. Den PROAKTIVA delen är byggd i #190: fyra
+  nudges på hemvyn och en kommentar under passets vila, båda regelbaserade
+  och nätfria. Kvar är den MÅLDRIVNA coachingen ovanpå målresan.
 - Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
   `role="dialog"` + Escape, aria på fält, AA-upplyst `nodata`/`border`,
   `prefers-reduced-motion`. Kvar: träffytor ≥44 px (matvyn, väntar på blick).
@@ -1279,10 +1286,33 @@ vet.
   träffar, slingan gick aldrig ett varv och kontrollen passerade — utan att ha
   prövat något. Negativa och listbaserade kontroller måste själva kräva att det
   fanns något att kontrollera.
+- **En lista kan ha en annan form än man antar.** `MAIN_LIFTS` är `[id, namn]`-
+  par, inte id:n. Loopar man över paren matchar `find(e => e.id === par)` aldrig
+  — rekordnudgen och stagnationsnudgen var HELT TYSTA, och i progressionskartan
+  fick de stora lyften ingen fetstil. Ingenting kraschade, ingenting loggades:
+  en felaktig antagen form ger tomhet, inte fel.
+- **Ett påstående om kalendern får inte räknas i timmar.** Rekordnudgen fyrar
+  12–36 timmar efter passet och skrev "i går". Ett pass 07:00 och en app öppnad
+  19:30 samma dag ligger 12,5 h isär; 36 h efter ett kvällspass är i förrgår.
+  Fönstret var rätt — ordet gissade. Dygn räknas med `startOfLocalDay`.
+- **Ett test kan låsa fel sida av en oenighet.** `epley1RM(100, 1) === 103` stod
+  som testfall och var grönt — men 103 var just den variant som skilde sig från
+  `index.js`. Ett test skrivet samtidigt som koden ärver kodens antagande; det
+  bevisar att funktionen gör vad författaren trodde, inte att det är rätt.
+- **Ett grönt bygge säger ingenting om filer utanför bundeln.** Övningsbilderna
+  ligger i `public/ovningar/`. En `img` som pekar fel renderas med
+  `naturalWidth 0` utan ett enda fel i konsolen. Det enda som avslöjar det är
+  att mäta i en riktig webbläsare mot en server som serverar både HTML och
+  bildmapp — därav `verify-atlas2-ovningsbilder.mjs`.
 - **Samma begrepp definierat två gånger är en bugg som väntar.** `sammaDag` i
   `store.js` och `sammaDygn` i `foodlog.js` beskrev samma lokala kalenderdygn.
   Ingen körning kunde avslöja det så länge de var överens — men dagsväljaren
-  läser listan genom det ena och totalerna genom det andra.
+  läser listan genom det ena och totalerna genom det andra. Samma sak hände
+  1RM-formeln, som hann bli TRE exemplar: `utveckling.js`, `index.js` och en
+  rad inskriven rakt i `styrkeKurva`. Där var de inte ens överens — ett
+  enrepsset gav 100 i den ena motorn och 103 i den andra. Att jämföra TALEN i
+  ett test hade bara visat att de råkade stämma just då; testet kräver nu att
+  det är SAMMA funktion.
 - **Kravtexters exempel kan vara självmotsägande.** Specen för detaljvyn listar
   94,0 cm som äldsta midjemätning men säger −7,5 cm sedan start, och 91,5 − 94,0
   är −2,5. Implementationen räknar ur datan, inte ur exemplet. När ett krav bär
@@ -1404,6 +1434,122 @@ IDENTITET, såg en ny typ och rev fältet i stället för att uppdatera det. Fok
 försvann med det gamla elementet — och på mobil åker tangentbordet ner när fokus
 försvinner. Man kunde skriva en siffra i taget. `Falt` ligger nu på modulnivå.
 
+## Hemvyn, övningssidan och coachen (#164–#191)
+
+Tjugoåtta PR:er 2026-09-07 till 09-13. Kontrollerat mot koden, inte mot
+commit-texterna.
+
+### Hemvyn: kartan tar hela ytan (#164, #165, #188)
+
+Kartan delade förut skärmen med fyra staplade element och fick hälften. Nu
+ligger den i botten och hemkortet över den.
+
+**En figur i taget, med vändning.** Mätningen styrde beslutet: två figurer sida
+vid sida begränsas av BREDDEN, inte höjden — på 390 px får varje figur 183 px
+och därmed 456 px höjd oavsett skärmhöjd. Helskärm med två figurer hade gett
+8 % större, inte 70 %. Med en figur blir bredden 370 px och figuren dubbelt så
+stor; muskelgrupperna går att träffa med ett finger. Vändknappen säger vart man
+ska ("Baksidan"), inte var man är — en knapp som beskriver nuläget läses som en
+etikett och trycks inte på.
+
+**Kortet har tre lägen**, sparade i `atlas.v3.kortlage`:
+
+| Läge | Innehåll | Höjd | Täcker av kartan |
+|---|---|---|---|
+| 0 minimerat | handtag + startknapp | 117 px | 16 % |
+| 1 normalt | + målrad och nyckeltal | 250 px | 35 % |
+| 2 uppfällt | + mål och besked | 313 px | 43 % |
+
+Läget sparas eftersom den som drar ner vill ha det nerdraget nästa gång också —
+annars måste man dra om varje gång och slutar dra. #188 gjorde dessutom
+svepningen till ETT steg: tre lägen via klick betydde att ett tryck kunde gå
+minimerat → halvt → helt utan att man bad om det.
+
+### Övningssidan (#171, #172, #189)
+
+`OvningsSida.jsx` — en utveckling av kortet i banken: bild, teknikpunkter,
+belastade muskler och en YouTube-knapp som söker på `<övningens namn> proper
+form` (instruktionsvideor, inte tävlingsklipp). Man bläddrar mellan övningar
+med samma mönster som passets "Nästa övning". Miniatyren i listan gick från
+34 till 56 px (#189) — vid 34 px syntes inte vilken övning bilden visade.
+
+### Övningsbilderna: 8 → 58 (#173–#187)
+
+Femton PR:er, grupp för grupp. Bröst, axlar och biceps är kompletta (11 av 11
+bicepsövningar). Alla ligger i `public/ovningar/<id>.webp`, utanför appbundeln
+— hela mappen är 2,4 MB. Teknikpunkterna växte från 48 till 87 övningar och
+ritas som riktig text över bildens mörka fält, aldrig inbränd.
+
+**Ett eget DOM-skript vaktar dem** (`verify-atlas2-ovningsbilder.mjs`, port
+8937). Skälet är konkret: bilderna ligger utanför bundeln, så ett grönt bygge
+säger ingenting om att de laddas — en `img` kan renderas med `naturalWidth 0`
+utan ett enda fel i konsolen. Det har hänt en gång.
+
+### Progressionskartan och viktkurvan (#169, #170)
+
+`progressionskarta()` i `utveckling.js` visar alla övningar samtidigt, sorterade
+på trend, med styrka eller volym som mått. Viktkurvan fick runda punkter och en
+skala som inte överdriver: en halvkilos variation ska inte se ut som ett ras.
+
+### Märkesvaror ur Open Food Facts (#168)
+
+Livsmedelsverkets 2 679 poster har noll märkesvaror — "oatly", "nocco",
+"barebells" gav alla noll träffar. OFF har 27 164 svenska produkter.
+
+**Genom proxyn, inte direkt från appen.** OFF svarar oregelbundet och
+rate-limitar globalt; proxyn (`coach-proxy/api/foods.js`) cachar fem minuter per
+sökord, sätter den User-Agent OFF kräver, och ger appen ett rent svar — tomt
+eller träffar — i stället för HTML-fel. Ursprungsspärr på anropet; ingen
+användardata skickas utöver sökordet.
+
+**EN OFF-VARA BÄR SINA EGNA TAL I LOGGPOSTEN.** `foodId` blir `off_…` som inte
+finns i `FOOD_INDEX`, och utan egna tal hade `computeNutrition` räknat posten
+som noll — exakt samma tysta bugg som skafferiet en gång hade. Posten får kcal
+och makron skalade till gram, plus `source: "off"`.
+
+Livsmedelsverket söks alltid först och fungerar offline; OFF är ett tillägg och
+märks "overifierad" i listan, eftersom datan är folkbidragen.
+
+### Coachen blev aktiv (#190, #191)
+
+**Fyra nya nudges** i den befintliga motorn (`engines/nudges.js`), alla
+händelsedrivna och självutgående, högst en åt gången:
+
+- **Rekord** 12–36 h efter passet, bara stora lyft, bara om det finns ett
+  tidigare värde att slå.
+- **Frånvaro** när kartan säger att musklerna är återhämtade, inte bara att
+  dagar gått. Den som vilar för att kroppen behöver det ska inte skuldbeläggas.
+- **Stagnation** efter tre pass utan framsteg i ett stort lyft. Två pass kan
+  vara en dålig dag; tre är ett mönster.
+- **Obalans** när en muskelgrupp tränas minst tre gånger oftare än sin motpart
+  på två veckor.
+
+**Coachen kommenterar under passet** (`engines/coachKommentar.js`): ren
+funktion, ett loggat set in, en mening ut — eller null. Regelbaserad och
+synkron med flit, eftersom kommentaren visas under vilan; ett API-anrop hade
+tagit sekunder och krävt nät på gymmet. Jämför med FÖRRA PASSETS SAMMA
+SETNUMMER, inte sista setet — annars jämförs ett uppvärmningsset med förra
+passets tyngsta. **Tystnad är ett giltigt svar**: ett set exakt som förra gången
+ger null, inte "samma som sist".
+
+`MAIN_LIFTS` är `[id, namn]`-PAR, inte id:n. Loopar man över paren matchar
+ingenting — rekord och stagnation var helt tysta, och samma bugg fanns i
+progressionskartan där "stort" aldrig slog till.
+
+**1RM-formeln finns numera på ETT ställe** (#191): `epley1RM` i `utveckling.js`,
+importerad av `index.js` och anropad av `styrkeKurva`. Den fanns i tre exemplar
+som inte var överens — ett enrepsset på 100 kg blev 100 i den ena motorn och
+103 i den andra. Undantaget för enrepssets är det som är rätt och det som
+behölls: Epley är anpassad för flerrepsset, och den som lyfter 100 kg en gång
+har ett 1RM på 100, inte 103. Ett uppskattat tal för något man MÄTT är en
+påhittad siffra.
+
+**Rekordnudgens dagsord kommer ur kalendern**, inte ur timfönstret. Den fyrar
+12–36 h efter passet men skrev "i går" rakt ut, vilket inte stämde i någon ände:
+ett pass 07:00 plus en app öppnad 19:30 samma dag ligger 12,5 h isär, och 36 h
+efter ett kvällspass är i förrgår. `dagsord()` räknar i kalenderdygn via
+`startOfLocalDay`.
+
 ## Matloggen bakåt i tiden
 
 Matvyn var låst till dagens datum: `foodLog` filtrerades på `idag(e.ts)` och
@@ -1416,11 +1562,17 @@ bygga en "redigeringsfunktion" hade blivit en andra väg till samma sak.
 
 Dagen väljs i RUBRIKRADEN över måltidslistan (`valdDag`, `null` = idag) — inte
 på en egen rad överst, vilket kostade 52 px och gjorde matvyn 31 px för hög för
-iPhone SE. Dagen är rubriken, inte en etikett ovanför den. Bakåtpilen hoppar
-till
-**föregående dag som har logg**, inte till föregående kalenderdag: att stega
-genom en tom vecka en dag i taget är sju tryck för att komma till något som
-finns. Framåt är avstängt på idag — framtida måltider loggas inte.
+iPhone SE. Dagen är rubriken, inte en etikett ovanför den. Framåt är avstängt
+på idag — framtida måltider loggas inte.
+
+**Pilarna går EN DAG I TAGET** (ändrat i #167). Först hoppade de till närmaste
+dag med loggning, för att slippa stega genom en tom vecka. Robert: "när jag
+försöker backa i matloggen så hoppar den över dagar där det inte är loggat
+något". Det gjorde två saker omöjliga — man såg inte vilka dagar man missat,
+och man kunde inte logga i efterhand på en tom dag eftersom man aldrig kom dit.
+`dagarMedLogg` används fortfarande, men till att MARKERA dagar med loggning
+(en prick under datumnamnet); utan den ser en tom dag likadan ut som en dag man
+inte hunnit fram till.
 
 **Klockslaget följer med, dygnet byts** (`stämplaDag` i `foodlog.js`). Det är
 inte kosmetika: `måltidAvTid()` härleder frukost/lunch/mellanmål/middag ur
