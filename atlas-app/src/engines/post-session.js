@@ -15,6 +15,11 @@ import { MUSCLES, GROUP_SV, VOLUME_LANDMARKS } from "../data/muscles.js";
 // Volymstatus och veckoset räknas INTE om här. De finns redan i engines/index.js och
 // är den enda källan — två uppsättningar volymregler skulle glida isär.
 import { volumeStatus, groupWeeklySets } from "./index.js";
+// Veckogränsen (måndag 00:00) och planens avvikelse har varsin enda källa.
+// Samma skäl som ovan: två definitioner av "den här veckan" glider isär, och
+// då säger kvittot och hemvyn olika saker om samma dygn.
+import { weekSessions } from "../atlas2/store.js";
+import { planLäge } from "./malplan.js";
 
 const DAG_MS = 86400000;
 const VECKODAG = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
@@ -235,6 +240,61 @@ export function buildPostSession({ session, sessions = [], exercises = [], now =
   }
 
   return { lines, question: pickQuestion(diffar), next, diffs: diffar };
+}
+
+/* ---------- kvittots målrad ---------- */
+
+const ORDNINGSTAL = ["", "Första", "Andra", "Tredje", "Fjärde", "Femte", "Sjätte", "Sjunde"];
+
+/**
+ * EN RAD PÅ KVITTOT OM VAD PASSET BETYDDE FÖR MÅLET.
+ *
+ * Sammanfattningen ovanför svarar på vad passet gjorde med KROPPEN — vilka
+ * grupper som belastades, veckovolymen, hur det gick mot förra gången. Ingen av
+ * raderna vet vart du är på väg. Frågan man bär med sig ut ur gymmet är en
+ * annan: förde det här mig närmare?
+ *
+ * SAMMA `planLäge` SOM PÅMINNELSERNA OCH COACHVYN. Räknades avvikelsen om här
+ * skulle kvittot och hemvyn kunna säga olika saker om samma plan samma dag.
+ *
+ * PASSET SOM JUST LOGGADES RÄKNAS MED. Det är hela poängen — raden ska visa
+ * läget EFTER passet, inte före. `medPasset` lägger till det när anroparen
+ * filtrerat bort det ur historiken, vilket kvittot gör.
+ *
+ * @returns {{ text: string, läge: "ifas"|"efter"|"fore"|"neutral" }|null}
+ *   null när det inte går att säga något sant — då ritas ingen rad alls.
+ */
+export function målrad({ session, sessions = [], goal = null, activeProgram = null, weights = [], now = Date.now() } = {}) {
+  if (!session) return null;
+  // Ett sportpass hör till cardiodelen av planen, inte till styrkepassen.
+  // Räknades de ihop skulle en löprunda se ut som ett styrkepass mot målet.
+  const sport = session.source === "sport" || !!session.sport;
+  const alla = medPasset(sessions, session);
+  const antal = weekSessions(alla, now).filter(s => (s.source === "sport" || !!s.sport) === sport).length;
+  if (!antal) return null;
+
+  // Nämnaren: planens takt om ett mål finns, annars programmets. Saknas båda
+  // står talet ensamt — ett påhittat mål vore värre än inget.
+  const mål = goal && goal.plan
+    ? (sport ? goal.plan.cardioPerVecka : goal.passPerVecka)
+    : (sport ? null : (activeProgram && activeProgram.daysPerWeek));
+  const takt = (typeof mål === "number" && mål > 0)
+    ? `Pass ${antal} av ${mål} den här veckan.`
+    : `${ORDNINGSTAL[antal] || `${antal}:e`} ${sport ? "sportpasset" : "passet"} den här veckan.`;
+
+  const tyst = { text: takt, läge: "neutral" };
+  if (sport || !goal || !goal.plan) return tyst;
+  // Ett passerat måldatum gör avvikelsen meningslös — kurvan har tagit slut.
+  if (goal.målDatum != null && now > goal.målDatum) {
+    return { text: `${takt} Måldatumet för ${goal.namn} har passerat.`, läge: "neutral" };
+  }
+
+  const plan = planLäge(goal, { weights, sessions: alla }, now);
+  const av = plan && plan.passAvvikelse;
+  if (av == null) return tyst;                       // första veckan: ingen takt att mäta mot
+  if (av < 0) return { text: `${takt} ${-av} pass kvar till planens takt mot ${goal.namn}.`, läge: "efter" };
+  if (av === 0) return { text: `${takt} Du ligger i fas med ${goal.namn}.`, läge: "ifas" };
+  return { text: `${takt} ${av} pass före planen mot ${goal.namn}.`, läge: "fore" };
 }
 
 function stor(s) { return String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1); }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildPostSession, nextStrengthDay, compareToPrevious, pickQuestion, trainedGroups, REASON_CODES,
-  reasonSignal, attachReason,
+  reasonSignal, attachReason, målrad,
 } from "../engines/post-session.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
@@ -208,5 +208,114 @@ describe("frågan är osymmetrisk med flit", () => {
   });
   it("men frågar vid ett större hopp uppåt", () => {
     expect(pickQuestion([{ exerciseId: "x", name: "A", deltaWeight: 10, prevWeight: 100, deltaReps: 0, direction: "up" }])).not.toBeNull();
+  });
+});
+
+// ── KVITTOTS MÅLRAD ─────────────────────────────────────────────────────────
+//
+// Raden svarar på frågan man bär med sig ut ur gymmet: förde passet mig närmare?
+// Det som prövas hårdast är att den räknar MED passet som just loggades — läget
+// FÖRE passet är inte det man vill veta när man står där med kvittot — och att
+// den tiger om planen när det inte finns någon takt att mäta mot.
+
+describe("målrad på kvittot", () => {
+  // Onsdag kl 12 i en fix vecka. Veckogränsen är måndag 00:00, och med ett
+  // rörligt "idag" hade samma test betytt olika saker olika veckodagar.
+  const NU = new Date(2026, 0, 7, 12, 0, 0).getTime();
+  const MÅNDAG = new Date(2026, 0, 5, 0, 0, 0).getTime();
+  const styrka = (id, ts) => ({ id, completedAt: ts, title: "Pass", sets: [], muscleLoads: {} });
+  const sportpass = (id, ts) => ({ ...styrka(id, ts), source: "sport", sport: true });
+  const dag = (n, tim = 9) => MÅNDAG + n * DAG + tim * 3600000;
+  // Tre styrkepass den här veckan; det tredje är det som just avslutades.
+  const denHärVeckan = [styrka("v1", dag(0)), styrka("v2", dag(1))];
+  const passet = styrka("v3", dag(2));
+  const förraVeckan = n => Array.from({ length: n }, (_, i) => styrka("f" + i, dag(i - 7)));
+
+  const mål = (extra = {}) => ({
+    namn: "Ner 5 kg", typ: "fatloss", passPerVecka: 3,
+    startDatum: NU - 14 * DAG, målDatum: NU + 60 * DAG,
+    plan: { dimensioner: {}, viktmål: null, cardioPerVecka: null },
+    delmål: [], ...extra,
+  });
+
+  it("testets antagande: NU är en onsdag", () => {
+    // Halva uppsättningen vilar på det. Går antagandet sönder ska DET testet
+    // falla, inte fem andra med obegripliga meddelanden.
+    expect(new Date(NU).getDay()).toBe(3);
+    expect(new Date(MÅNDAG).getDay()).toBe(1);
+  });
+
+  it("utan mål och utan program: bara veckans räkning, i ord", () => {
+    const r = målrad({ session: passet, sessions: denHärVeckan, now: NU });
+    expect(r.text).toBe("Tredje passet den här veckan.");
+    expect(r.läge).toBe("neutral");
+  });
+
+  it("passet som just loggades räknas MED — annars visas läget före passet", () => {
+    // sessions saknar passet, precis som kvittot skickar in det.
+    const utan = målrad({ session: passet, sessions: [], now: NU });
+    expect(utan.text).toBe("Första passet den här veckan.");
+  });
+
+  it("med program blir programmets takt nämnare", () => {
+    const r = målrad({ session: passet, sessions: denHärVeckan, activeProgram: { daysPerWeek: 4 }, now: NU });
+    expect(r.text).toBe("Pass 3 av 4 den här veckan.");
+  });
+
+  it("i fas med planen sägs rakt ut", () => {
+    // Två veckor à tre pass = sex förväntade. Tre förra veckan plus tre nu.
+    const r = målrad({ session: passet, sessions: [...förraVeckan(3), ...denHärVeckan], goal: mål(), now: NU });
+    expect(r.text).toBe("Pass 3 av 3 den här veckan. Du ligger i fas med Ner 5 kg.");
+    expect(r.läge).toBe("ifas");
+  });
+
+  it("efter planen formuleras som det som återstår, inte som en tillrättavisning", () => {
+    const r = målrad({ session: passet, sessions: [...förraVeckan(2), ...denHärVeckan], goal: mål(), now: NU });
+    expect(r.text).toBe("Pass 3 av 3 den här veckan. 1 pass kvar till planens takt mot Ner 5 kg.");
+    expect(r.läge).toBe("efter");
+    expect(r.text).not.toMatch(/efter planen/);
+  });
+
+  it("före planen säger det utan att uppmana till mer", () => {
+    const r = målrad({ session: passet, sessions: [...förraVeckan(4), ...denHärVeckan], goal: mål(), now: NU });
+    expect(r.text).toMatch(/1 pass före planen mot Ner 5 kg\.$/);
+    expect(r.läge).toBe("fore");
+  });
+
+  it("första veckan finns ingen takt att mäta mot — då sägs bara räkningen", () => {
+    const färskt = mål({ startDatum: NU - 3 * DAG });
+    const r = målrad({ session: passet, sessions: denHärVeckan, goal: färskt, now: NU });
+    expect(r.text).toBe("Pass 3 av 3 den här veckan.");
+    expect(r.läge).toBe("neutral");
+  });
+
+  it("passerat måldatum ger ingen avvikelse mot en kurva som tagit slut", () => {
+    const slut = mål({ startDatum: NU - 90 * DAG, målDatum: NU - 2 * DAG });
+    const r = målrad({ session: passet, sessions: denHärVeckan, goal: slut, now: NU });
+    expect(r.text).toMatch(/Måldatumet för Ner 5 kg har passerat\.$/);
+    expect(r.text).not.toMatch(/planens takt|i fas|före planen/);
+  });
+
+  it("ett sportpass räknas för sig och mot cardiodelen", () => {
+    const cardio = mål({ plan: { dimensioner: {}, viktmål: null, cardioPerVecka: 2 } });
+    const löprunda = sportpass("s2", dag(2));
+    const r = målrad({
+      session: löprunda,
+      sessions: [...denHärVeckan, sportpass("s1", dag(0))],
+      goal: cardio, now: NU,
+    });
+    expect(r.text).toBe("Pass 2 av 2 den här veckan.");
+    // Styrkeplanens avvikelse gäller inte en löprunda.
+    expect(r.text).not.toMatch(/i fas|planens takt|före planen/);
+  });
+
+  it("ett sportpass utan cardiomål påstår ingen nämnare", () => {
+    const r = målrad({ session: sportpass("s1", dag(2)), sessions: denHärVeckan, goal: mål(), now: NU });
+    expect(r.text).toBe("Första sportpasset den här veckan.");
+  });
+
+  it("utan pass finns inget att säga", () => {
+    expect(målrad({ session: null, sessions: denHärVeckan, now: NU })).toBe(null);
+    expect(målrad()).toBe(null);
   });
 });

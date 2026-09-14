@@ -1019,6 +1019,9 @@ export function Atlas2() {
         // program andra också använder.
         ändrat={!!(klart && klart.live && activeProgram && passetÄndrat(klart.live, activeProgram))}
         passnamn={klart && klart.live ? klart.live.namn : ""}
+        // Målet, vikterna och programmet matar kvittots målrad. Utan dem kan
+        // den bara räkna veckans pass — och utan program inte ens det.
+        mål={mål} weights={weights} activeProgram={activeProgram}
         onSparaÄndring={() => {
           if (!klart || !klart.live || !activeProgram) return;
           if (ärInbyggt(activeProgram)) {

@@ -22,7 +22,7 @@ import { workoutExercises, alternativesFor } from "../engines/programs.js";
 import { progressionSuggestion, lastPerformance, formatWeight, formatVolume } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
 import { useLayout } from "./layout.js";
-import { buildPostSession, attachReason, reasonSignal } from "../engines/post-session.js";
+import { buildPostSession, attachReason, reasonSignal, målrad } from "../engines/post-session.js";
 import { createSetListener, voiceSupport } from "../engines/voice.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
@@ -979,7 +979,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
  * reasonSignal kan dra en slutsats när det finns ett mönster — inte efter ett
  * enstaka svar.
  */
-export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = false, onSparaÄndring, passnamn = "" }) {
+export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = false, onSparaÄndring, passnamn = "", mål = null, weights = [], activeProgram = null }) {
   const [sparat, setSparat] = useState(false);
   const [sparadeTill, setSparadeTill] = useState(false);
   const { session, minuter } = resultat;
@@ -993,6 +993,17 @@ export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = 
       now: Date.now(),
     }),
     [session.id]
+  );
+  // MÅLRADEN. Samma filter som ovan — motorn lägger tillbaka passet själv, så
+  // raden visar läget EFTER det här passet, vilket är hela frågan man bär med
+  // sig ut ur gymmet.
+  const målRad = useMemo(
+    () => målrad({
+      session,
+      sessions: (sessions || []).filter(x => x && x.id !== session.id),
+      goal: mål, activeProgram, weights, now: Date.now(),
+    }),
+    [session.id, mål, activeProgram, weights]
   );
   const [svarat, setSvarat] = useState(null);
   const svara = code => {
@@ -1061,6 +1072,24 @@ export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = 
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* MÅLRADEN STÅR FÖRE SAMMANFATTNINGEN.
+          Sammanfattningen svarar på vad passet gjorde med kroppen; den här
+          raden på vad det gjorde för målet. Det är den frågan man bär med sig
+          ut ur gymmet, så den möts först.
+
+          Ritas bara när motorn har något sant att säga. Utan mål och utan
+          program blir det bara veckans räkning, och saknas även den ritas
+          ingenting alls. */}
+      {målRad && (
+        <div data-malrad="1" style={{
+          ...card, marginTop: 14, padding: "13px 15px",
+          borderColor: målRad.läge === "efter" ? C.recovering : målRad.läge === "neutral" ? C.border : C.lime,
+          background: målRad.läge === "neutral" ? C.card : volt(.05),
+        }}>
+          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5 }}>{målRad.text}</div>
         </div>
       )}
 

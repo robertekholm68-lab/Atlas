@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1946 i 160 filer |
+| Tester (vitest) | 1962 i 161 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1992,6 +1992,39 @@ ingenting.
 **Kvar att mäta:** puls + coachrad samtidigt på SE ger fortfarande scroll. Det
 var ~104 px före den här ändringen, så det är strikt bättre — men det är inte
 noll, och det står här för att det inte ska upptäckas som en nyhet.
+
+### Kvittot svarar på målet (#203)
+
+Sammanfattningen på kvittot säger vad passet gjorde med KROPPEN — vilka grupper
+som belastades, veckovolymen, hur det gick mot förra gången. Ingen av raderna
+visste vart användaren är på väg. Frågan man bär med sig ut ur gymmet är en
+annan: **förde det här mig närmare?**
+
+`målrad()` i `post-session.js` svarar på den i en rad, och den står FÖRE
+sammanfattningen eftersom den möts först. Verifierad hela vägen genom appen:
+
+> `Pass 1 av 3 den här veckan. 5 pass kvar till planens takt mot Ner 5 kg.`
+
+- **Nämnaren är planens takt om ett mål finns, annars programmets.** Saknas båda
+  står talet ensamt i ord ("Tredje passet den här veckan") — ett påhittat mål
+  vore värre än inget.
+- **Passet som just loggades räknas MED.** Det är hela poängen: raden ska visa
+  läget EFTER passet. `medPasset` lägger tillbaka det, eftersom kvittot filtrerar
+  bort passet ur historiken innan motorn anropas.
+- **Ett sportpass räknas för sig**, mot `cardioPerVecka`, och säger inget om
+  styrkeplanens avvikelse. Räknades de ihop skulle en löprunda se ut som ett
+  styrkepass mot målet.
+- **Efter planen formuleras som det som återstår** ("2 pass kvar till planens
+  takt"), inte som en tillrättavisning. Man har just tränat.
+- **Samma `planLäge` som påminnelserna och coachvyn**, och samma `weekSessions`
+  som resten av appen. Två definitioner av "den här veckan" glider isär, och då
+  säger kvittot och hemvyn olika saker om samma dygn.
+- **Första veckan och ett passerat måldatum ger ingen taktbedömning** — det finns
+  ingen kurva att mäta mot, och en avvikelse mot en avslutad plan är ingen åtgärd.
+
+Ett monteringstest (`kvitto-malrad.test.jsx`) läser raden ur DOM:en och låser att
+den står före sammanfattningen. Motorn kan vara rätt och vägen fram ändå bruten —
+det har hänt två gånger i det här projektet.
 
 **Läxan är värd att behålla:** mät i CI, inte bara lokalt. Skillnaden är liten
 och konstant, men i en vy utan slack är liten och konstant precis det som
