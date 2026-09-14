@@ -101,6 +101,193 @@ describe("avfärdande gäller händelsen, inte påminnelsen för alltid", () => 
   });
 });
 
+// ── MÅLDRIVNA PÅMINNELSER ───────────────────────────────────────────────────
+//
+// De fyra äldre påminnelserna hänger på kroppen. De här hänger på PLANEN, och
+// det som prövas hårdast är detsamma: när de ska tiga. En plan man redan följt
+// i dag ska inte påminna om att den finns.
+//
+// Avvikelserna räknas av `planLäge` — samma motor som coachvyn. Testen nedan
+// sätter därför upp riktiga mål med startdatum och delmål i stället för att
+// mata in färdiga avvikelser; det är kopplingen till motorn som ska hålla.
+const DAG = 864e5;
+const passDag = (dagarSedan, extra = {}) =>
+  ({ id: `p${dagarSedan}`, completedAt: NU - dagarSedan * DAG, sets: [], ...extra });
+const vikt = (dagarSedan, kg) => ({ ts: NU - dagarSedan * DAG, kg });
+
+/** Ett mål med plan. Utan viktmål som standard — då kan bara passgrenen tala. */
+const målMed = (extra = {}) => ({
+  namn: "Ner 5 kg",
+  typ: "fatloss",
+  passPerVecka: 3,
+  startDatum: NU - 14 * DAG,
+  målDatum: NU + 60 * DAG,
+  plan: { dimensioner: {}, viktmål: null, cardioPerVecka: null },
+  delmål: [],
+  ...extra,
+});
+
+describe("målet: efter planen i antal pass", () => {
+  // Två veckor, tre pass i veckan = sex förväntade. Fyra loggade ger −2.
+  const fyraPass = [passDag(12), passDag(9), passDag(6), passDag(3)];
+
+  it("säger hur många pass som fattas, och mot vilket mål", () => {
+    const n = buildNudges({ sessions: fyraPass, goal: målMed(), now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malpass");
+    expect(n[0].text).toMatch(/2 pass efter planen mot Ner 5 kg/);
+    expect(n[0].text).toMatch(/börjar stänga glappet/);   // flera pass efter
+    expect(n[0].cta).toBe("Till passen");
+  });
+
+  it("ett enda pass efter: då stänger dagens pass glappet helt", () => {
+    // Fem loggade av sex förväntade.
+    const n = buildNudges({ sessions: [...fyraPass, passDag(1)], goal: målMed(), now: NU });
+    expect(n[0].text).toMatch(/1 pass efter planen/);
+    expect(n[0].text).toMatch(/Ett pass i dag stänger glappet/);
+  });
+
+  it("tiger när dagens pass redan är loggat — den som just tränat ligger inte efter", () => {
+    const n = buildNudges({ sessions: [...fyraPass, passDag(0)], goal: målMed(), now: NU });
+    expect(n).toHaveLength(0);
+  });
+
+  it("ett sportpass i dag stänger inte glappet i en styrkeplan", () => {
+    // Samma filter som malplan.js: planens pass är styrkepass.
+    const n = buildNudges({ sessions: [...fyraPass, passDag(0, { source: "sport" })], goal: målMed(), now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malpass");
+  });
+
+  it("i fas eller före planen säger den ingenting", () => {
+    const sju = [12, 11, 9, 8, 6, 4, 2].map(d => passDag(d));
+    expect(buildNudges({ sessions: sju, goal: målMed(), now: NU })).toHaveLength(0);
+  });
+
+  it("första veckan sägs ingenting — 'två pass efter' dag ett är brus", () => {
+    const n = buildNudges({ sessions: [], goal: målMed({ startDatum: NU - 3 * DAG }), now: NU });
+    expect(n).toHaveLength(0);
+  });
+
+  it("ett glapp på mer än två veckor pekar på planen, inte på dagens pass", () => {
+    // Sex veckor in i en plan på tre pass i veckan, fyra loggade: 14 pass
+    // efter. Fjorton pass gör ingen ikapp — det åtgärdbara är takten.
+    const n = buildNudges({ sessions: fyraPass, goal: målMed({ startDatum: NU - 42 * DAG }), now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malpass");
+    expect(n[0].text).toMatch(/14 pass efter planen/);
+    expect(n[0].text).toMatch(/justera planen/);
+    expect(n[0].text).not.toMatch(/Ett pass i dag/);
+    expect(n[0].ctaMål).toBe("mal");
+  });
+
+  it("ett mål utan plan ger inga målpåminnelser alls", () => {
+    const utanPlan = { namn: "Ner 5 kg", passPerVecka: 3, startDatum: NU - 14 * DAG, målDatum: NU + 60 * DAG };
+    expect(buildNudges({ sessions: fyraPass, goal: utanPlan, now: NU })).toHaveLength(0);
+  });
+});
+
+describe("målet: vikten som planen behöver", () => {
+  // Startat för tre dagar sedan: under en vecka räknas ingen passavvikelse, så
+  // bara viktgrenen kan tala. Det är den som prövas här.
+  const medVikt = (delmål, extra = {}) => målMed({
+    startDatum: NU - 3 * DAG,
+    plan: { dimensioner: {}, viktmål: { startKg: 89, målKg: 84 }, cardioPerVecka: null },
+    delmål,
+    ...extra,
+  });
+  const delmålVikt = dagar => [{ id: "dm1", datum: NU + dagar * DAG, metric: "vikt", target: 87, unit: "kg", riktning: "ner" }];
+
+  it("ett viktdelmål i morgon säger vad målet är och när", () => {
+    const n = buildNudges({ sessions: [], goal: medVikt(delmålVikt(1)), weights: [vikt(3, 88.4)], now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malvikt");
+    expect(n[0].text).toMatch(/Delmål i morgon: 87 kg/);
+    expect(n[0].cta).toBe("Logga vikt");
+    // Med en färsk vägning behövs ingen uppmaning att väga sig.
+    expect(n[0].text).not.toMatch(/Väg dig/);
+  });
+
+  it("utan färsk vägning ber den om en — delmålet går annars inte att följa upp", () => {
+    const n = buildNudges({ sessions: [], goal: medVikt(delmålVikt(1)), weights: [], now: NU });
+    expect(n[0].text).toMatch(/Väg dig så går det att följa upp/);
+  });
+
+  it("har man vägt sig i dag är saken gjord", () => {
+    const n = buildNudges({ sessions: [], goal: medVikt(delmålVikt(1)), weights: [vikt(0, 88.1)], now: NU });
+    expect(n).toHaveLength(0);
+  });
+
+  it("ett delmål långt bort är ingen påminnelse", () => {
+    const n = buildNudges({ sessions: [], goal: medVikt(delmålVikt(9)), weights: [vikt(3, 88.4)], now: NU });
+    expect(n).toHaveLength(0);
+  });
+
+  it("utan delmål nära: saknad vägning är ett eget besked, med motorns eget skäl", () => {
+    const n = buildNudges({ sessions: [], goal: medVikt([]), weights: [], now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malvikt");
+    expect(n[0].text).toMatch(/går inte att följa: ingen vägning loggad/);
+    // Veckovis id: avfärdar man den ska den inte stå där igen i morgon.
+    expect(n[0].id).toMatch(/^malvikt:vag:/);
+  });
+
+  it("en för gammal vägning räknas som ingen — och skälet står utskrivet", () => {
+    const n = buildNudges({ sessions: [], goal: medVikt([]), weights: [vikt(30, 89)], now: NU });
+    expect(n[0].text).toMatch(/för gammal/);
+  });
+
+  it("ett mål utan viktmål i planen frågar aldrig efter vågen", () => {
+    expect(buildNudges({ sessions: [], goal: målMed({ startDatum: NU - 3 * DAG }), weights: [], now: NU })).toHaveLength(0);
+  });
+});
+
+describe("målet: datumet som passerat", () => {
+  it("säger att resan är slut och att det är dags att utvärdera", () => {
+    const gammalt = målMed({ startDatum: NU - 90 * DAG, målDatum: NU - 2 * DAG });
+    const n = buildNudges({ sessions: [passDag(20)], goal: gammalt, now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malslut");
+    expect(n[0].text).toMatch(/Måldatumet för Ner 5 kg har passerat/);
+    expect(n[0].ctaMål).toBe("mal");
+  });
+
+  it("inget annat sägs om en plan vars datum tagit slut — en avvikelse mot en avslutad kurva är inget beslut", () => {
+    const gammalt = målMed({
+      startDatum: NU - 90 * DAG, målDatum: NU - 2 * DAG,
+      plan: { dimensioner: {}, viktmål: { startKg: 89, målKg: 84 }, cardioPerVecka: null },
+    });
+    // Både passunderskott och saknad vägning finns — ändå bara ett besked.
+    const n = buildNudges({ sessions: [], goal: gammalt, weights: [], now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malslut");
+  });
+});
+
+describe("målet går före kroppens egna besked", () => {
+  it("efter planen slår frånvaro: ett skäl är mer värt än en observation", () => {
+    // Frånvaro gäller också — fem dagar sedan passet och tre utvilade muskler.
+    const states = {
+      quadriceps: { readiness: 92 }, pectoralis_major: { readiness: 90 }, latissimus_dorsi: { readiness: 88 },
+    };
+    const n = buildNudges({
+      sessions: [passDag(12), passDag(9), passDag(6), passDag(5)],
+      muscleStates: states, goal: målMed(), now: NU,
+    });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("malpass");
+  });
+
+  it("utan mål är frånvaro fortfarande det som sägs", () => {
+    const states = {
+      quadriceps: { readiness: 92 }, pectoralis_major: { readiness: 90 }, latissimus_dorsi: { readiness: 88 },
+    };
+    const n = buildNudges({ sessions: [passDag(5)], muscleStates: states, now: NU });
+    expect(n).toHaveLength(1);
+    expect(n[0].kind).toBe("franvaro");
+  });
+});
+
 describe("påminnelsen i hemvyn", () => {
   const roots = [];
   afterEach(async () => {
@@ -124,5 +311,35 @@ describe("påminnelsen i hemvyn", () => {
     // påminnelse ska visas — och beskedet ska stå kvar.
     expect(el.querySelector('[aria-label="Avfärda påminnelsen"]')).toBe(null);
     expect(el.textContent.length).toBeGreaterThan(50);
+  });
+
+  it("målet når ända fram till skärmen — inte bara till motorn", async () => {
+    // Motorn prövas ovan. DET HÄR prövar KOPPLINGEN: att App2 faktiskt matar in
+    // målet och vikterna, och att raden ritas. Den vägen har brustit förr —
+    // `nutritionTargets` fanns i motorn långt innan någon vy skickade in det.
+    Object.defineProperty(window, "innerWidth", { value: 390, configurable: true, writable: true });
+    const dag = 864e5;
+    const nu = Date.now();
+    localStorage.setItem("atlas.v3.mode", JSON.stringify("real"));
+    localStorage.setItem("atlas.v3.sessions", JSON.stringify(
+      [12, 9, 6, 3].map(d => ({ id: `s${d}`, completedAt: nu - d * dag, title: "Pass", sets: [] }))
+    ));
+    localStorage.setItem("atlas.v3.goal", JSON.stringify({
+      namn: "Ner 5 kg", typ: "fatloss", passPerVecka: 3,
+      startDatum: nu - 14 * dag, målDatum: nu + 60 * dag,
+      plan: { dimensioner: {}, viktmål: null, cardioPerVecka: null }, delmål: [],
+    }));
+    const { Atlas2 } = await import("../atlas2/App2.jsx");
+    const el = document.createElement("div"); document.body.appendChild(el);
+    const r = createRoot(el); roots.push({ r, el });
+    await act(async () => { r.render(createElement(Atlas2)); });
+    for (let i = 0; i < 60 && !/pass efter planen/.test(el.textContent); i++) {
+      await act(async () => { await new Promise(x => setTimeout(x, 10)); });
+    }
+    expect(el.textContent).toMatch(/2 pass efter planen mot Ner 5 kg/);
+    // Knappen ska stå där och lova det den gör: den byter flik, den startar
+    // inget pass. Samma regel som frånvaropåminnelsens knapp.
+    expect(el.textContent).toMatch(/Till passen/);
+    expect(el.querySelector('[aria-label="Avfärda påminnelsen"]')).toBeTruthy();
   });
 });

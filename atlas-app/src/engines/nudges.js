@@ -26,6 +26,7 @@
 
 import { styrkeKurva } from "./utveckling.js";
 import { startOfLocalDay } from "./index.js";
+import { planLäge } from "./malplan.js";
 import { EXERCISES, MAIN_LIFTS } from "../data/exercises.js";
 import { MUSCLES } from "../data/muscles.js";
 
@@ -62,6 +63,12 @@ function matEfter(foodLog, ts) {
   return (foodLog || []).some(e => e && e.ts && e.ts >= ts);
 }
 
+/** Finns det en post med `ts` i dag? Används för att inte tjata om det som redan gjorts. */
+function någotIDag(poster, now) {
+  const gryning = startOfLocalDay(now);
+  return (poster || []).some(p => p && p.ts != null && p.ts >= gryning);
+}
+
 /**
  * Påminnelser som gäller just nu. Ren funktion — samma indata ger samma svar.
  *
@@ -69,7 +76,7 @@ function matEfter(foodLog, ts) {
  *   `id` är stabilt PER HÄNDELSE (innehåller passets id), så att ett avfärdande
  *   gäller just den händelsen och inte tystar påminnelsen för all framtid.
  */
-export function buildNudges({ sessions = [], foodLog = [], nutritionTargets, muscleStates = null, now = Date.now() } = {}) {
+export function buildNudges({ sessions = [], foodLog = [], nutritionTargets, muscleStates = null, goal = null, weights = [], now = Date.now() } = {}) {
   const ut = [];
   const passen = (sessions || []).filter(s => s && s.completedAt).sort((a, b) => b.completedAt - a.completedAt);
 
@@ -235,10 +242,124 @@ export function buildNudges({ sessions = [], foodLog = [], nutritionTargets, mus
     }
   }
 
+  // ── Målresan ──────────────────────────────────────────────────────────────
+  // De fyra påminnelserna ovan hänger på KROPPEN: vad den tål, vad den hann,
+  // var den står. Ingen av dem vet vart du är på väg. Coachen visste det redan
+  // — `planLäge` räknar avvikelsen mot planen varje gång målvyn öppnas — men
+  // sa det bara till den som själv gick dit och frågade.
+  //
+  // Det är skillnaden mellan en karta och en guide. De här fyra tar upp planen
+  // av sig själva, och bara när den säger något som går att göra något åt.
+  //
+  // SAMMA MOTOR SOM COACHVYN. `planLäge` är enda källan till avvikelserna —
+  // räknades de om här skulle hemvyn och coachvyn kunna säga olika saker om
+  // samma plan, och då är båda värdelösa.
+  //
+  // RIKTNINGEN PÅ VIKTEN SÄGS INTE HÄR. Om en vikt över kurvan betyder före
+  // eller efter beror på om resan går upp eller ner, och den tolkningen bor i
+  // `målfokus` (facts.js). Att upprepa den här vore en andra sanning om samma
+  // tal; påminnelserna nedan håller sig till det som är entydigt oavsett
+  // riktning — att ett pass saknas, att en vägning saknas, att ett datum är
+  // nära eller passerat.
+  if (goal && goal.plan) {
+    const dagNyckel = Math.floor(startOfLocalDay(now) / DAG);
+    const veckoNyckel = Math.floor(now / (7 * DAG));
+    const slutetAvDagen = startOfLocalDay(now) + DAG;
+    const målPasserat = goal.målDatum != null && now > goal.målDatum;
+
+    if (målPasserat) {
+      // Har datumet passerat är allt annat om planen meningslöst — en avvikelse
+      // mot en kurva som tagit slut är inget beslut. Bara den här talar då.
+      ut.push({
+        id: `malslut:${goal.namn}:${veckoNyckel}`,
+        kind: "malslut",
+        text: `Måldatumet för ${goal.namn} har passerat. Utvärdera resan och sätt ett nytt mål.`,
+        cta: "Öppna målresan",
+        ctaMål: "mal",
+        until: now + 7 * DAG,
+      });
+    } else {
+      const plan = planLäge(goal, { weights, sessions }, now);
+      // Passen som planen räknar är STYRKEPASS — samma filter som malplan.js
+      // använder. Ett sportpass stänger inte glappet i en styrkeplan.
+      const styrkaIDag = (sessions || []).some(s => s && s.completedAt
+        && s.completedAt >= startOfLocalDay(now) && s.source !== "sport");
+      const vägdIDag = någotIDag(weights, now);
+
+      // ── Efter planen i antal pass ───────────────────────────────────────
+      // Händelsen är att de loggade passen hamnat under planens takt. Den
+      // tystnar av sig själv så fort ett pass loggats i dag: den som just
+      // tränat ska inte mötas av att den ligger efter.
+      if (plan && plan.passAvvikelse != null && plan.passAvvikelse <= -1 && !styrkaIDag) {
+        const efter = -plan.passAvvikelse;
+        // ETT UNDERSKOTT MAN INTE KAN TA IGEN ÄR SKULD, INTE ETT BESLUT.
+        //
+        // Avvikelsen räknas från resans start och växer varje vecka man
+        // missar. "20 pass efter planen" är sant, men regel 3 säger att en
+        // påminnelse ska gå att åtgärda direkt — och tjugo pass gör ingen
+        // ikapp. Det som ÄR åtgärdbart när glappet blivit så stort är planen:
+        // takten man satte visade sig inte vara den man har. Då pekar
+        // påminnelsen dit i stället, och säger det rakt ut.
+        const veckorEfter = goal.passPerVecka > 0 ? efter / goal.passPerVecka : 0;
+        ut.push(veckorEfter >= 2 ? {
+          id: `malpass:plan:${veckoNyckel}`,
+          kind: "malpass",
+          text: `${efter} pass efter planen mot ${goal.namn} — mer än två veckors träning. Takten du satte är inte den du har; justera planen hellre än att jaga ikapp.`,
+          cta: "Öppna målresan",
+          ctaMål: "mal",
+          until: now + 7 * DAG,
+        } : {
+          id: `malpass:${dagNyckel}`,
+          kind: "malpass",
+          text: `${efter} pass efter planen mot ${goal.namn}. Ett pass i dag ${efter === 1 ? "stänger" : "börjar stänga"} glappet.`,
+          cta: "Till passen",
+          ctaMål: "pass",
+          until: slutetAvDagen,
+        });
+      }
+
+      // ── Vikten som planen behöver ───────────────────────────────────────
+      // Två fall, och det mer specifika vinner: ett viktdelmål inom två dagar
+      // är en deadline, medan en saknad vägning är ett underlagsproblem. Båda
+      // åtgärdas med samma handling, men bara det första har ett datum.
+      const nästa = plan && plan.nästa;
+      const dagarTill = nästa ? Math.max(0, Math.round((nästa.datum - now) / DAG)) : null;
+      if (nästa && nästa.metric === "vikt" && dagarTill <= 2 && !vägdIDag) {
+        const när = dagarTill === 0 ? "i dag" : dagarTill === 1 ? "i morgon" : `om ${dagarTill} dagar`;
+        ut.push({
+          id: `malvikt:delmal:${nästa.datum}`,
+          kind: "malvikt",
+          // Ingen prognos och ingen bedömning — delmålet och vad du senast
+          // vägde. Om du når det avgörs av vågen, inte av en påminnelse.
+          text: `Delmål ${när}: ${nästa.target} ${nästa.unit}.${plan.viktAvvikelse != null ? "" : " Väg dig så går det att följa upp."}`,
+          cta: "Logga vikt",
+          ctaMål: "vikt",
+          until: nästa.datum + DAG,
+        });
+      } else if (plan && plan.viktSkäl && !vägdIDag) {
+        // Veckovis id, inte dagligt: avfärdar man den här är svaret "inte nu",
+        // och att fråga igen i morgon vore att tjata. Planen väntar ändå.
+        ut.push({
+          id: `malvikt:vag:${veckoNyckel}`,
+          kind: "malvikt",
+          text: `Vikten mot ${goal.namn} går inte att följa: ${plan.viktSkäl}.`,
+          cta: "Logga vikt",
+          ctaMål: "vikt",
+          until: now + 7 * DAG,
+        });
+      }
+    }
+  }
+
   // MAX EN ÅT GÅNGEN. Två samtidigt är brus, och den viktigaste ska vinna.
-  // Ordningen: det tidskänsliga först (protein har ett fönster), sedan det
-  // som kräver beslut (frånvaro), sedan det som är information.
-  const rang = { protein: 0, franvaro: 1, stagnation: 2, obalans: 3, rekord: 4 };
+  // Ordningen: det tidskänsliga först (protein har ett fönster), sedan MÅLET
+  // — det är det man bett appen hjälpa till att hålla — sedan kroppens egna
+  // besked, och sist det som är ren information.
+  //
+  // Målet slår frånvaro med flit. Båda säger "träna", men "2 pass efter
+  // planen mot Ner 5 kg" är ett skäl; "fyra dagar sedan senaste passet" är en
+  // observation.
+  const rang = { protein: 0, malpass: 1, malvikt: 2, franvaro: 3, stagnation: 4, obalans: 5, rekord: 6, malslut: 7 };
   ut.sort((x, y) => (rang[x.kind] ?? 9) - (rang[y.kind] ?? 9));
   return ut.slice(0, 1);
 }

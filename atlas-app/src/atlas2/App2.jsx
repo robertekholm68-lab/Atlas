@@ -643,17 +643,23 @@ export function Atlas2() {
     // passet, quadriceps och bröst är återhämtade". Utan muscleStates
     // triggar den aldrig — vilket är rätt, inte fel: hellre tyst än gissning.
     const muscleStates = sessions.length ? bodyState(sessions, Date.now()).states : null;
-    const alla = buildNudges({ sessions, foodLog, nutritionTargets, muscleStates });
+    // MÅLET MATAS IN HÄR. Utan det vet påminnelserna bara vad kroppen tål —
+    // inte vart du är på väg. `goal` och `weights` är allt motorn behöver;
+    // avvikelserna räknar den via samma `planLäge` som coachvyn använder.
+    const alla = buildNudges({ sessions, foodLog, nutritionTargets, muscleStates, goal: mål, weights });
     return activeNudges(alla, avfärdade)[0] || null;
-  }, [sessions, foodLog, nutritionTargets, avfärdade]);
+  }, [sessions, foodLog, nutritionTargets, avfärdade, mål, weights]);
   // Varje nudge säger vart dess knapp ska. Protein → mat, rekord → utveckling,
   // frånvaro → pass. Förut gick alla till mat, eftersom protein var den enda.
   const nudgeCta = () => {
-    const mål = nudge && nudge.ctaMål;
-    if (mål === "utveckling") { setUtvecklingsflik("styrka"); setFlik("utveckling"); }
-    else if (mål === "pass") setFlik("pass");
-    else if (mål === "program") setSheet("program");
-    else if (mål === "ovningar") setSheet("muskelgrupper");
+    const vart = nudge && nudge.ctaMål;
+    if (vart === "utveckling") { setUtvecklingsflik("styrka"); setFlik("utveckling"); }
+    else if (vart === "pass") setFlik("pass");
+    else if (vart === "program") setSheet("program");
+    else if (vart === "ovningar") setSheet("muskelgrupper");
+    // Vikten loggas i Utveckling → Kropp, samma väg som hemvyns viktruta.
+    else if (vart === "vikt") { setUtvecklingsflik("kropp"); setFlik("utveckling"); }
+    else if (vart === "mal") setSheet("mal");
     else setFlik("mat");
   };
   const avfärda = id => setAvfärdade(d => {
