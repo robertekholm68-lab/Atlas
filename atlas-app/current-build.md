@@ -1938,7 +1938,7 @@ men raden syntes sällan; nu talar coachen efter varje avslutad övning och
 fallet blev det vanliga. Vilotimern krymper därför till 108 px när coachen har
 något att säga (168 px annars), och raden fick 330 px bredd så den wrappar en
 rad mindre. Storleken hänger på raden, inte på tiden, så ringen ändrar aldrig
-storlek mitt i en vila. Mätt: +70 → 0 px lokalt.
+storlek mitt i en vila. Mätt: +70 → **0 px lokalt, 25 px i CI**.
 
 **Vilovyns höjd mäts men fäller inte bygget** — samma hållning som kvittot i
 layoutvakten, och av samma skäl: höjden beror på hur lång coachens mening blev,
