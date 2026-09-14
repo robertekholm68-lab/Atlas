@@ -915,6 +915,42 @@ och sport- och cardiologgning.
   bestämd (se "Pulsband och klockor"): först filimport ur Garmin/Polar/Apple
   Hälsa, sedan en automatisk koppling. Vyn byggs när indata finns.
 
+**Prenumeration och prissättning — FÖRSLAG (2026-09-14), inget byggt:**
+
+Roberts utgångspunkt: bas 29 kr/mån eller 249 kr/år, premium 49 kr/mån eller
+499 kr/år, där premium ger aktiv AI-coach och fota-och-räkna-mat. Delningen
+är rätt: det som kostar per användning är exakt det som anropar proxyn, och
+det är sex vyer — `CoachChat`, `FeedbackSheet`, `FoodView` (AI-måltid),
+`FotoMaltid`, `SkannaMaskin`, `Streckkod`. Allt annat i appen kostar noll att
+köra. Förslagen nedan är diskuterade, inte beslutade:
+
+- **Årsrabatten haltar.** 249/år är 29 % under 12×29; 499/år är bara 15 %
+  under 12×49. Premium är nivån som ska säljas på år (förutsägbar intäkt,
+  mindre churn), så rabatten borde vara minst lika stor där: 449/år (≈24 %)
+  eller 59/499.
+- **Gratisnivå, inte bara bas.** Kartan är säljargumentet och kostar inget.
+  Gratis utan tidsgräns: karta, loggning, återhämtning, senaste passen. Bas:
+  hela historiken, utveckling, mätningar, sportpass, pulsband. Premium: de
+  sex vyerna ovan.
+- **Fair use i premium**, t.ex. "upp till 300 AI-förfrågningar/månad" i
+  villkoren. Visas först när någon når gränsen.
+- **Butikernas egna testperioder och erbjudandekoder** i stället för egen
+  rabattlogik i appen. Testarna får koder.
+- **Arkitekturen sätter ramar.** Inga konton — ett köp knyts till
+  butikskontot, inte personen (Android → iPhone = köp igen; ska stå tydligt).
+  Webbversionen måste bestämmas: gratis demo (kartan utan AI) rekommenderas;
+  alternativet är en server som verifierar köp, vilket är ett eget projekt.
+- **Gate aldrig:** backup/export, radera data, egen historik. De fungerar
+  även när prenumerationen löpt ut.
+- **Nettot på 49 kr:** moms 25 % → 39,20; butikens andel 15 % (under 1 MUSD)
+  → ca 33 kr i handen per månad. Butiksandelarna ändras — kontrollera innan
+  beslut. AI-kostnaden per normal premiumanvändare är några kronor/mån.
+- **Namn:** "Askr" / "Askr Coach" säger vad nivån ger; Bas/Premium gör det
+  inte.
+
+Kräver innan något byggs: Play Billing i TWA:n (eller Capacitor för App
+Store, se "Pulsband och klockor"), och ett beslut om webbversionen.
+
 **BLOCKERAT (utanför repot) — inte beslutat bort:**
 
 Följande är BYGGT och ligger i repot. Det som saknas är ett APK-bygge, och det
