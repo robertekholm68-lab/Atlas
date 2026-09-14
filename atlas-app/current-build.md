@@ -1536,11 +1536,12 @@ sant men obrukbart för den som står med bandet på bröstet:
 | Android, appens WebView-skal | Skalet saknar det Chrome har. Öppna Askr i Chrome. |
 | annan webbläsare | Web Bluetooth saknas. Chrome på Android eller dator har det. |
 
-**DET ÄRLIGA OKÄNDA: WebView-skalet.** Så vitt känt exponerar Android WebView
-inte Web Bluetooth. Det är inte mätt — sessionen kan inte köra skalet. Mät det
-så här: öppna den installerade appen, starta ett pass, tryck på ♡. Kommer
-väljaren fungerar det; kommer skälet "Skalet saknar…" behövs en
-Bluetooth-brygga i Java i skalet, samma sorts brygga som mikrofonen fick.
+**WebView-skalet är inte längre vägen.** Så vitt känt exponerar Android WebView
+inte Web Bluetooth, och det behöver inte längre mätas: Installera appen-knappen
+(Mer-menyn) ger en WebAPK som kör i Chrome, och där är pulsbandet verifierat
+med HRM 600 2026-09-14. Ingen Bluetooth-brygga i Java behövs. Skalet ligger
+kvar för den som redan har det installerat, och säger själv i menyn att
+Chrome är vägen.
 
 ### Vägen till en installerad app som kan para
 
@@ -1571,8 +1572,11 @@ DOM-skriptet ersätter `navigator.bluetooth` med en attrapp som gör samma anrop
 som ett band (requestDevice → gatt.connect → service → characteristic →
 notifications) och avger riktiga Heart Rate Measurement-paket. Det prövar hela
 kedjan från knapptryck till sparat pass — bara datan är påhittad, inte anropen.
-Det som INTE är prövat är själva radion: att ett Polar H10 faktiskt dyker upp i
-väljaren. Det kräver en telefon och ett band.
+**Radion är prövad 2026-09-14** — av Robert, på hans telefon, med ett Garmin
+HRM 600: väljaren visade bandet och pulsen syntes i appen. Det som skripten
+inte kunde bevisa är därmed bevisat på det enda sätt det går. Kvar att mäta:
+om det gamla WebView-skalet exponerar Bluetooth (väntat: nej) — det spelar
+mindre roll nu när installationsknappen ger en app som kör i Chrome.
 
 ## Hemvyn, övningssidan och coachen (#164–#191)
 
