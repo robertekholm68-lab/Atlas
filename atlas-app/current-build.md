@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1859 i 156 filer |
+| Tester (vitest) | 1888 i 158 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1488,13 +1488,12 @@ Robert har Garmin; testarna har blandat, bland annat Apple. "Koppla klockan"
 1. **Livepuls under passet** — pulsband, eller klockor som sänder puls över
    Bluetooth. Standardprofil (BLE 0x180D), inga konton, ingen molntjänst.
    **BYGGT 2026-09-13** (steg 1, nedan).
-2. **Sömn, HRV och vilopuls till readiness** — det är här klockan gör skillnad,
-   men datan ligger i tillverkarens moln. Planerad väg: filimport enligt
-   Omron-mönstret (Garmin Connect, Polar Flow, Apple Hälsa exporterar alla;
-   tolkas på telefonen, datan lämnar den aldrig), därefter EN automatisk
-   koppling — Polar AccessLink (öppet API, OAuth) eller Fitbit (öppet API, går
-   helt utan server). **Inte lova:** Garmins API (kräver partnergodkännande),
-   Apple Hälsa direkt (bara native iOS), Samsung utan native kod i skalet.
+2. **Sömn, HRV och vilopuls** — det är här klockan gör skillnad, men datan
+   ligger i tillverkarens moln. **FILIMPORTEN ÄR BYGGD 2026-09-14** (steg 2,
+   nedan). Därefter kan EN automatisk koppling byggas — Polar AccessLink
+   (öppet API, OAuth) eller Fitbit (öppet API, går helt utan server).
+   **Inte lova:** Garmins API (kräver partnergodkännande), Apple Hälsa direkt
+   (bara native iOS), Samsung utan native kod i skalet.
 3. **Passimport** (Strava m.fl.) — minst viktigt för en styrkeapp. Inte planerat.
 
 ### Steg 1: pulsband i passvyn
@@ -1542,6 +1541,55 @@ inte Web Bluetooth, och det behöver inte längre mätas: Installera appen-knapp
 med HRM 600 2026-09-14. Ingen Bluetooth-brygga i Java behövs. Skalet ligger
 kvar för den som redan har det installerat, och säger själv i menyn att
 Chrome är vägen.
+
+### Steg 2: sömn, vilopuls och HRV ur en exportfil
+
+`engines/halsa.js` + kortet i Utveckling → Kropp. Filen tolkas på telefonen och
+datan lämnar den aldrig — samma väg som Omron-vågen, av samma skäl: Garmins API
+kräver partnergodkännande, Apple Hälsa går bara att nå från en native app.
+
+**En post per KALENDERDYGN** i `atlas.v3.halsa`: `{ dag, sömnMin, vilopuls,
+hrv, källa }`. Egen lista, inte ett fält på mätningarna — en vägning är en
+tidpunkt, en natt är ett dygn. Backupen bär den automatiskt (`v3Keys()` läser
+allt under `atlas.v3.`).
+
+**CSV och JSON, vilket märke som helst.** Kolumner och nycklar matchas på
+NYCKELORD, inte exakta strängar, eftersom formaten skiljer sig mellan märken,
+regioner och appversioner. JSON-vägen går igenom hela trädet rekursivt: ett
+objekt som bär både ett datum och minst ett av de tre värdena blir en post.
+Det gör att Garmins nästlade export fungerar utan att varje filnamn är känt.
+
+**Enheten gissas ur storleken när talet är blankt** (`tolkaSömnMin`): ≤ 24 är
+timmar, ≤ 1440 minuter, större sekunder. Gränsfallet 1440 blir en dags minuter
+och inte 24 minuters sekunder — rätt gissning, för 24 minuter är ingen natt.
+`"7h 32m"`, `"7:32"` och `"452 min"` läses direkt.
+
+**Orimliga värden sparas inte**: sömn 1–16 h, vilopuls 25–120, HRV 5–300 ms.
+Utanför gränserna blir fältet tomt i stället för ett tal som ser ut som en
+mätning — 18 timmars sömn är en veckosumma eller fel enhet, vilopuls 12 är en
+tom cell som blivit en nolla. Ett rimligt värde bredvid ett orimligt räddar
+posten utan det dåliga.
+
+**Sömnpoäng är inte sömnlängd.** `EJ_SÖMNLÄNGD` sorterar bort score, deep,
+light, rem och efficiency — annars hade "Sleep Score 82" blivit 82 minuters
+sömn.
+
+**Två filer fyller samma dygn.** `slåIhopHälsa` matchar på dagen och låter ett
+ifyllt värde vinna över ett tomt, oavsett vilken post det kom från — samma
+regel som mätningarna, och av samma skäl: en rak spread tog en gång bort en
+vikt som redan fanns.
+
+**READINESS RÖRS INTE.** Posterna visas och sparas; de räknas inte in i något
+tal. Att börja väga in sömn i en siffra användaren redan känner igen är ett
+eget beslut, och det tas inte i tysthet av en importfunktion. Ett testfall
+kräver att motorn inte exporterar något readiness-namn, så den dagen någon
+lägger till det syns det.
+
+**INTE VERIFIERAT MOT EN RIKTIG EXPORT.** Fixturerna i `halsa.test.js` är
+konstruerade efter de former vi vet förekommer; ingen riktig Garmin-fil har
+passerat koden. Det är skillnaden mellan "tolerant mot kända former" och
+"verifierad mot verkligheten". Låses upp av: en fil ur Garmin Connect
+(Konto → Exportera dina data).
 
 ### Vägen till en installerad app som kan para
 
