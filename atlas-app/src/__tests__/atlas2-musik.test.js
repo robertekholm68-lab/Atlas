@@ -21,12 +21,25 @@ describe("knappen sitter i passvyns header", () => {
     // Platshållaren på 34 px balanserade tillbakapilen. Passvyn är den enda vy
     // som måste rymmas utan scroll — en knapp på egen rad hade gett samma
     // problem som bytesknappen och hoppa-knappen tidigare gjorde.
+    //
+    // LÖFTET ÄR BREDDEN, INTE TECKNET. Testet krävde tidigare `width: 34 }}>♫`
+    // och föll när noten blev en ritad ikon i stället för en glyf ur
+    // teckensnittet — fast ingenting av det som skyddades hade ändrats.
+    // Ett test som låser HUR något ritas i stället för VAD det lovar faller
+    // vid varje omritning och säger ingenting om det som betyder något.
     expect(src).toMatch(/data-musik="1"/);
-    expect(src).toMatch(/width: 34 \}\}>♫/);
+    expect(src).toMatch(/width: 34/);
+  });
+
+  it("ritas som vektor, inte som tecken ur teckensnittet", () => {
+    // ♫ ärver inte linjevikten, sitter på en egen baslinje och ser olika ut på
+    // varje telefon. Bredvid naven, som ritas som vektor, syntes skillnaden.
+    expect(src).toMatch(/<Ikon name="musik"/);
+    expect(src).not.toMatch(/♫/);
   });
 
   it("har ett läsbart namn för skärmläsare", () => {
-    // Symbolen ♫ säger ingenting uppläst.
+    // En ikon säger ingenting uppläst.
     expect(src).toMatch(/aria-label="Träningsmusik"/);
   });
 });

@@ -19,6 +19,7 @@ import { computeSportLoad, computeCardioLoad } from "../engines/index.js";
 import { buildSession } from "../engines/session.js";
 import { hrIntensity } from "../engines/hr.js";
 import { MUSCLES } from "../data/muscles.js";
+import { Ikon } from "./ikoner.jsx";
 import { sportIcons, ensureSportIcons, onSportIcons } from "../data/sport-icons.js";
 
 /**
@@ -268,7 +269,7 @@ export function SportView({ onLogg, onClose, profile = null }) {
               klockan redan har talet, och för att "Medel" är en gissning
               medan 148 är en mätning. */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-            <span style={{ color: C.critical, fontSize: 15 }}>♥</span>
+            <Ikon name="puls" size={14} color={C.critical} fylld />
             <input value={snittpuls} onChange={e => setSnittpuls(e.target.value)}
               inputMode="numeric" placeholder="Snittpuls från klockan" aria-label="Snittpuls"
               data-snittpuls="1"

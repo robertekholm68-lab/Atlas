@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1962 i 161 filer |
+| Tester (vitest) | 1974 i 162 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -2025,6 +2025,40 @@ sammanfattningen eftersom den möts först. Verifierad hela vägen genom appen:
 Ett monteringstest (`kvitto-malrad.test.jsx`) läser raden ur DOM:en och låser att
 den står före sammanfattningen. Motorn kan vara rätt och vägen fram ändå bruten —
 det har hänt två gånger i det här projektet.
+
+### Ikonerna: puls, musik och passikonen (#204)
+
+Robert: "jag tycker att vissa ikoner är lite fula" → "musik, puls och pass".
+Granskat i webbläsaren i den storlek de faktiskt ritas, inte i källkoden:
+
+- **♥/♡ och ♫ var glyfer ur teckensnittet.** De ärver inte linjevikten, sitter
+  på egna baslinjer och ser olika ut på varje telefon. Bredvid bottennaven, som
+  ritas som vektor med 1,7 px linje, återgavs ♡ hårfint och ♫ hängde under
+  baslinjen — två olika vikter bredvid varandra i samma rubrikrad.
+- **Passikonen i naven var en böjd arm** med motiveringen "styrka, inte en
+  hantel bland andra". Avsikten var rätt och resultatet gick inte att rädda: i
+  23 px lästes den som en historik- eller ångra-symbol. **Fem varianter ritades
+  upp och granskades i sin riktiga storlek** — armen föll i alla former (axel,
+  armbåge, underarm och knytnäve är fyra former, och de får inte plats i 23 px
+  med 1,7 px linje). Hanteln läses direkt och vann.
+
+**Ikonerna flyttade till `atlas2/ikoner.jsx`.** De låg i `Nav.jsx` så länge bara
+naven använde dem; puls och musik hörde aldrig till navigeringen, och en andra
+uppsättning i passvyn hade betytt två linjestilar som glider isär. `NavIcon`
+finns kvar som namn (Shell.jsx använder det) men ritar via `Ikon`.
+
+**Fyllning betyder ett TILLSTÅND, inte dekor.** Regeln är fortfarande "aldrig
+fyllda ytor" — undantaget är ett kopplat pulsband, som fyller hjärtat på samma
+sätt som en aktiv flik blir lime. Ett testfall låser att pulsen är ofylld när
+bandet inte är kopplat, och att ingen ANNAN ikon är fylld.
+
+**Ett test föll, och det var testet som hade fel.** `atlas2-musik.test.js` krävde
+`width: 34 }}>♫` i källan. Löftet det skyddade — att musikknappen återanvänder
+platshållaren på 34 px och därför inte kostar höjd — höll hela tiden; det var
+tecknet som ändrades. Ett test som låser HUR något ritas i stället för VAD det
+lovar faller vid varje omritning och säger ingenting om det som betyder något.
+Assertionen prövar nu bredden, plus en ny rad som kräver att vyerna ritar `Ikon`
+och inte glyfer.
 
 **Läxan är värd att behålla:** mät i CI, inte bara lokalt. Skillnaden är liten
 och konstant, men i en vy utan slack är liten och konstant precis det som

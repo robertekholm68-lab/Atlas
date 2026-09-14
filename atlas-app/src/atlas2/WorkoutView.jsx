@@ -16,6 +16,7 @@ import { C, HFONT, BFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card,
 import { save, load } from "./store.js";
 import { restDoneCue, DEFAULT_CUES } from "../engines/cues.js";
 import { coachKommentar, förraPassetRad } from "../engines/coachKommentar.js";
+import { Ikon } from "./ikoner.jsx";
 import { bluetoothStatus, connectHeartRate, hrIntensity, sessionPulsFält } from "../engines/hr.js";
 import { bästa1RM } from "../engines/utveckling.js";
 import { workoutExercises, alternativesFor } from "../engines/programs.js";
@@ -47,7 +48,7 @@ function PulsKnapp({ puls, kopplad, ålder, onClick }) {
         display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3,
         color: kopplad ? C.critical : C.text2, fontFamily: MONO,
       }}>
-      <span style={{ fontSize: 17, lineHeight: 1 }}>{kopplad ? "♥" : "♡"}</span>
+      <Ikon name="puls" size={17} color={kopplad ? C.critical : C.text2} fylld={kopplad} />
       {kopplad && <span style={{ fontSize: 14, color: C.text }}>{puls != null ? puls : "—"}</span>}
     </button>
   );
@@ -659,8 +660,10 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
         <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
           <PulsKnapp puls={puls} kopplad={!!pulsEnhet} ålder={ålder} onClick={kopplaPuls} />
           <button onClick={() => setMusik(true)} data-musik="1" aria-label="Träningsmusik"
-            style={{ background: "none", border: "none", color: C.text2, fontSize: 19,
-              cursor: "pointer", padding: 6, width: 34 }}>♫</button>
+            style={{ background: "none", border: "none", color: C.text2,
+              cursor: "pointer", padding: 6, width: 34, lineHeight: 0 }}>
+            <Ikon name="musik" size={19} color={C.text2} />
+          </button>
         </div>
       </div>
       {pulsFel && <PulsNot text={pulsFel} onStäng={() => setPulsFel(null)} />}
@@ -789,7 +792,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             }} />
           <button onClick={öppnaMusik} data-oppna-musik="1"
             style={{ ...btnPrimary, marginTop: 11 }}>
-            ♫ Öppna i Spotify
+            <Ikon name="musik" size={17} color="#0A0A0A" /> Öppna i Spotify
           </button>
 
           {/* SIGNALERNA HÖR HEMMA HÄR. Panelen handlar redan om ljud under
@@ -865,7 +868,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
               ingen maxpuls att räkna mot, och då står talet ensamt. */}
           {puls != null && (
             <div data-puls-vila="1" style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 12 }}>
-              <span style={{ color: C.critical, fontSize: 16 }}>♥</span>
+              <Ikon name="puls" size={15} color={C.critical} fylld />
               <span style={{ ...hdr(22), color: C.text }}>{puls}</span>
               <span style={{ fontSize: 11.5, color: C.muted }}>
                 slag/min{hrIntensity(puls, ålder) ? ` · ${hrIntensity(puls, ålder).toLowerCase()}` : ""}
@@ -1061,7 +1064,7 @@ export function DoneView({ resultat, sessions = [], onReason, onHome, ändrat = 
           pass utan band ska inte visa "— slag/min" som om något saknades. */}
       {session.avgHr != null && (
         <div data-puls-kvitto="1" style={{ ...card, marginTop: 10, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: C.critical, fontSize: 17 }}>♥</span>
+          <Ikon name="puls" size={16} color={C.critical} fylld />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: MONO, fontSize: 13, color: C.text }}>
               Snitt {session.avgHr} · max {session.maxHr} slag/min
