@@ -10,7 +10,7 @@ import {
   byggMätning, massor, trend, tolkaOmronCsv, slåIhopMätningar, förändring,
   bästa1RM, progressionskarta, ändraMätning, raderaMätning,
 } from "../engines/utveckling.js";
-import { tolkaHälsofil, slåIhopHälsa, senasteHälsa, hälsoSnitt, visaSömn } from "../engines/halsa.js";
+import { tolkaHälsoexport, slåIhopHälsa, senasteHälsa, hälsoSnitt, visaSömn } from "../engines/halsa.js";
 import { EXERCISES, MAIN_LIFTS } from "../data/exercises.js";
 import { KROPPSMATT, KROPPSSAMMANSATTNING, GRUPPER, mattIGrupp, ALLA_INDEX } from "../data/kroppsmatt.js";
 import {
@@ -256,21 +256,27 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
 
   const [hälsoFel, setHälsoFel] = useState("");
   const [hälsoKlart, setHälsoKlart] = useState(null);
+  // En zip med hundratals filer tar ett par sekunder på en telefon. Utan
+  // besked ser det ut som att ingenting hände, och man trycker igen.
+  const [hälsoLäser, setHälsoLäser] = useState(false);
 
   // KLOCKEXPORT: sömn, vilopuls, HRV. Samma väg som Omron-vågen — filen tolkas
-  // här, datan lämnar aldrig telefonen. Formatet får vara CSV eller JSON, och
-  // vilket märke som helst: kolumnerna matchas på nyckelord.
+  // här, datan lämnar aldrig telefonen. Formatet får vara CSV, JSON eller HELA
+  // ZIPEN från Garmins export: hundratals filer, och appen plockar själv ut de
+  // som bär värden. Det är skillnaden mellan en handling och tjugo.
   const läsHälsofil = async fil => {
     if (!fil || !setHälsa) return;
-    setHälsoFel(""); setHälsoKlart(null);
+    setHälsoFel(""); setHälsoKlart(null); setHälsoLäser(true);
     try {
-      const text = await fil.text();
-      const r = tolkaHälsofil(text, "import");
+      const buf = await fil.arrayBuffer();
+      const r = await tolkaHälsoexport(buf, "import");
       if (r.fel) { setHälsoFel(r.fel); return; }
       setHälsa(x => slåIhopHälsa(x, r.poster));
-      setHälsoKlart({ antal: r.poster.length, fält: r.fält });
+      setHälsoKlart({ antal: r.poster.length, fält: r.fält, filer: r.filer || [], zip: r.zip });
     } catch (e) {
       setHälsoFel("Kunde inte läsa filen.");
+    } finally {
+      setHälsoLäser(false);
     }
   };
 
@@ -486,22 +492,45 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
             </div>
           );
         })()}
-        <input type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain" data-halsofil="1"
+        <input type="file" accept=".csv,.json,.txt,.zip,text/csv,application/json,text/plain,application/zip" data-halsofil="1"
           onChange={e => läsHälsofil(e.target.files && e.target.files[0])}
           style={{ ...fältStil, marginTop: 10, fontFamily: "inherit", fontSize: 12.5, padding: 9 }} />
         <div style={{ fontSize: 11, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
-          Garmin Connect: <strong>Konto → Exportera dina data</strong>. Filerna
-          kan läsas in en i taget — sömn och vilopuls hamnar på samma dygn.
+          Garmin Connect: <strong>Konto → Exportera dina data</strong>. Välj hela
+          zip-filen — appen plockar själv ut det som bär sömn, vilopuls och HRV.
+          Enstaka CSV- och JSON-filer fungerar också.
         </div>
+        {hälsoLäser && (
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>Läser filen…</div>
+        )}
         {hälsoFel && (
           <div style={{ fontSize: 12, color: C.recovering, marginTop: 8, lineHeight: 1.5 }}>{hälsoFel}</div>
         )}
         {hälsoKlart && (
-          <div style={{ fontSize: 12, color: C.ready, marginTop: 8, lineHeight: 1.5 }}>
-            {hälsoKlart.antal} dagar inlästa
-            {hälsoKlart.fält.sömn ? " med sömn" : ""}
-            {hälsoKlart.fält.vilopuls ? (hälsoKlart.fält.sömn ? ", vilopuls" : " med vilopuls") : ""}
-            {hälsoKlart.fält.hrv ? " och HRV" : ""}.
+          <div style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }} data-halsa-klart="1">
+            <span style={{ color: C.ready }}>
+              {hälsoKlart.antal} dagar inlästa
+              {hälsoKlart.fält.sömn ? " med sömn" : ""}
+              {hälsoKlart.fält.vilopuls ? (hälsoKlart.fält.sömn ? ", vilopuls" : " med vilopuls") : ""}
+              {hälsoKlart.fält.hrv ? " och HRV" : ""}.
+            </span>
+            {/* VILKA FILER SOM LÄSTES, och vad var och en gav. Frågan efter en
+                halvlyckad import är alltid "läste den min fil?" — och utan
+                listan går den inte att svara på. */}
+            {hälsoKlart.zip && hälsoKlart.filer.length > 0 && (
+              <div style={{ color: C.muted, marginTop: 6, fontSize: 11, lineHeight: 1.6 }}>
+                {hälsoKlart.filer.map(f => (
+                  <div key={f.namn} style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {f.namn.split("/").pop()}
+                    </span>
+                    <span style={{ flexShrink: 0, color: f.dagar ? C.text2 : C.text3 }}>
+                      {f.dagar ? `${f.dagar} dagar` : "inget"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
