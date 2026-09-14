@@ -2,7 +2,8 @@
 // Askr 2.0 — bevakar att det NYA gränssnittet ärver den GAMLA sanningen.
 // Utseendet får ändras fritt; det här är reglerna som inte får ändras.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { bodyState, todaysMessage, weekSessions, lastSessionLabel, load, save, dagensNutrition, nutritionCtx, migrera, stämplaPost, stämplaLista, nyId } from "../atlas2/store.js";
+import { bodyState, weekSessions, lastSessionLabel, load, save, dagensNutrition, nutritionCtx, migrera, stämplaPost, stämplaLista, nyId } from "../atlas2/store.js";
+import { dagensBesked } from "../engines/dagsbesked.js";
 import { C, orDash, DASH, statusColor } from "../atlas2/design.js";
 import { backAction, harBakåtmål } from "../atlas2/backnav.js";
 import { createRoot } from "react-dom/client";
@@ -22,7 +23,7 @@ describe("Askr 2.0 — utan underlag hittas ingenting på", () => {
 
   it("beskedet säger rakt ut att historik saknas", () => {
     const r = bodyState([], Date.now());
-    const m = todaysMessage(r.states, 0);
+    const m = dagensBesked({ states: r.states, sessions: [] });
     expect(m.empty).toBe(true);
     expect(m.text).toMatch(/ingen historik/i);
   });
