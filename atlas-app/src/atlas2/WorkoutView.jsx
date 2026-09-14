@@ -739,7 +739,19 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
               }}>+</button>
           )}
         </div>
-        {it.förslag && <div style={{ fontSize: 12, color: C.lime, marginTop: 5 }}>{it.förslag}</div>}
+        {/* EN SLOT, TVÅ SVAR — OCH NOLL NY HÖJD.
+            Före första setet står förra passets set här; sedan tar
+            progressionsnoten över. De säger samma sak på två sätt ("Öka lätt."
+            mot "Sist: 80 kg × 8, 8, 7"), och den konkreta vinner i det ögonblick
+            man ska välja vikt — den föreslagna vikten står redan i stegaren.
+
+            EN EGEN RAD GICK INTE. Passvyn är den enda vy som måste rymmas utan
+            scroll, och den har noll slack kvar: mätt i CI kostade en ny rad
+            +8 px och sprack (lokalt +0 — CI:s Chrome renderar text större, så
+            marginaler som räcker här räcker inte där). */}
+        {klara === 0 && sistRad
+          ? <div data-sist-rad="1" style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>{sistRad}</div>
+          : it.förslag && <div style={{ fontSize: 12, color: C.lime, marginTop: 5 }}>{it.förslag}</div>}
 
         {/* BYT ÖVNING. Maskinen är upptagen, eller axeln gör ont på just den
             rörelsen. Utan ett byte är valet att hoppa över övningen helt —
@@ -840,7 +852,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
           {coachRad && (
             <div data-coach-rad="1" style={{
               fontSize: 13, color: C.text, textAlign: "center", lineHeight: 1.45,
-              padding: "9px 14px", marginBottom: 10, maxWidth: 300,
+              padding: "9px 14px", marginBottom: 10, maxWidth: 330,
               borderLeft: `2px solid ${C.lime}`, background: volt(.05), borderRadius: "0 10px 10px 0",
               animation: "askrIn 220ms ease-out",
             }}>
@@ -869,7 +881,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
               Storleken hänger på `coachRad`, inte på tiden, så ringen ändrar
               aldrig storlek MITT i en vila — raden sätts i samma ögonblick som
               vilan startar och ligger still tills den är slut. */}
-          <Ring kvar={vila} av={it.vila} storlek={coachRad ? 124 : 168} />
+          <Ring kvar={vila} av={it.vila} storlek={coachRad ? 108 : 168} />
           <button onClick={() => {
             avbröt.current = true; slutTid.current = 0;
             setLive(l => ({ ...l, vilaSlut: 0 }));
@@ -879,14 +891,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
         </div>
       ) : (
         <>
-          {/* LUFTEN HÄR ÄR AVMÄTT, INTE VALD PÅ KÄNSLA.
-              Raden under stegarna står tom före första setet, och när förra
-              passets set flyttade in dit kostade de 16 px som iPhone SE inte
-              hade (layoutvakten mätte scroll +16). Marginalerna nedan är
-              nerskruvade precis så mycket att raden får plats — 22→14, 10→7,
-              12→10, 18→14 — och passvyn ryms igen. Ökas någon av dem tillbaka
-              spricker löftet, och vakten säger till. */}
-          <div style={{ display: "flex", flexDirection: layout.staplaStegare ? "column" : "row", gap: 12, marginTop: 14 }}>
+          <div style={{ display: "flex", flexDirection: layout.staplaStegare ? "column" : "row", gap: 12, marginTop: 22 }}>
             <div style={{ ...card, flex: 1, minWidth: 0, padding: "14px 3px" }}>
               <div style={{ ...label(), textAlign: "center", marginBottom: 8 }}>Vikt</div>
               <Steg värde={vikt} sätt={setVikt} steg={2.5} enhet="kg" valbart smal={layout.smalSkärm} />
@@ -897,24 +902,16 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             </div>
           </div>
 
-          {/* EN RAD, TVÅ SVAR — SAMMA PLATS.
-              Mitt i övningen är det egna förra setet det man siktar mot. Före
-              det första setet finns inget sådant, och då är förra PASSETS set
-              det man vill se. Raden fanns redan men stod tom just då. */}
-          {förra ? (
-            <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 7 }}>
+          {förra && (
+            <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 10 }}>
               Förra setet: {formatWeight(förra.vikt)} kg × {förra.reps}
             </div>
-          ) : sistRad ? (
-            <div data-sist-rad="1" style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 7 }}>
-              {sistRad}
-            </div>
-          ) : null}
+          )}
 
           {/* Rösten fyller bara stegarna — "Avsluta set" är fortfarande enda
               vägen in i loggen. */}
           <button onClick={lyssnaSet} style={{
-            ...btnGhost, marginTop: 10,
+            ...btnGhost, marginTop: 12,
             borderColor: röst && röst.läge === "lyssnar" ? C.lime : C.border,
             color: röst && röst.läge === "lyssnar" ? C.lime : C.text2,
           }}>
@@ -945,7 +942,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
           )}
 
           <button onClick={avslutaSet} disabled={saknarVikt}
-            style={{ ...btnPrimary, marginTop: 14, opacity: saknarVikt ? 0.4 : 1, cursor: saknarVikt ? "not-allowed" : "pointer" }}>
+            style={{ ...btnPrimary, marginTop: 18, opacity: saknarVikt ? 0.4 : 1, cursor: saknarVikt ? "not-allowed" : "pointer" }}>
             Avsluta set <span style={{ fontSize: 19 }}>✓</span>
           </button>
           {saknarVikt && (

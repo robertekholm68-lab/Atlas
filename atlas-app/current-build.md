@@ -1915,18 +1915,35 @@ handlar om ett SET, och ett set som är som förra gången är ingen nyhet. Tota
 ett svar på frågan man bär med sig. Kroppsviktsövningar ger noll volym och
 faller igenom till setjämförelsen i stället för att påstå `0 kg`.
 
-**TVÅ HÖJDSKULDER BETALADES PÅ VÄGEN, BÅDA MÄTTA.**
+**PASSVYN HAR NOLL SLACK — OCH DET KOSTADE TVÅ VARV ATT LÄRA SIG.**
 
-1. *Raden före första setet kostade 16 px.* Den delar plats med
-   "Förra setet: …", men den raden finns bara EFTER första setet — och det är
-   före det som layoutvakten mäter. Betalt med fyra nerskruvade marginaler i
-   samma vy (22→14, 10→7, 12→10, 18→14). `SE pass ryms` igen.
-2. *Vilovyn scrollade +70 px så fort coachen sa något* — "Hoppa över vilan"
-   hamnade under skärmkanten. Det var sant redan när coachraden byggdes (#190),
-   men raden syntes sällan; nu talar coachen efter varje avslutad övning och
-   fallet blev det vanliga. Vilotimern krymper därför till 124 px när coachen
-   har något att säga (168 px annars). Storleken hänger på raden, inte på
-   tiden, så ringen ändrar aldrig storlek mitt i en vila. Mätt: +70 → +2 px.
+Första försöket gav raden en EGEN plats under stegarna och betalade för den
+med fyra nerskruvade marginaler (22→14, 10→7, 12→10, 18→14). Lokalt mätte det
+`över 0`. **I CI sprack det: `SE pass scroll +8 px`.** CI kör riktig Google
+Chrome med andra fonter och mäter genomgående några pixlar högre än en
+utvecklingsmaskin — kartan 543 mot 545, coachvyn +48 mot +27, kvittot +261 mot
++252. Marginaler som räcker lokalt räcker alltså inte där, och en vy utan slack
+går inte att lägga något i.
+
+Lösningen är att raden inte tar någon ny plats alls: **den delar slot med
+progressionsnoten** (`it.förslag`). Före första setet står `Sist: …` där; sedan
+tar noten över. De säger samma sak på två sätt ("Öka lätt." mot "Sist: 80 kg ×
+8, 8, 7"), och den konkreta vinner i just det ögonblick man ska välja vikt —
+den föreslagna vikten står redan i stegaren. Marginalerna är därmed
+**återställda till sina gamla värden**, och passvyns höjd är oförändrad.
+
+**Vilovyn scrollade +70 px så fort coachen sa något** — "Hoppa över vilan"
+hamnade under skärmkanten. Det var sant redan när coachraden byggdes (#190),
+men raden syntes sällan; nu talar coachen efter varje avslutad övning och
+fallet blev det vanliga. Vilotimern krymper därför till 108 px när coachen har
+något att säga (168 px annars), och raden fick 330 px bredd så den wrappar en
+rad mindre. Storleken hänger på raden, inte på tiden, så ringen ändrar aldrig
+storlek mitt i en vila. Mätt: +70 → 0 px lokalt.
+
+**Vilovyns höjd mäts men fäller inte bygget** — samma hållning som kvittot i
+layoutvakten, och av samma skäl: höjden beror på hur lång coachens mening blev,
+och en mening som wrappar en rad extra i CI vore ett rött bygge utan att något
+blivit sämre. Det som LOVAS är att "Hoppa över vilan" går att nå utan scroll.
 
 `Ring` skalar numera ALLT med storleken. Graden 40 och tjockleken 8 var
 hårdkodade och stämde bara för 168 px; med fast grad hade `00:00` runnit utanför
@@ -1935,16 +1952,20 @@ sin egen cirkel. Andelarna är de gamla talen delade med 168, så den stora ring
 
 **`verify-atlas2-pass.mjs` (port 8932) fick sju nya löften** på en egen
 SE-sida med seedad historik: raden före första setet, att passvyn ryms med den,
-tystnad på set 1 och 2, summan på sista setet, att vilovyn ryms med raden, och
-att "Hoppa över vilan" syns utan scroll. Historiken seedas i lagringen — ett helt
+tystnad på set 1 och 2, summan på sista setet, vilovyns höjd (mätt, inte lovad)
+och att "Hoppa över vilan" syns utan scroll. Historiken seedas i lagringen — ett helt
 föregående pass genom knappar är dussintals klick, och det som prövas är vyn.
 Det seedade passet har MEDVETET inget `workoutId`: med ett sådant väljer
 `nextWorkout` pass 2, vars första övning saknar historik, och då mäter man
 ingenting.
 
-**Kvar att mäta:** puls + coachrad samtidigt på SE ger fortfarande scroll
-(~36 px). Det var ~104 px före den här ändringen, så det är strikt bättre — men
-det är inte noll, och det står här för att det inte ska upptäckas som en nyhet.
+**Kvar att mäta:** puls + coachrad samtidigt på SE ger fortfarande scroll. Det
+var ~104 px före den här ändringen, så det är strikt bättre — men det är inte
+noll, och det står här för att det inte ska upptäckas som en nyhet.
+
+**Läxan är värd att behålla:** mät i CI, inte bara lokalt. Skillnaden är liten
+och konstant, men i en vy utan slack är liten och konstant precis det som
+avgör.
 
 ## Matloggen bakåt i tiden
 
