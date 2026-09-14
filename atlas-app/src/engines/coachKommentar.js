@@ -18,11 +18,49 @@
 //      null, inte "samma som sist".
 //
 // Rangordning när flera gäller: rekord först (sällsynt, viktigt), sedan
-// jämförelse med förra passet, sedan läget i passet.
+// övningens summa när sista setet är loggat, sedan jämförelse med förra passets
+// samma setnummer, sedan läget i passet.
 
 import { epley1RM } from "./utveckling.js";
+import { formatVolume } from "./index.js";
 
 const fmtKg = v => String(Math.round(v * 10) / 10).replace(".", ",");
+
+/** Volymen i kg för en rad set. Kroppsviktsövningar ger 0 — och ska göra det. */
+const volym = set => (set || []).reduce((a, s) => a + (s.vikt || 0) * (s.reps || 0), 0);
+
+/**
+ * FÖRRA PASSETS SET PÅ ÖVNINGEN, som en rad.
+ *
+ * VARFÖR. Siffrorna fanns redan i `live`-posten — coachen jämförde mot dem vid
+ * varje loggat set — men de VISADES aldrig. Den som stod vid bänken och skulle
+ * välja vikt fick ett förslag utan att se vad förslaget byggde på. "Sist: 80 kg
+ * × 8, 8, 7" är det man annars bläddrar i historiken efter.
+ *
+ * Raden tar INGEN ny plats: den delar rad med "Förra setet: …", som redan finns
+ * men bara har något att säga efter det första setet. Före det stod platsen tom.
+ *
+ * FORMEN FÖLJER DATAN. Nästan alla set körs på samma vikt, och då är
+ * "80 kg × 8, 8, 7" både kortare och lättare att läsa än tre upprepningar av
+ * vikten. Skiljer vikterna sig skrivs de ut par för par. Passvyn är den enda vy
+ * som måste rymmas utan scroll, så en rad som wrappar kostar riktigt.
+ *
+ * @returns {string|null} null när det inte finns något förra pass att visa.
+ */
+export function förraPassetRad(senaste) {
+  const set = (senaste || []).filter(s => s && s.reps);
+  if (!set.length) return null;
+  // Sex set räcker för att se mönstret; fler skulle wrappa till två rader.
+  const visa = set.slice(0, 6);
+  const svans = set.length > visa.length ? ` +${set.length - visa.length}` : "";
+  const sammaVikt = visa.every(s => s.vikt === visa[0].vikt);
+
+  if (sammaVikt && visa[0].vikt > 0) return `Sist: ${fmtKg(visa[0].vikt)} kg × ${visa.map(s => s.reps).join(", ")}${svans}`;
+  // Kroppsvikt: en vikt på noll är inte en saknad vikt, och "0 kg × 12" vore
+  // en nolla som ser ut som en mätning.
+  if (sammaVikt) return `Sist: ${visa.map(s => s.reps).join(", ")} reps${svans}`;
+  return `Sist: ${visa.map(s => `${fmtKg(s.vikt)}×${s.reps}`).join(" · ")}${svans}`;
+}
 
 /**
  * @param {object} set        { vikt, reps } som just loggats
@@ -43,10 +81,34 @@ export function coachKommentar(set, övning, bästa1RM = null) {
     return `Nytt bästa: ${fmtKg(nu1RM)} kg uppskattat 1RM, upp från ${fmtKg(bästa1RM)}.`;
   }
 
+  const förra = övning && Array.isArray(övning.senaste) ? övning.senaste : null;
+
+  // ── Övningen klar: summan, inte setet ─────────────────────────────────────
+  // PÅ SISTA SETET BYTER COACHEN NIVÅ. Ett enskilt set som är exakt som förra
+  // gången är ingen nyhet och ger tystnad (regel 3) — men när övningen är klar
+  // är TOTALEN ny information. Den står ingenstans på skärmen, och "lika mycket
+  // som förra passet" är ett svar på frågan man faktiskt bär med sig: gick det
+  // framåt?
+  //
+  // Därför är tystnadsregeln oförändrad där den gäller. Den handlar om ett set,
+  // och det här är ett annat påstående om en annan sak.
+  if (övning && övning.set && övning.loggade && övning.loggade.length >= övning.set) {
+    const nu = volym(övning.loggade);
+    // Kroppsviktsövningar ger noll volym. Då finns ingen summa att jämföra, och
+    // en nolla i kg vore ett påhittat tal — övningen faller igenom till
+    // jämförelsen nedan i stället.
+    if (nu > 0) {
+      const förrVolym = volym(förra);
+      if (!förrVolym) return `Övningen klar: ${formatVolume(nu)} kg totalt.`;
+      const d = nu - förrVolym;
+      if (d === 0) return `Övningen klar: ${formatVolume(nu)} kg — exakt som förra passet.`;
+      return `Övningen klar: ${formatVolume(nu)} kg, ${formatVolume(Math.abs(d))} kg ${d > 0 ? "mer" : "mindre"} än förra passet.`;
+    }
+  }
+
   // ── Mot förra passet ──────────────────────────────────────────────────────
   // senaste = förra passets set på samma övning, i ordning. Jämför med samma
   // setnummer om det finns, annars med förra passets sista.
-  const förra = övning && Array.isArray(övning.senaste) ? övning.senaste : null;
   const setNr = (övning && övning.loggade ? övning.loggade.length : 1) - 1;
   const ref = förra && förra.length
     ? (förra[setNr] || förra[förra.length - 1])

@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 import { buildNudges } from "../engines/nudges.js";
-import { coachKommentar } from "../engines/coachKommentar.js";
+import { coachKommentar, förraPassetRad } from "../engines/coachKommentar.js";
 import { epley1RM, progressionskarta, styrkeKurva } from "../engines/utveckling.js";
 import { epley1RM as epleyUrIndex } from "../engines/index.js";
 import { MAIN_LIFTS } from "../data/exercises.js";
@@ -174,6 +174,94 @@ describe("nivå 2 — coachen under passet", () => {
   it("ett set kvar sägs bara om inget annat gäller", () => {
     const r = coachKommentar({ vikt: 80, reps: 8 }, övning(null, 3, 4));
     expect(r).toBe("Ett set kvar på den här.");
+  });
+
+  // ── Sista setet: coachen byter nivå, från setet till övningen ──────────────
+  //
+  // Ett enskilt set som är exakt som förra gången är ingen nyhet och ska tiga.
+  // Men när övningen är KLAR är totalen ny information — den står ingenstans på
+  // skärmen, och "lika mycket som sist" svarar på den fråga man bär med sig.
+  describe("övningens summa när sista setet loggats", () => {
+    const klar = (loggade, senaste = null, set = loggade.length) => ({
+      exId: "bench_press", senaste, set, loggade,
+    });
+    const rad = (vikt, reps, n) => Array.from({ length: n }, () => ({ vikt, reps }));
+
+    it("mer volym än förra passet, med differensen utskriven", () => {
+      const r = coachKommentar({ vikt: 80, reps: 8 }, klar(rad(80, 8, 3), rad(75, 8, 3)));
+      // 3 × 80 × 8 = 1 920 mot 3 × 75 × 8 = 1 800.
+      expect(r).toMatch(/^Övningen klar: 1\s?920 kg, 120 kg mer än förra passet\.$/);
+    });
+
+    it("EXAKT LIKA SÄGS — det var hela poängen med att göra coachen aktiv", () => {
+      const r = coachKommentar({ vikt: 80, reps: 8 }, klar(rad(80, 8, 3), rad(80, 8, 3)));
+      expect(r).toBe(`Övningen klar: ${(1920).toLocaleString("sv-SE")} kg — exakt som förra passet.`);
+    });
+
+    it("mindre volym sägs rakt ut, utan skuld", () => {
+      const r = coachKommentar({ vikt: 70, reps: 8 }, klar(rad(70, 8, 3), rad(80, 8, 3)));
+      expect(r).toMatch(/^Övningen klar: 1\s?680 kg, 240 kg mindre än förra passet\.$/);
+    });
+
+    it("utan förra pass ges summan ensam, ingen påhittad jämförelse", () => {
+      const r = coachKommentar({ vikt: 80, reps: 8 }, klar(rad(80, 8, 3), null));
+      expect(r).toMatch(/^Övningen klar: 1\s?920 kg totalt\.$/);
+      expect(r).not.toMatch(/förra passet/);
+    });
+
+    it("rekordet slår summan — det är sällsyntare och större", () => {
+      const r = coachKommentar({ vikt: 85, reps: 8 }, klar(rad(85, 8, 3), rad(80, 8, 3)), 100);
+      expect(r).toMatch(/^Nytt bästa/);
+    });
+
+    it("tystnaden gäller fortfarande MITT i övningen", () => {
+      // Två av fyra set loggade, setet exakt som förra passets samma setnummer.
+      const r = coachKommentar({ vikt: 80, reps: 8 }, klar(rad(80, 8, 2), rad(80, 8, 4), 4));
+      expect(r).toBe(null);
+    });
+
+    it("kroppsvikt ger ingen nollvolym — 0 kg vore ett påhittat tal", () => {
+      const r = coachKommentar({ vikt: 0, reps: 12 }, klar(rad(0, 12, 3), rad(0, 12, 3)));
+      expect(r).toBe(null);
+      // Även utan förra pass: ingen summa att visa.
+      const utan = coachKommentar({ vikt: 0, reps: 12 }, klar(rad(0, 12, 3), null));
+      expect(utan === null || !/0 kg/.test(utan)).toBe(true);
+    });
+  });
+
+  // ── Förra passets set, visade före det första setet ────────────────────────
+  describe("förraPassetRad", () => {
+    it("samma vikt hela vägen skrivs en gång, repsen för sig", () => {
+      expect(förraPassetRad([{ vikt: 80, reps: 8 }, { vikt: 80, reps: 8 }, { vikt: 80, reps: 7 }]))
+        .toBe("Sist: 80 kg × 8, 8, 7");
+    });
+
+    it("olika vikter skrivs par för par", () => {
+      expect(förraPassetRad([{ vikt: 60, reps: 10 }, { vikt: 80, reps: 8 }, { vikt: 90, reps: 6 }]))
+        .toBe("Sist: 60×10 · 80×8 · 90×6");
+    });
+
+    it("kroppsvikt räknas i reps, inte i noll kilo", () => {
+      expect(förraPassetRad([{ vikt: 0, reps: 12 }, { vikt: 0, reps: 10 }]))
+        .toBe("Sist: 12, 10 reps");
+    });
+
+    it("halva kilon skrivs med komma, inte punkt", () => {
+      expect(förraPassetRad([{ vikt: 82.5, reps: 8 }])).toBe("Sist: 82,5 kg × 8");
+    });
+
+    it("fler än sex set kortas — raden får inte wrappa i passvyn", () => {
+      const åtta = Array.from({ length: 8 }, () => ({ vikt: 60, reps: 10 }));
+      const r = förraPassetRad(åtta);
+      expect(r).toBe("Sist: 60 kg × 10, 10, 10, 10, 10, 10 +2");
+    });
+
+    it("utan förra pass sägs ingenting", () => {
+      expect(förraPassetRad(null)).toBe(null);
+      expect(förraPassetRad([])).toBe(null);
+      // Poster utan reps är inte set och ska inte räknas som sådana.
+      expect(förraPassetRad([{ vikt: 80 }])).toBe(null);
+    });
   });
 
   it("epley1RM är samma formel som kurvan", () => {
