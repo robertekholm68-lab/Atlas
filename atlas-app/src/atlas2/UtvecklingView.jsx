@@ -10,6 +10,7 @@ import {
   byggMätning, massor, trend, tolkaOmronCsv, slåIhopMätningar, förändring,
   bästa1RM, progressionskarta, ändraMätning, raderaMätning,
 } from "../engines/utveckling.js";
+import { tolkaHälsofil, slåIhopHälsa, senasteHälsa, hälsoSnitt, visaSömn } from "../engines/halsa.js";
 import { EXERCISES, MAIN_LIFTS } from "../data/exercises.js";
 import { KROPPSMATT, KROPPSSAMMANSATTNING, GRUPPER, mattIGrupp, ALLA_INDEX } from "../data/kroppsmatt.js";
 import {
@@ -189,7 +190,7 @@ const FLIKAR = [
   { id: "historik", namn: "Historik" },
 ];
 
-export function UtvecklingView({ passInnehåll = null, startFlik = null, mätningar = [], setMätningar, sessions = [], profile, startDetalj = null, onClose }) {
+export function UtvecklingView({ passInnehåll = null, startFlik = null, mätningar = [], setMätningar, hälsa = [], setHälsa, sessions = [], profile, startDetalj = null, onClose }) {
   const [period, setPeriod] = useState(90);
   const [flik, setFlik] = useState(startFlik || "pass");
   // null = ingen, {} = ny mätning, post = redigera den posten
@@ -251,6 +252,26 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
     width: "100%", padding: "11px 13px", borderRadius: 10, minHeight: 44,
     border: `1px solid ${C.border}`, background: C.card2, color: C.text,
     fontSize: 14, fontFamily: MONO,
+  };
+
+  const [hälsoFel, setHälsoFel] = useState("");
+  const [hälsoKlart, setHälsoKlart] = useState(null);
+
+  // KLOCKEXPORT: sömn, vilopuls, HRV. Samma väg som Omron-vågen — filen tolkas
+  // här, datan lämnar aldrig telefonen. Formatet får vara CSV eller JSON, och
+  // vilket märke som helst: kolumnerna matchas på nyckelord.
+  const läsHälsofil = async fil => {
+    if (!fil || !setHälsa) return;
+    setHälsoFel(""); setHälsoKlart(null);
+    try {
+      const text = await fil.text();
+      const r = tolkaHälsofil(text, "import");
+      if (r.fel) { setHälsoFel(r.fel); return; }
+      setHälsa(x => slåIhopHälsa(x, r.poster));
+      setHälsoKlart({ antal: r.poster.length, fält: r.fält });
+    } catch (e) {
+      setHälsoFel("Kunde inte läsa filen.");
+    }
   };
 
   const läsCsv = async fil => {
@@ -424,6 +445,66 @@ export function UtvecklingView({ passInnehåll = null, startFlik = null, mätnin
         </>
       )}
       </>
+      )}
+
+      {/* HÄLSODATA UR KLOCKAN. Det som gör readiness till mer än en
+          träningsbaserad skattning — men INTE ännu: posterna visas och sparas,
+          de räknas inte in i något tal. Att börja väga in sömn i en siffra
+          användaren redan känner igen är ett eget beslut, inte något en
+          importfunktion tar i tysthet. */}
+      {flik === "kropp" && setHälsa && (
+      <div style={{ ...card, padding: 14, marginTop: 10 }} data-halsa="1">
+        <div style={{ ...label(), color: C.muted, marginBottom: 6 }}>Sömn, vilopuls och HRV</div>
+        {(() => {
+          const rader = [
+            ["Sömn", senasteHälsa(hälsa, "sömnMin"), v => visaSömn(v), hälsoSnitt(hälsa, "sömnMin"), v => visaSömn(v)],
+            ["Vilopuls", senasteHälsa(hälsa, "vilopuls"), v => `${v} slag/min`, hälsoSnitt(hälsa, "vilopuls"), v => `${v}`],
+            ["HRV", senasteHälsa(hälsa, "hrv"), v => `${v} ms`, hälsoSnitt(hälsa, "hrv"), v => `${v}`],
+          ].filter(r => r[1]);
+          if (!rader.length) {
+            return (
+              <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.55 }}>
+                Har du en klocka som mäter sömn och vilopuls kan du importera
+                historiken. Garmin Connect, Polar Flow och Apple Hälsa kan alla
+                exportera en fil — välj den här.
+              </div>
+            );
+          }
+          return (
+            <div style={{ display: "flex", gap: 10 }}>
+              {rader.map(([namn, senast, visa, snitt, visaSnitt]) => (
+                <div key={namn} style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...label(), color: C.muted }}>{namn}</div>
+                  <div style={{ ...hdr(19), marginTop: 3 }}>{visa(senast.värde)}</div>
+                  {/* SNITTET SÄGS BARA NÄR DET FINNS UNDERLAG — hälsoSnitt ger
+                      null under tre mätningar, och då står bara dagens värde. */}
+                  <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>
+                    {snitt != null ? `snitt 7 d ${visaSnitt(snitt)}` : fmtDatum(senast.dag)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        <input type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain" data-halsofil="1"
+          onChange={e => läsHälsofil(e.target.files && e.target.files[0])}
+          style={{ ...fältStil, marginTop: 10, fontFamily: "inherit", fontSize: 12.5, padding: 9 }} />
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
+          Garmin Connect: <strong>Konto → Exportera dina data</strong>. Filerna
+          kan läsas in en i taget — sömn och vilopuls hamnar på samma dygn.
+        </div>
+        {hälsoFel && (
+          <div style={{ fontSize: 12, color: C.recovering, marginTop: 8, lineHeight: 1.5 }}>{hälsoFel}</div>
+        )}
+        {hälsoKlart && (
+          <div style={{ fontSize: 12, color: C.ready, marginTop: 8, lineHeight: 1.5 }}>
+            {hälsoKlart.antal} dagar inlästa
+            {hälsoKlart.fält.sömn ? " med sömn" : ""}
+            {hälsoKlart.fält.vilopuls ? (hälsoKlart.fält.sömn ? ", vilopuls" : " med vilopuls") : ""}
+            {hälsoKlart.fält.hrv ? " och HRV" : ""}.
+          </div>
+        )}
+      </div>
       )}
 
       {/* OMRON-IMPORT. Direktkoppling kräver partneravtal med Omron; CSV-export

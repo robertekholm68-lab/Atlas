@@ -519,6 +519,10 @@ export function Atlas2() {
   // Egen nyckel: weights är { ts, kg } och läses av coach, framsteg och
   // backup — att bygga om den formen skulle tyst skriva om historik.
   const [mätningar, setMätningar] = useState([]);
+  // Hälsodagar ur klock-export: sömn, vilopuls, HRV. Egen lista, inte ett fält
+  // på mätningarna — en vägning är en tidpunkt, en natt är ett dygn.
+  const [hälsa, setHälsa] = useState([]);
+  const sättHälsa = f => setHälsa(xs => { const ny = typeof f === "function" ? f(xs) : f; save("halsa", ny); return ny; });
   // Förvald grupp när övningsbanken öppnas från muskelgruppsvyn.
   const [bankGrupp, setBankGrupp] = useState(null);
   // Vilken underflik Utveckling ska öppna på. Hem → vikt sätter "kropp".
@@ -696,12 +700,12 @@ export function Atlas2() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl, egna, skaff, mät] = await Promise.all([
+      const [m, prof, sess, progs, apid, w, lv, fl, g, nt, nd, sl, egna, skaff, mät, hälsoLista] = await Promise.all([
         load("mode", null), load("profile", {}), load("sessions", []), load("programs", []),
         load("activeProgramId", null), load("weights", []), load("live", null),
         load("foodLog", []), load("goal", null), load("nutritionTargets", null),
         load("nudgesDismissed", {}), load("supplementLog", []), load("egnaRecept", []),
-        load("skafferi", []), load("matningar", []),
+        load("skafferi", []), load("matningar", []), load("halsa", []),
       ]);
       if (!alive) return;
       const p = prof || {};
@@ -717,6 +721,7 @@ export function Atlas2() {
       setSkafferi(Array.isArray(skaff) ? skaff : []);
       const mätLista = Array.isArray(mät) ? mät : [];
       setMätningar(mätLista);
+      setHälsa(Array.isArray(hälsoLista) ? hälsoLista : []);
       // Vägningar som loggades innan de två listorna kopplades ihop ligger bara
       // i `matningar`. Slås de in här blir de synliga för profilen och coachen
       // utan att användaren behöver göra om något. Sparas bara när det faktiskt
@@ -1254,7 +1259,7 @@ export function Atlas2() {
       // — den ena visade pass och volym, den andra kropp och styrka. Att den
       // ena var flik och den andra undervy var historia, inte logik.
       // ProgressView lever kvar som innehåll i underfliken Pass.
-      <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar}
+      <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar} hälsa={hälsa} setHälsa={sättHälsa}
         sessions={sessions} profile={profilN}
         startFlik={utvecklingsflik}
         passInnehåll={
@@ -1427,7 +1432,7 @@ export function Atlas2() {
             ) : sheet === "maskiner" ? (
               <MachineGuide onClose={() => setSheet(null)} />
             ) : (sheet === "utveckling" || String(sheet).startsWith("utveckling:")) ? (
-              <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar}
+              <UtvecklingView mätningar={mätningar} setMätningar={sättMätningar} hälsa={hälsa} setHälsa={sättHälsa}
                 startDetalj={String(sheet).startsWith("utveckling:") ? String(sheet).slice(11) : null}
                 sessions={sessions} profile={profilN} onClose={() => setSheet(null)} />
             ) : sheet === "kunskap" ? (
