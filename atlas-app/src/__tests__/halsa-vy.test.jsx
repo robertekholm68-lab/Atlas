@@ -80,7 +80,8 @@ describe("hälsokortet", () => {
     const kort = montera([]);
     const fält = kort.querySelector('[data-halsofil="1"]');
 
-    const fil = t => ({ text: async () => t });
+    // Vyn läser numera arrayBuffer (för att kunna ta en hel zip), inte text.
+    const fil = t => ({ arrayBuffer: async () => new TextEncoder().encode(t).buffer });
     // Vyn läser filen ur event.target.files; anropa handlern som webbläsaren gör.
     const läs = async innehåll => {
       const h = fält.onchange || (fält._valueTracker && null);

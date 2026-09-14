@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1888 i 158 filer |
+| Tester (vitest) | 1898 i 159 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1585,11 +1585,36 @@ eget beslut, och det tas inte i tysthet av en importfunktion. Ett testfall
 kräver att motorn inte exporterar något readiness-namn, så den dagen någon
 lägger till det syns det.
 
-**INTE VERIFIERAT MOT EN RIKTIG EXPORT.** Fixturerna i `halsa.test.js` är
-konstruerade efter de former vi vet förekommer; ingen riktig Garmin-fil har
-passerat koden. Det är skillnaden mellan "tolerant mot kända former" och
-"verifierad mot verkligheten". Låses upp av: en fil ur Garmin Connect
-(Konto → Exportera dina data).
+**HELA ZIPEN PÅ EN GÅNG.** Garmins export är en zip med hundratals filer.
+`engines/zip.js` läser den i webbläsaren UTAN bibliotek — `DecompressionStream`
+("deflate-raw") finns i Chrome sedan 103 och Node sedan 18, kontrollerat i båda
+här. Ett bibliotek för det plattformen redan gör är 100 kB att ladda, uppdatera
+och granska.
+
+Läsaren går bakifrån, som formatet kräver: slutposten pekar ut den centrala
+katalogen, katalogen pekar ut varje fil. Det LOKALA huvudet läses om innan
+uppackningen — dess namn- och extrafält har andra längder än katalogens, och
+hoppar man över det landar man mitt i filnamnet i stället för i datan. Zip64,
+kryptering och andra metoder än deflate stöds inte och säger ifrån i stället för
+att ge en tom fil.
+
+`intressantFil()` sållar på namn innan uppackningen (sleep, hrv, rest, wellness,
+uds, summar, daily) — medvetet generöst: hellre öppna en fil som visar sig tom
+än missa den som bär värdena. **Varje läst fil redovisas** med hur många dagar
+den gav, för frågan efter en halvlyckad import är alltid "läste den min fil?".
+
+**INTE VERIFIERAT MOT EN RIKTIG EXPORT.** Fixturen i `halsa-zip.test.jsx` är en
+RIKTIG zip (byggd av Pythons zipfile, inbakad som base64, med både deflate- och
+lagrade poster) — men innehållet är konstruerat efter de former vi vet
+förekommer. Ingen riktig Garmin-export har passerat koden. Låses upp av: Roberts
+egen export (Garmin Connect → Konto → Exportera dina data).
+
+**DEN AUTOMATISKA VÄGEN ÄR STÄNGD, INTE GLÖMD.** Garmins Health API kräver
+partnergodkännande riktat till företag; Connect IQ (en app på klockan som
+skickar själv) är den enda självbetjäningsvägen och kräver Monkey C, eget SDK
+och sidoladdning; Health Connect på Android går bara att läsa från en native
+app. Att logga in mot Garmin Connect med användarens lösenord är avvisat — ett
+lösenord till ett hälsokonto hör inte hemma i appen.
 
 ### Vägen till en installerad app som kan para
 

@@ -300,3 +300,81 @@ export function hälsoUnderlag(poster, nu = Date.now()) {
   }
   return { finns, saknas, dagar: (poster || []).length };
 }
+
+// ── HELA EXPORTEN PÅ EN GÅNG ────────────────────────────────────────────────
+
+import { zipPoster, zipLäsText, ärZip } from "./zip.js";
+
+/**
+ * Filer i en export som är värda att öppna.
+ *
+ * En Garmin-export bär hundratals filer: aktiviteter, inställningar, enheter,
+ * profilbilder. Att packa upp och tolka varje fil tar tid och minne på en
+ * telefon, så namnen sållas först. Sållet är MEDVETET GENERÖST — hellre öppna
+ * en fil som visar sig sakna värden än missa den som bär dem, eftersom
+ * filnamnen skiljer sig mellan exporter och år.
+ */
+export function intressantFil(namn) {
+  const n = String(namn || "").toLowerCase();
+  if (n.includes("__macosx") || n.startsWith(".")) return false;
+  if (!/\.(csv|json)$/.test(n)) return false;
+  return /sleep|sömn|somn|hrv|rest|wellness|uds|summar|health|daily/.test(n);
+}
+
+/**
+ * Läser en HEL export — zip eller enstaka fil — och ger dagposterna.
+ *
+ * Returnerar också `filer`: vilka filer som lästes och vad var och en gav.
+ * Det är inte pynt. Går en import fel är frågan alltid "läste den min fil?",
+ * och utan listan går det inte att svara. En fil som faller tyst tas med som
+ * `dagar: 0` med sitt skäl, i stället för att försvinna.
+ *
+ * `läsFil` tar en ArrayBuffer. Den skickas in i stället för att läsas här, så
+ * motorn kan prövas utan File-objekt och utan webbläsare.
+ */
+export async function tolkaHälsoexport(buffert, källa = "import") {
+  if (!ärZip(buffert)) {
+    const text = new TextDecoder().decode(buffert);
+    const r = tolkaHälsofil(text, källa);
+    return { poster: r.poster, fält: r.fält, fel: r.fel, filer: [], zip: false };
+  }
+
+  const { poster: iZip, fel } = zipPoster(buffert);
+  if (fel) return { poster: [], fält: {}, fel, filer: [], zip: true };
+
+  const kandidater = iZip.filter(f => intressantFil(f.namn));
+  if (!kandidater.length) {
+    return {
+      poster: [], fält: {}, filer: [], zip: true,
+      fel: `Hittade ${iZip.length} filer i zipen, men ingen som bär sömn, vilopuls eller HRV.`,
+    };
+  }
+
+  let alla = [];
+  const filer = [];
+  for (const f of kandidater) {
+    try {
+      const text = await zipLäsText(buffert, f);
+      const r = tolkaHälsofil(text, källa);
+      // En fil som saknar våra värden är inte ett fel — exporten bär mycket
+      // annat. Den redovisas, men utan att larma.
+      filer.push({ namn: f.namn, dagar: r.poster.length, fel: r.poster.length ? null : r.fel });
+      alla = alla.concat(r.poster);
+    } catch (e) {
+      filer.push({ namn: f.namn, dagar: 0, fel: String((e && e.message) || e) });
+    }
+  }
+
+  const poster = slåIhopHälsa([], alla);
+  return {
+    poster,
+    fält: {
+      sömn: poster.some(p => p.sömnMin != null),
+      vilopuls: poster.some(p => p.vilopuls != null),
+      hrv: poster.some(p => p.hrv != null),
+    },
+    filer,
+    zip: true,
+    fel: poster.length ? null : "Filerna gick att öppna, men ingen bar sömn, vilopuls eller HRV.",
+  };
+}
