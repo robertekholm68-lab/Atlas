@@ -690,14 +690,44 @@ hårdkodad. De döda TWA-resterna `manifest.webmanifest` och
 Den gamla handbyggda `docs/` **är borttagen** — Actions bygger sajten från noll.
 
 **Testarsidan** (`landing/test.html`) är självbärande HTML med inline CSS och JS
-utanför byggena, precis som landningssidan. Instruktion plus ifyllbar
-svarsblankett: svaren serialiseras till ett textblock, och **urklipp är primär
-väg** (`navigator.clipboard.writeText` med `execCommand`-fallback) eftersom
-mailto med lång body kapas av många mobilklienter — mailto ligger som sekundär
-knapp. `@media print` ger svart på vitt med knapparna dolda och textareas som
-växer, så sidan kan sparas som PDF ur webbläsaren i stället för att underhållas
-som separat fil. Landningssidan länkar dit diskret i foten. Verifieringssteget i
-deployen kräver att `test.html` finns; försvinner den stoppas publiceringen.
+utanför byggena, precis som landningssidan. Adress:
+`robertekholm68-lab.github.io/Atlas/test.html`. QR-kod dit ligger som
+`public/askr-test-qr.png` (och `.svg`) och publiceras i sajtens rot.
+
+Sidan bär fyra saker: **installationsknapp**, **vad som är nytt och på väg**,
+**testinstruktion** och **svarsblankett**.
+
+- **Installationsknappen** använder `beforeinstallprompt` och visas BARA när
+  webbläsaren faktiskt erbjudit installation. Annars står instruktionen för just
+  den plattformen (iOS: Dela → Lägg till; WebView: öppna i Chrome först; redan
+  installerad: säg det). En knapp som inte gör något är värre än ingen knapp.
+  Logiken är handskriven i sidan — den är statisk HTML utanför bundeln och kan
+  inte importera `engines/platform.js` — och medvetet så kort att den inte kan
+  glida isär.
+- **`<link rel="manifest" href="./atlas2.webmanifest">` är avgörande.** Utan den
+  hade knappen installerat TESTSIDAN på hemskärmen; med den installeras det
+  manifestet pekar ut (`start_url: ./atlas2.html`), alltså appen. Manifestets
+  scope `./` från sajtens rot omsluter testsidan, vilket krävs.
+- **Svaren mejlas via samma proxy som appens feedbackknapp**
+  (`coach-proxy/api/feedback.js` → Resend). Mottagaradressen ligger i en
+  miljövariabel på Vercel, aldrig i filen. **Kopiera och mailto finns kvar som
+  reserv** — nätet kan vara borta i ett gym — och sidan visar aldrig "Skickat!"
+  för något som inte gick fram.
+
+`@media print` ger svart på vitt med knapparna dolda och textareas som växer, så
+sidan kan sparas som PDF. Landningssidan länkar dit diskret i foten.
+Verifieringssteget i deployen kräver att `test.html` finns; försvinner den
+stoppas publiceringen.
+
+**`var status` PÅ GLOBAL NIVÅ ÄR EN TYST FÄLLA.** `window.status` är en inbyggd
+egenskap på Window som **tvingar sitt värde till en sträng**. Ett
+`var status = document.getElementById(...)` i global scope skriver till just den,
+elementet blev strängen `"[object HTMLParagraphElement]"`, och
+`status.textContent = msg` var en nolloperation i sloppy mode — inget kast,
+ingen varning i konsolen. Följden: testarsidans statusrad hade **aldrig** visat
+något. "Kopierat." syntes aldrig för en enda testare. Uppmätt i webbläsaren
+(`typeof status === "string"`), inte gissat. Variabeln heter numera `statusRad`.
+Samma fälla gäller `name`, `top`, `self`, `length` och `origin`.
 
 **Landningssidan har en egen palett.** Den är handskriven HTML utanför
 React-bygget, så `design.js` når den inte och regeln "en hårdkodad hex utanför

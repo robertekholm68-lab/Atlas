@@ -9,6 +9,14 @@
 <meta name="robots" content="noindex" />
 <link rel="icon" type="image/webp" href="./askr-symbol.webp" />
 <link rel="apple-touch-icon" href="./atlas-icon-192.png" />
+<!-- APPENS MANIFEST, INTE SIDANS EGET.
+     Installationsknappen nedan installerar det manifestet pekar ut — och det
+     ska vara APPEN (`start_url: ./atlas2.html`), inte den här instruktionen.
+     Utan raden hade knappen lagt testsidan på hemskärmen, vilket ser ut att
+     fungera ända tills testaren trycker på ikonen och möts av en blankett.
+     Scopet i manifestet är "./" från sajtens rot, så den här sidan ligger
+     innanför det — ett krav för att webbläsaren ska erbjuda installation. -->
+<link rel="manifest" href="./atlas2.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -148,21 +156,56 @@
         äktheten jag vill testa.</li>
     </ul>
   </div>
-  <div class="card">
-    <p><b>Installera:</b> öppna Askr i Chrome (Android) → knappen ≡ uppe till
-      höger → ”Installera appen”. På iPhone: Safari → Dela → ”Lägg till på
-      hemskärmen”. Den installerade appen kör i Chrome och kan para pulsband.</p>
-    <!-- Sidan beskrev "öppna länken" utan att någonsin ge länken. En testare som
-         skannat QR-koden hit hade läst hela instruktionen och sedan stått utan
-         väg vidare. -->
+  <!-- INSTALLATION ÄR FÖRSTA STEGET, INTE EN FOTNOT.
+       Appen på hemskärmen och appen i webbläsarfliken har separata lagringar,
+       så den som loggar ett pass i fliken och sedan installerar hittar inte
+       igen sitt pass. Därför står knappen före allt annat.
+
+       TRE TILLSTÅND, INGET LÖFTE VI INTE KAN HÅLLA. Knappen visas bara när
+       webbläsaren faktiskt erbjudit installation (`beforeinstallprompt`).
+       Annars står instruktionen för just den plattformen. En knapp som inte
+       gör något är värre än ingen knapp. -->
+  <div class="card vasen" id="installkort">
+    <h2>Installera appen</h2>
+    <p id="install-text">Kontrollerar vad din telefon klarar …</p>
     <p class="noprint" style="margin:14px 0 0">
-      <a class="primar" href="./atlas2.html"
+      <button type="button" class="primar" id="installera" hidden>Installera Askr</button>
+      <a class="primar" id="oppna" href="./atlas2.html"
          style="display:block; text-align:center; text-decoration:none">Öppna Askr →</a>
     </p>
     <p style="margin:10px 0 0; font-size:14px; color:var(--muted)">
       Adressen, om du behöver skriva av den:
       <code>robertekholm68-lab.github.io/Atlas/atlas2.html</code>
     </p>
+  </div>
+
+  <h2>Nästa version</h2>
+  <div class="card">
+    <p><b>Nytt sedan sist</b> — det här är vad jag helst vill ha synpunkter på:</p>
+    <ul>
+      <li><b>Coachen tar initiativ.</b> Den säger till när du ligger efter din
+        plan, när en vägning saknas och när måldatumet passerat — i stället för
+        att vänta på att du öppnar coachfliken och frågar.</li>
+      <li><b>Hemskärmens rad ändrar sig med dagen.</b> Den sa samma mening varje
+        dag förut. Nu står det vad du gjorde senast och hur länge sedan det var.</li>
+      <li><b>Coachen i passet.</b> Före första setet ser du vad du lyfte förra
+        gången; när en övning är klar får du totalen mot förra passet.</li>
+      <li><b>Pulsband över Bluetooth</b> (Android/Chrome) och <b>import av sömn,
+        vilopuls och HRV</b> ur en exportfil från Garmin, Polar eller Apple Hälsa.</li>
+      <li><b>Mat bakåt i tiden</b> — glömde du logga i går går det att fylla i nu.</li>
+    </ul>
+    <p style="margin-top:14px"><b>På väg.</b> Inget av det här har ett datum, och
+      det som inte går att göra ärligt blir inte gjort:</p>
+    <ul>
+      <li>Coachen på passkvittot — passet vägt mot målet, inte bara mot förra passet.</li>
+      <li>Muskelkartan för skärmläsare och tangentbord. Kartan är för central för
+        en snabbfix, så den får ta tid.</li>
+      <li>Om sömn och HRV ska påverka readiness är <b>inte bestämt</b>. Datan går
+        att importera i dag, men siffran rör sig inte av den — och den ska inte
+        göra det förrän jag vet att det blir mer sant, inte bara mer avancerat.</li>
+      <li>Appen i Google Play. Förberedd i repot, men den väntar på signering och
+        en verifiering jag inte kan göra härifrån.</li>
+    </ul>
   </div>
 
   <h2>Det jag vill att du provar</h2>
@@ -193,9 +236,9 @@
   </div>
 
   <h2>Svarsblankett</h2>
-  <p class="lede noprint">Fyll i här. Tryck sedan <b>Kopiera svar</b> och klistra in i
-    ett mejl eller chatt till mig. (Eller spara sidan som PDF från webbläsarens
-    utskriftsmeny.)</p>
+  <p class="lede noprint">Fyll i och tryck <b>Skicka</b> — svaret går direkt till min
+    mejl. Ingen adress att leta upp, ingen mejlklient att logga in i. Går det inte
+    fram säger sidan det rakt ut, och då finns kopiera och e-post som reserv.</p>
 
   <form id="form" autocomplete="off">
     <div class="fralt">
@@ -273,18 +316,27 @@
 
     <div class="actions">
       <p id="status" class="status" role="status" aria-live="polite"></p>
-      <button type="button" class="primar" id="kopiera">Kopiera svar</button>
-      <a class="sekundar" id="epost" href="#">Öppna e-post i stället</a>
+      <button type="button" class="primar" id="skicka">Skicka till Robert</button>
+      <button type="button" class="sekundar" id="kopiera">Kopiera svar i stället</button>
+      <a class="sekundar" id="epost" href="#">Öppna e-post</a>
     </div>
   </form>
 
-  <footer>Askr · kroppen är gränssnittet<br />Svaren skickas inte automatiskt — du väljer själv vart de går.</footer>
+  <footer>Askr · kroppen är gränssnittet<br />Svaret mejlas till mig. Ingen annan data lämnar din telefon.</footer>
 
 </div>
 
 <script>
-  // Ingen server. Svaren serialiseras till en textblock och kopieras till urklipp
-  // (primar) eller oppnas i e-postklient via mailto (sekundar).
+  // SVAREN GAR TILL SAMMA PROXY SOM APPENS FEEDBACKNAPP.
+  //
+  // Adressen ligger i en miljovariabel pa Vercel, aldrig i den har filen: en
+  // mejladress i ett publikt repo blir skrappostmal inom veckor. Proxyn slapper
+  // bara igenom anrop fran github.io-ursprunget.
+  //
+  // KOPIERA OCH E-POST FINNS KVAR SOM RESERV. Natet kan vara borta i ett gym,
+  // proxyn kan svara 429, och da ska svaret inte vara forlorat. Sidan sager
+  // vilket som hande — den visar ALDRIG "Skickat!" for nagot som inte gick fram.
+  var PROXY = "https://askr-coach.vercel.app/api/feedback";
   var MOTTAGARE = "robert.ekholm68@gmail.com";
 
   function val(name){
@@ -311,10 +363,19 @@
     return L.join("\n");
   }
 
-  var status = document.getElementById("status");
+  // HETER INTE `status`. `window.status` ar en inbyggd egenskap pa Window som
+  // TVINGAR sitt varde till en strang, och ett `var status = element` pa global
+  // niva skriver till just den. Elementet blev strangen
+  // "[object HTMLParagraphElement]", och `status.textContent = msg` var darmed
+  // en tyst nollopoeration i sloppy mode — inget kast, ingen varning.
+  //
+  // Foljden: statusraden har ALDRIG visat nagot pa den har sidan. "Kopierat."
+  // syntes aldrig, och en testare som tryckte pa knappen fick ingen kvittens
+  // alls. Uppmatt i webblasaren: `typeof status` var "string".
+  var statusRad = document.getElementById("status");
   function sag(msg, warn){
-    status.textContent = msg;
-    status.className = "status" + (warn ? " warn" : "");
+    statusRad.textContent = msg;
+    statusRad.className = "status" + (warn ? " warn" : "");
   }
 
   function fallbackCopy(text){
@@ -326,6 +387,55 @@
     try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
     document.body.removeChild(ta);
     return ok;
+  }
+
+  // ── Skicka ────────────────────────────────────────────────────────────────
+  var skickaKnapp = document.getElementById("skicka");
+  skickaKnapp.addEventListener("click", function(){
+    var text = bygg();
+    // Tom blankett ska inte kunna mejlas. Proxyn kraver tre tecken; namnet och
+    // rubrikerna racker over det, sa kontrollen maste ske har.
+    if (!harSvar()){
+      sag("Fyll i något först — blanketten är tom.", true);
+      return;
+    }
+    skickaKnapp.disabled = true;
+    sag("Skickar …");
+    fetch(PROXY, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        text: text,
+        namn: txt("f0") || "Testare",
+        version: "testsidan",
+        enhet: (navigator.userAgent || "").slice(0, 180)
+      })
+    }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(d){
+        return { ok: r.ok, fel: d && d.fel };
+      });
+    }).then(function(svar){
+      skickaKnapp.disabled = false;
+      if (svar.ok){
+        sag("Skickat — tack. Jag läser allt.");
+        skickaKnapp.textContent = "Skicka igen";
+      } else {
+        sag((svar.fel || "Det gick inte att skicka.") + " Tryck Kopiera svar i stället så tappar du inget.", true);
+      }
+    }).catch(function(){
+      skickaKnapp.disabled = false;
+      sag("Nätet svarade inte. Tryck Kopiera svar i stället så tappar du inget.", true);
+    });
+  });
+
+  /** Finns det nagot ifyllt alls? Annars ar knappen bara ett tomt mejl. */
+  function harSvar(){
+    var f = document.getElementById("form");
+    var fritext = f.querySelectorAll("textarea, input[type=text]");
+    for (var i = 0; i < fritext.length; i++){
+      if (fritext[i].id !== "f0" && fritext[i].value.trim()) return true;
+    }
+    return !!f.querySelector("input[type=radio]:checked");
   }
 
   document.getElementById("kopiera").addEventListener("click", function(){
@@ -356,6 +466,83 @@
     sag("Öppnar e-post. Blir mejlet avklippt: gå tillbaka och tryck Kopiera svar i stället.");
     window.location.href = url;
   });
+
+  // ── INSTALLATIONSKNAPPEN ──────────────────────────────────────────────────
+  //
+  // Samma fyra tillstand som appens egen knapp (`engines/platform.js`), men
+  // skrivet for hand: den har sidan ar statisk HTML utanfor bundeln och kan
+  // inte importera motorn. Logiken ar medvetet sa kort att den inte kan glida
+  // isar — den svarar bara pa fragan "gar det att installera harifran".
+  //
+  // `beforeinstallprompt` maste fangas FORE nagon trycker, och webblasaren
+  // fyrar den tidigt. Lyssnaren star darfor forst i skriptet, inte i en
+  // knapphanterare.
+  var installHandelse = null;
+  var installKnapp = document.getElementById("installera");
+  var installText = document.getElementById("install-text");
+  var oppnaKnapp = document.getElementById("oppna");
+
+  function installLage(){
+    // Redan installerad: sidan korde som app. Da ar knappen meningslos.
+    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return "installerad";
+    if (navigator.standalone) return "installerad";
+    if (installHandelse) return "prompt";
+    var ua = navigator.userAgent || "";
+    // iOS har ingen installations-API alls — bara Dela-menyn i Safari.
+    if (/iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+    // En WebView (t.ex. lanken oppnad inifran Facebook eller Messenger) kan
+    // varken installera eller para pulsband. Att saga "tryck installera" dar ar
+    // att skicka nagon in i en vagg.
+    if (/\bwv\b|FBAN|FBAV|Instagram|Line\//.test(ua)) return "webview";
+    return "ingen";
+  }
+
+  function ritaInstall(){
+    var lage = installLage();
+    installKnapp.hidden = (lage !== "prompt");
+    if (lage === "installerad"){
+      installText.innerHTML = "Du kör redan Askr som app. <b>Logga alltid härifrån</b> — appen i en webbläsarflik har en egen, separat lagring.";
+      oppnaKnapp.textContent = "Till appen →";
+    } else if (lage === "prompt"){
+      installText.innerHTML = "Din telefon kan installera Askr direkt. <b>Gör det före du loggar något</b> — appen på hemskärmen och appen i fliken delar inte data.";
+    } else if (lage === "ios"){
+      installText.innerHTML = "På iPhone: öppna den här sidan i <b>Safari</b>, tryck <b>Dela</b> (fyrkanten med pilen uppåt) → <b>Lägg till på hemskärmen</b>. Gör det före du loggar något — Safari kan annars rensa bort data från vanliga webbsidor.";
+    } else if (lage === "webview"){
+      installText.innerHTML = "Du öppnade länken inifrån en annan app, och där går det varken att installera eller para pulsband. Tryck på menyn och välj <b>Öppna i Chrome</b> (eller Safari) först.";
+    } else {
+      installText.innerHTML = "Öppna Askr och använd webbläsarens egen meny: <b>Chrome → ≡ → Installera appen</b>. Erbjuds det inte är du troligen i en webbläsare som inte stöder det — Chrome på Android fungerar säkert.";
+    }
+  }
+
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    installHandelse = e;
+    ritaInstall();
+  });
+  window.addEventListener("appinstalled", function(){
+    installHandelse = null;
+    installText.innerHTML = "Installerad. Öppna Askr från ikonen på hemskärmen från och med nu.";
+    installKnapp.hidden = true;
+  });
+
+  installKnapp.addEventListener("click", function(){
+    if (!installHandelse) { ritaInstall(); return; }
+    var e = installHandelse;
+    installHandelse = null;          // en prompt far bara anvandas en gang
+    e.prompt();
+    // Utfallet avgor texten. Avbryter man ska sidan inte pasta att det gick.
+    (e.userChoice || Promise.resolve({ outcome: "dismissed" })).then(function(v){
+      if (v && v.outcome === "accepted"){
+        installText.innerHTML = "Installerad. Öppna Askr från ikonen på hemskärmen från och med nu.";
+        installKnapp.hidden = true;
+      } else {
+        installText.innerHTML = "Installationen avbröts. Du kan öppna Askr i webbläsaren ändå — men data följer inte med om du installerar senare.";
+        installKnapp.hidden = true;
+      }
+    });
+  });
+
+  ritaInstall();
 
   // Vaxa textareas infor utskrift sa inget innehall klipps i PDF:en.
   window.addEventListener("beforeprint", function(){
