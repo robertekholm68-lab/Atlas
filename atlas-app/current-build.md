@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1933 i 160 filer |
+| Tester (vitest) | 1946 i 160 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -1890,6 +1890,61 @@ beskedet räknar i kilo.
 **Ingen höjd kostade det.** Kartan är fortfarande 545 px på SE (mätt före och
 efter), eftersom beskedet delar plats med påminnelsen och hemkortet redan
 scrollar internt.
+
+### Coachen i passet: förra passet före, summan efter (#201)
+
+Två luckor i passvyn, båda i samma mönster: siffrorna FANNS i `live`-posten men
+visades aldrig.
+
+**Före första setet står nu förra passets set:** `Sist: 80 kg × 8, 8, 7`
+(`förraPassetRad` i `coachKommentar.js`). Coachen jämförde redan mot dem vid
+varje loggat set, men den som stod vid stången och skulle välja vikt fick ett
+förslag utan att se vad förslaget byggde på.
+
+Formen följer datan: nästan alla set körs på samma vikt, och då skrivs vikten
+en gång och repsen för sig. Skiljer vikterna sig skrivs de ut par för par
+(`Sist: 60×10 · 80×8 · 90×6`). Kroppsvikt räknas i reps — `0 kg × 12` vore en
+nolla som ser ut som en mätning. Över sex set kortas raden med `+N`; en rad som
+wrappar kostar riktigt i den enda vy som måste rymmas utan scroll.
+
+**Efter sista setet i en övning byter coachen nivå** och sammanfattar hela
+övningen: `Övningen klar: 1 920 kg, 80 kg mer än förra passet.` — eller
+`— exakt som förra passet`. Tystnadsregeln är oförändrad DÄR DEN GÄLLER: den
+handlar om ett SET, och ett set som är som förra gången är ingen nyhet. Totalen
+är en annan sak, den står ingenstans på skärmen, och "lika mycket som sist" är
+ett svar på frågan man bär med sig. Kroppsviktsövningar ger noll volym och
+faller igenom till setjämförelsen i stället för att påstå `0 kg`.
+
+**TVÅ HÖJDSKULDER BETALADES PÅ VÄGEN, BÅDA MÄTTA.**
+
+1. *Raden före första setet kostade 16 px.* Den delar plats med
+   "Förra setet: …", men den raden finns bara EFTER första setet — och det är
+   före det som layoutvakten mäter. Betalt med fyra nerskruvade marginaler i
+   samma vy (22→14, 10→7, 12→10, 18→14). `SE pass ryms` igen.
+2. *Vilovyn scrollade +70 px så fort coachen sa något* — "Hoppa över vilan"
+   hamnade under skärmkanten. Det var sant redan när coachraden byggdes (#190),
+   men raden syntes sällan; nu talar coachen efter varje avslutad övning och
+   fallet blev det vanliga. Vilotimern krymper därför till 124 px när coachen
+   har något att säga (168 px annars). Storleken hänger på raden, inte på
+   tiden, så ringen ändrar aldrig storlek mitt i en vila. Mätt: +70 → +2 px.
+
+`Ring` skalar numera ALLT med storleken. Graden 40 och tjockleken 8 var
+hårdkodade och stämde bara för 168 px; med fast grad hade `00:00` runnit utanför
+sin egen cirkel. Andelarna är de gamla talen delade med 168, så den stora ringen
+är pixelidentisk med förut.
+
+**`verify-atlas2-pass.mjs` (port 8932) fick sju nya löften** på en egen
+SE-sida med seedad historik: raden före första setet, att passvyn ryms med den,
+tystnad på set 1 och 2, summan på sista setet, att vilovyn ryms med raden, och
+att "Hoppa över vilan" syns utan scroll. Historiken seedas i lagringen — ett helt
+föregående pass genom knappar är dussintals klick, och det som prövas är vyn.
+Det seedade passet har MEDVETET inget `workoutId`: med ett sådant väljer
+`nextWorkout` pass 2, vars första övning saknar historik, och då mäter man
+ingenting.
+
+**Kvar att mäta:** puls + coachrad samtidigt på SE ger fortfarande scroll
+(~36 px). Det var ~104 px före den här ändringen, så det är strikt bättre — men
+det är inte noll, och det står här för att det inte ska upptäckas som en nyhet.
 
 ## Matloggen bakåt i tiden
 

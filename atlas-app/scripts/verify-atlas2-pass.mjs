@@ -127,6 +127,106 @@ steg.push(`${kunde ? "OK " : "FEL"} set loggat med knapp (vila startade)`);
 await page.waitForTimeout(300);
 await kolla("vilotimern visas efter set", finnsText("VILA"));
 
+// ── COACHEN UNDER PASSET, MED HISTORIK ──────────────────────────────────────
+//
+// Egen sida i iPhone SE:s mått (375×667), för det här handlar lika mycket om
+// höjd som om text. Enhetstesterna täcker vad coachen SÄGER; det här täcker att
+// den når skärmen och att skärmen fortfarande rymmer passet.
+//
+// Historiken seedas i lagringen i stället för att loggas genom gränssnittet —
+// ett helt föregående pass via knappar är dussintals klick, och det som prövas
+// är vyn, inte loggningen.
+{
+  const sida = await browser.newPage({ viewport: { width: 375, height: 667 } });
+  sida.on("pageerror", e => fel.push("pageerror (vila): " + e.message));
+  const tryck = async t => sida.evaluate(x => {
+    const b = [...document.querySelectorAll("button")].find(k => (k.innerText || "").toLowerCase().includes(x.toLowerCase()));
+    if (b && !b.disabled) { b.click(); return true; } return false;
+  }, t);
+
+  await sida.goto("http://localhost:8932/"); await sida.waitForTimeout(800);
+  await tryck("Kom igång"); await sida.waitForTimeout(300);
+  await tryck("Riktig profil"); await sida.waitForTimeout(600);
+  await tryck("Välj program"); await sida.waitForTimeout(500);
+  await sida.evaluate(() => [...document.querySelectorAll("button")].find(x => /pass\/vecka/i.test(x.innerText || "")).click());
+  await sida.waitForTimeout(600);
+  await tryck("Tillbaka till hem"); await sida.waitForTimeout(600);
+
+  // INGET workoutId i det seedade passet: `nextWorkout` börjar då om på pass 1,
+  // så historiken gäller just den övning passet öppnar med. Med workoutId satt
+  // startas pass 2 och övningen har ingen historik — då mäter man ingenting.
+  await sida.evaluate(() => {
+    const progs = JSON.parse(localStorage.getItem("atlas.v3.programs") || "[]");
+    const pid = JSON.parse(localStorage.getItem("atlas.v3.activeProgramId") || "null");
+    const p = progs.find(x => x.id === pid) || progs[0];
+    const w = p.workouts[0], ex = w.exercises[0];
+    localStorage.setItem("atlas.v3.sessions", JSON.stringify([{
+      id: "tidigare", programId: p.id, title: w.name, completedAt: Date.now() - 3 * 864e5,
+      sets: [{ exerciseId: ex.exId, weight: 80, reps: 8 }, { exerciseId: ex.exId, weight: 80, reps: 8 }, { exerciseId: ex.exId, weight: 80, reps: 7 }],
+      muscleLoads: { quadriceps: 150 },
+    }]));
+  });
+  await sida.reload(); await sida.waitForTimeout(1400);
+  await tryck("Starta"); await sida.waitForTimeout(900);
+
+  const läge = () => sida.evaluate(() => {
+    const d = document.documentElement;
+    const text = s => { const e = document.querySelector(s); return e && e.innerText.replace(/\n/g, " "); };
+    const hoppa = [...document.querySelectorAll("button")].find(b => /hoppa över vilan/i.test(b.innerText || ""));
+    return {
+      över: d.scrollHeight - window.innerHeight,
+      sist: text('[data-sist-rad="1"]'),
+      coach: text('[data-coach-rad="1"]'),
+      hoppaSynlig: hoppa ? Math.round(hoppa.getBoundingClientRect().bottom) <= window.innerHeight : false,
+    };
+  });
+
+  // FÖRE FÖRSTA SETET står förra passets set där. Raden delar plats med
+  // "Förra setet: …" och får därför inte kosta höjd.
+  const start = await läge();
+  steg.push(`${/^Sist: 80 kg × 8, 8, 7$/.test(start.sist || "") ? "OK " : "FEL"} förra passets set syns före första setet (${start.sist})`);
+  steg.push(`${start.över <= 4 ? "OK " : "FEL"} passvyn ryms med raden (över ${start.över} px)`);
+
+  // Logga övningen klar med SAMMA vikt som förra passet. Då tiger coachen om
+  // de enskilda seten — och talar först när övningen är slut.
+  const tillEttiKg = async () => {
+    const kg = await sida.evaluate(() => {
+      const l = [...document.querySelectorAll("button")].map(b => b.getAttribute("aria-label") || "").find(x => /^Vikt /.test(x));
+      return parseFloat(((l || "").match(/Vikt ([\d,.]+)/) || [])[1].replace(",", "."));
+    });
+    const kliv = Math.round((kg - 80) / 2.5);
+    for (let i = 0; i < Math.abs(kliv); i++) {
+      await sida.evaluate(r => {
+        const b = [...document.querySelectorAll("button")].filter(k => k.getAttribute("aria-label") === r)[0];
+        if (b) b.click();
+      }, kliv > 0 ? "Minska" : "Öka");
+      await sida.waitForTimeout(45);
+    }
+  };
+  const antalSet = await sida.evaluate(() => {
+    const t = [...document.querySelectorAll("span")].map(s => s.innerText).find(x => /^Set \d+ av \d+/.test(x || ""));
+    return parseInt((t.match(/av (\d+)/) || [])[1], 10);
+  });
+  let sista = null;
+  for (let i = 1; i <= antalSet; i++) {
+    await tillEttiKg();
+    await tryck("Avsluta set"); await sida.waitForTimeout(600);
+    sista = await läge();
+    if (i < antalSet) {
+      steg.push(`${sista.coach === null ? "OK " : "FEL"} set ${i} av ${antalSet}: tystnad när setet är som sist`);
+      await sida.evaluate(() => { const b = [...document.querySelectorAll("button")].find(x => /hoppa över vilan/i.test(x.innerText || "")); if (b) b.click(); });
+      await sida.waitForTimeout(500);
+    }
+  }
+  // SISTA SETET: coachen byter nivå och sammanfattar hela övningen.
+  steg.push(`${/^Övningen klar: .*kg/.test(sista.coach || "") ? "OK " : "FEL"} sista setet ger övningens summa (${sista.coach})`);
+  // OCH VYN RYMMER DEN. Utan den här mätningen hamnade "Hoppa över vilan"
+  // under skärmkanten (+70 px) så fort coachen sa något.
+  steg.push(`${sista.över <= 4 ? "OK " : "FEL"} vilovyn ryms med coachens rad (över ${sista.över} px)`);
+  steg.push(`${sista.hoppaSynlig ? "OK " : "FEL"} "Hoppa över vilan" syns utan att scrolla`);
+  await sida.close();
+}
+
 console.log(steg.join("\n"));
 if (fel.length) { console.log("\nPAGE ERRORS:\n" + fel.join("\n")); process.exit(1); }
 if (steg.some(s => s.startsWith("FEL"))) process.exit(1);

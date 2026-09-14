@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, BFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, volt } from "./design.js";
 import { save, load } from "./store.js";
 import { restDoneCue, DEFAULT_CUES } from "../engines/cues.js";
-import { coachKommentar } from "../engines/coachKommentar.js";
+import { coachKommentar, förraPassetRad } from "../engines/coachKommentar.js";
 import { bluetoothStatus, connectHeartRate, hrIntensity, sessionPulsFält } from "../engines/hr.js";
 import { bästa1RM } from "../engines/utveckling.js";
 import { workoutExercises, alternativesFor } from "../engines/programs.js";
@@ -115,22 +115,31 @@ export function buildLive(program, workout, sessions) {
   };
 }
 
-function Ring({ kvar, av, storlek = 168 }) {
-  const r = (storlek - 14) / 2, omkrets = 2 * Math.PI * r;
+// ALLT I RINGEN SKALAR MED STORLEKEN.
+//
+// Talen var hårdkodade (grad 40, ringtjocklek 8) och stämde bara för 168 px.
+// Ringen krymper numera när coachen har något att säga, och med fast grad hade
+// "00:00" runnit utanför sin egen cirkel. Andelarna nedan är de gamla talen
+// delade med 168, så den stora ringen ser exakt likadan ut som förut.
+const RING_BAS = 168;
+function Ring({ kvar, av, storlek = RING_BAS }) {
+  const skala = storlek / RING_BAS;
+  const tjocklek = Math.max(5, Math.round(8 * skala));
+  const r = (storlek - tjocklek - 6) / 2, omkrets = 2 * Math.PI * r;
   const andel = av > 0 ? Math.max(0, Math.min(1, kvar / av)) : 0;
   const mm = String(Math.floor(kvar / 60)).padStart(2, "0");
   const ss = String(kvar % 60).padStart(2, "0");
   return (
     <svg width={storlek} height={storlek} style={{ display: "block" }} aria-label={`Vila ${mm}:${ss}`}>
-      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.track} strokeWidth="8" />
-      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.lime} strokeWidth="8"
+      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.track} strokeWidth={tjocklek} />
+      <circle cx={storlek / 2} cy={storlek / 2} r={r} fill="none" stroke={C.lime} strokeWidth={tjocklek}
         strokeLinecap="round" strokeDasharray={omkrets} strokeDashoffset={omkrets * (1 - andel)}
         transform={`rotate(-90 ${storlek / 2} ${storlek / 2})`}
         style={{ transition: "stroke-dashoffset 1s linear" }} />
       <text x="50%" y="49%" textAnchor="middle" dominantBaseline="middle"
-        style={{ fontFamily: HFONT, fontSize: 40, fontWeight: 800, fill: C.text }}>{mm}:{ss}</text>
+        style={{ fontFamily: HFONT, fontSize: Math.round(40 * skala), fontWeight: 800, fill: C.text }}>{mm}:{ss}</text>
       <text x="50%" y="68%" textAnchor="middle"
-        style={{ fontFamily: HFONT, fontSize: 12, letterSpacing: 2, fill: C.lime }}>VILA</text>
+        style={{ fontFamily: HFONT, fontSize: Math.max(9, Math.round(12 * skala)), letterSpacing: 2 * skala, fill: C.lime }}>VILA</text>
     </svg>
   );
 }
@@ -436,6 +445,9 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
   const totaltSet = live.items.reduce((a, x) => a + x.set, 0);
   const klaraSet = live.items.reduce((a, x) => a + x.loggade.length, 0);
   const förra = it && klara > 0 ? it.loggade[klara - 1] : null;
+  // Före det första setet finns inget "förra setet" att visa — men det finns ett
+  // förra PASS. Raden delar plats med den nedan och kostar därför ingen höjd.
+  const sistRad = it && klara === 0 ? förraPassetRad(it.senaste) : null;
 
   const saknarVikt = !!it && it.yttreVikt && !(vikt > 0);
 
@@ -818,15 +830,17 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
       )}
 
       {vila > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: coachRad ? 10 : 20 }}>
           {/* COACHENS RAD OM SETET. Under vilan, ovanför ringen — det är den
               enda stunden i passet man tittar på skärmen utan att göra något.
               Visas bara när det finns något att säga: ett set som är exakt
-              som förra gången ger tystnad, inte "samma som sist". */}
+              som förra gången ger tystnad, inte "samma som sist".
+              På sista setet i en övning byter den nivå och sammanfattar hela
+              övningen — då är även "exakt som förra passet" ett svar. */}
           {coachRad && (
             <div data-coach-rad="1" style={{
-              fontSize: 13, color: C.text, textAlign: "center", lineHeight: 1.5,
-              padding: "10px 16px", marginBottom: 14, maxWidth: 300,
+              fontSize: 13, color: C.text, textAlign: "center", lineHeight: 1.45,
+              padding: "9px 14px", marginBottom: 10, maxWidth: 300,
               borderLeft: `2px solid ${C.lime}`, background: volt(.05), borderRadius: "0 10px 10px 0",
               animation: "askrIn 220ms ease-out",
             }}>
@@ -846,17 +860,33 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
               </span>
             </div>
           )}
-          <Ring kvar={vila} av={it.vila} />
+          {/* RINGEN GER PLATS ÅT COACHEN — MÄTT, INTE GISSAT.
+              Vilovyn rymdes exakt på en iPhone SE utan coachrad (över: 0 px) och
+              sprack med den (+70 px): "Hoppa över vilan" hamnade under kanten.
+              Det var sant redan när raden byggdes, men raden syntes sällan; nu
+              talar coachen efter varje avslutad övning och fallet blev det
+              vanliga.
+              Storleken hänger på `coachRad`, inte på tiden, så ringen ändrar
+              aldrig storlek MITT i en vila — raden sätts i samma ögonblick som
+              vilan startar och ligger still tills den är slut. */}
+          <Ring kvar={vila} av={it.vila} storlek={coachRad ? 124 : 168} />
           <button onClick={() => {
             avbröt.current = true; slutTid.current = 0;
             setLive(l => ({ ...l, vilaSlut: 0 }));
             setVila(0);
           }}
-            style={{ ...btnGhost, marginTop: 16, maxWidth: 220 }}>Hoppa över vilan</button>
+            style={{ ...btnGhost, marginTop: coachRad ? 10 : 16, maxWidth: 220 }}>Hoppa över vilan</button>
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", flexDirection: layout.staplaStegare ? "column" : "row", gap: 12, marginTop: 22 }}>
+          {/* LUFTEN HÄR ÄR AVMÄTT, INTE VALD PÅ KÄNSLA.
+              Raden under stegarna står tom före första setet, och när förra
+              passets set flyttade in dit kostade de 16 px som iPhone SE inte
+              hade (layoutvakten mätte scroll +16). Marginalerna nedan är
+              nerskruvade precis så mycket att raden får plats — 22→14, 10→7,
+              12→10, 18→14 — och passvyn ryms igen. Ökas någon av dem tillbaka
+              spricker löftet, och vakten säger till. */}
+          <div style={{ display: "flex", flexDirection: layout.staplaStegare ? "column" : "row", gap: 12, marginTop: 14 }}>
             <div style={{ ...card, flex: 1, minWidth: 0, padding: "14px 3px" }}>
               <div style={{ ...label(), textAlign: "center", marginBottom: 8 }}>Vikt</div>
               <Steg värde={vikt} sätt={setVikt} steg={2.5} enhet="kg" valbart smal={layout.smalSkärm} />
@@ -867,16 +897,24 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             </div>
           </div>
 
-          {förra && (
-            <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 10 }}>
+          {/* EN RAD, TVÅ SVAR — SAMMA PLATS.
+              Mitt i övningen är det egna förra setet det man siktar mot. Före
+              det första setet finns inget sådant, och då är förra PASSETS set
+              det man vill se. Raden fanns redan men stod tom just då. */}
+          {förra ? (
+            <div style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 7 }}>
               Förra setet: {formatWeight(förra.vikt)} kg × {förra.reps}
             </div>
-          )}
+          ) : sistRad ? (
+            <div data-sist-rad="1" style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 7 }}>
+              {sistRad}
+            </div>
+          ) : null}
 
           {/* Rösten fyller bara stegarna — "Avsluta set" är fortfarande enda
               vägen in i loggen. */}
           <button onClick={lyssnaSet} style={{
-            ...btnGhost, marginTop: 12,
+            ...btnGhost, marginTop: 10,
             borderColor: röst && röst.läge === "lyssnar" ? C.lime : C.border,
             color: röst && röst.läge === "lyssnar" ? C.lime : C.text2,
           }}>
@@ -907,7 +945,7 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
           )}
 
           <button onClick={avslutaSet} disabled={saknarVikt}
-            style={{ ...btnPrimary, marginTop: 18, opacity: saknarVikt ? 0.4 : 1, cursor: saknarVikt ? "not-allowed" : "pointer" }}>
+            style={{ ...btnPrimary, marginTop: 14, opacity: saknarVikt ? 0.4 : 1, cursor: saknarVikt ? "not-allowed" : "pointer" }}>
             Avsluta set <span style={{ fontSize: 19 }}>✓</span>
           </button>
           {saknarVikt && (
