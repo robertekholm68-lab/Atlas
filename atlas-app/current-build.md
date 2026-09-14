@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1918 i 159 filer |
+| Tester (vitest) | 1933 i 160 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -125,7 +125,7 @@ Sporter med cardio-load: innebandy, Muay Thai.
 ## Struktur
 
 ### `src/engines/` — rena funktioner
-35 filer (räknade 2026-09-13). `index.js` (recovery, readiness,
+38 filer (räknade 2026-09-14). `index.js` (recovery, readiness,
 rekommendation, nutrition, systemisk fatigue, dataConfidence,
 formatterarna), `session.js`, `programs.js`, `goal.js`,
 `mission.js`, `bodyfat.js`, `machines.js`, `coach-programs.js`, `recipes.js`,
@@ -144,8 +144,10 @@ ur förpackning), `portioner` via `data/portions.js`, `intervju.js` (målintervj
 `malplan.js` och `malprogram.js`, `profil.js`, `utveckling.js` (kropp och styrka
 över tid, med Omron-import — och `epley1RM`, projektets enda 1RM-formel).
 
-Tillkommen i september: `coachKommentar.js` (coachens rad under vilan i passet —
-ren funktion, ett set in, en mening eller null ut).
+Tillkomna i september: `coachKommentar.js` (coachens rad under vilan i passet —
+ren funktion, ett set in, en mening eller null ut) och `dagsbesked.js`
+(hemvyns dagliga rad — flyttad hit från `store.js`, se "Hemvyns besked blev en
+daglig rad").
 
 **Varför-svaren får konsekvenser.** `reasonSignal` (ur `post-session.js`, kräver
 ≥3 svar inom 21 dagar) styr två saker — och två saker den INTE gör:
@@ -1849,6 +1851,45 @@ eller passerat.
 Ett eget testfall monterar hela `App2` med ett riktigt mål i lagringen och
 läser texten ur DOM:en. Motorn kan vara rätt och vägen fram ändå bruten —
 `nutritionTargets` fanns i motorn långt innan någon vy skickade in det.
+
+### Hemvyns besked blev en daglig rad (#200)
+
+`todaysMessage` läste av readiness och inget annat: "Quadriceps och bröst är
+redo för belastning." Sant varje dag, och därför **samma** varje dag. Den som
+öppnade appen efter ett pass, på en vilodag och efter en vecka utan träning
+möttes av samma mening i alla tre lägena.
+
+Funktionen flyttade till `engines/dagsbesked.js` som `dagensBesked` och läser
+nu hela historiken, inte bara kartan. Fyra lägen, mätta i webbläsaren:
+
+| Läge | Vad som står |
+|---|---|
+| Tränat i dag | `Passet är loggat: 14 set, 11 200 kg. Pectoralis Major och Triceps Brachii jobbar nu.` |
+| Sportpass i dag | `Passet är loggat. Quadriceps och Hamstrings jobbar nu.` |
+| Tränat i går | `I går: Push A. Triceps Brachii och Pectoralis Major är redo i dag.` |
+| Två dagar eller mer | `3 dagar sedan senaste passet. Triceps Brachii och Gluteals är redo.` |
+
+Tomt underlag är oförändrat ("Ingen historik än…") — `verify-atlas2.mjs`
+bevakar just den meningen.
+
+**Läget "tränat i dag" nämner inte readiness.** Kartan ovanför visar den redan
+i färg, och siffran är i rörelse resten av dygnet. **Nästa pass i programmet
+nämns inte heller** — det står redan under startknappen som "Föreslaget: …",
+och en coach som upprepar skärmen är brus.
+
+**`empty` sätts bara när det inte finns EN muskel med underlag.** Flaggan styr
+startknappens text ("Starta första passet"), så en vilovecka får inte sätta
+den. Eget testfall.
+
+**`sessionVolume` finns i två moduler och betyder olika saker.** `store.js`
+summerar vikt × reps och ger KILO; `index.js` summerar `muscleLoads` och ger en
+LAST utan enhet. Samma namn, två storheter — hämtas kilona ur fel modul blir
+"3 200 kg" ett lasttal, och ingenting ser trasigt ut. Ett testfall låser att
+beskedet räknar i kilo.
+
+**Ingen höjd kostade det.** Kartan är fortfarande 545 px på SE (mätt före och
+efter), eftersom beskedet delar plats med påminnelsen och hemkortet redan
+scrollar internt.
 
 ## Matloggen bakåt i tiden
 

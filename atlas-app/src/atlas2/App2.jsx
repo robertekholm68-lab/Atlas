@@ -6,7 +6,8 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { C, volt, HFONT, BFONT, hdr, label, btnPrimary, btnGhost, btnText, statRow, statCell, statusColor, orDash, DASH } from "./design.js";
-import { load, save, bodyState, todaysMessage, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout, identitet, migrera, stämplaLista, stämplaPost, identitetSync } from "./store.js";
+import { load, save, bodyState, weekSessions, lastSessionLabel, legacyAvailable, nextWorkout, identitet, migrera, stämplaLista, stämplaPost, identitetSync } from "./store.js";
+import { dagensBesked } from "../engines/dagsbesked.js";
 import { AskrWordmark, AskrLogo, FeatureIcon } from "../components/brand.jsx";
 import { BodyMap2 } from "./BodyMap2.jsx";
 import { BottomNav } from "./Nav.jsx";
@@ -182,7 +183,9 @@ function Home({ sessions, activeProgram, onStart, onOpen, layout, nutRec, nudge,
     [sessions.length, nutRec]
   );
   const rd = kropp.readiness;
-  const besked = todaysMessage(states, sessions.length);
+  // Beskedet läser hela historiken, inte bara kartan: vad du gjorde senast är
+  // det som gör meningen ny från en dag till nästa.
+  const besked = dagensBesked({ states, sessions, now });
   const nw = activeProgram ? nextWorkout(activeProgram, sessions) : null;
   const vecka = weekSessions(sessions, now).length;
   const senast = lastSessionLabel(sessions, now);

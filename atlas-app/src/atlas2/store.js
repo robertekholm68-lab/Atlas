@@ -105,24 +105,15 @@ export function bodyState(sessions, nowMs = Date.now()) {
   };
 }
 
-/**
- * Ett besked i EN mening: vad kroppen säger idag.
- * Härlett, aldrig hårdkodat. Utan underlag sägs det rakt ut.
- */
-export function todaysMessage(states, sessionCount) {
-  const namn = id => (MUSCLES[id] && MUSCLES[id].name) || id;
-  const med = Object.entries(states).filter(([, s]) => s.status !== "no_data" && s.readiness != null);
-  if (!med.length) return { text: "Ingen historik än. Logga ett pass så börjar kartan färgas.", empty: true };
-
-  const redo = med.filter(([, s]) => s.readiness >= 76).sort((a, b) => b[1].readiness - a[1].readiness);
-  const trött = med.filter(([, s]) => s.readiness < 56).sort((a, b) => a[1].readiness - b[1].readiness);
-  const lista = arr => arr.slice(0, 2).map(([id]) => namn(id)).join(" och ");
-
-  if (redo.length && trött.length) return { text: `${lista(redo)} är redo. ${namn(trött[0][0])} behöver mer vila.` };
-  if (redo.length) return { text: `${lista(redo)} är redo för belastning.` };
-  if (trött.length) return { text: "Kroppen behöver återhämtning idag. Ta det lugnt eller vila." };
-  return { text: "Måttlig beredskap över hela kroppen." };
-}
+// HEMVYNS BESKED BOR I `engines/dagsbesked.js`.
+//
+// Här låg `todaysMessage`, som läste av readiness och inget annat. Den flyttade
+// dit när beskedet blev en daglig coachrad som också känner till när du tränade
+// senast och vad passet innehöll — regler av det slaget hör hemma bland
+// motorerna, hos `nudges.js` och `coachKommentar.js`, inte i lagringen.
+//
+// Den ligger på EN plats, inte två. Ett besked som beskrivs både här och där
+// slutar stämma på det ena stället, och ingen märker vilket.
 
 /**
  * Volym för ett pass, i kg.
