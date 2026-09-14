@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1898 i 159 filer |
+| Tester (vitest) | 1918 i 159 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -899,7 +899,9 @@ och sport- och cardiologgning.
 - LLM-coach (BYOK, desktop): **grundad i §13 + utdata-grindad** (se "Coachens
   faktakälla"). Grunden är byggd. Den PROAKTIVA delen är byggd i #190: fyra
   nudges på hemvyn och en kommentar under passets vila, båda regelbaserade
-  och nätfria. Kvar är den MÅLDRIVNA coachingen ovanpå målresan.
+  och nätfria. Den MÅLDRIVNA coachingen är byggd i #199 (se "Coachen blev
+  aktiv"). Kvar är bara den AI-skrivna dagliga raden — den kostar per
+  användning och hör till premiumnivån, inte till grundappen.
 - Tillgänglighetsgenomgång — åtgärdat: synlig tangentbordsfokus, ark som
   `role="dialog"` + Escape, aria på fält, AA-upplyst `nodata`/`border`,
   `prefers-reduced-motion`. Kvar: träffytor ≥44 px (matvyn, väntar på blick).
@@ -1802,6 +1804,51 @@ påhittad siffra.
 ett pass 07:00 plus en app öppnad 19:30 samma dag ligger 12,5 h isär, och 36 h
 efter ett kvällspass är i förrgår. `dagsord()` räknar i kalenderdygn via
 `startOfLocalDay`.
+
+### Coachen tog upp målet själv (#199)
+
+De fem påminnelserna ovan hänger alla på KROPPEN — vad den tål, vad den hann,
+var den står. Ingen av dem visste vart du är på väg. Coachen kunde läget mot
+planen hela tiden (`planLäge` i `malplan.js` räknar avvikelsen varje gång
+målvyn öppnas) men sa det bara till den som själv gick dit och frågade. Det är
+skillnaden mellan en karta och en guide, och det var svaret på "coachen är inte
+så aktiv": den var aktiv om kroppen, stum om målet.
+
+**Tre nya påminnelser i `buildNudges`**, alla ur samma `planLäge` som coachvyn
+— räknades de om här kunde hemvyn och coachvyn säga olika saker om samma plan:
+
+- **`malpass`** när de loggade passen hamnat under planens takt. Tystnar så
+  fort ett styrkepass loggats i dag: den som just tränat ska inte mötas av att
+  den ligger efter. Ett sportpass räknas inte — planens pass är styrkepass,
+  samma filter som `malplan.js`.
+- **`malvikt`** i två skepnader, där den mer specifika vinner: ett viktdelmål
+  inom två dagar är en deadline, en saknad eller för gammal vägning är ett
+  underlagsproblem. Motorns eget skäl skrivs ut ordagrant ("senaste vägningen
+  är för gammal — väg dig"), aldrig en extrapolerad kurva.
+- **`malslut`** när måldatumet passerat — och då sägs inget annat om planen.
+  En avvikelse mot en kurva som tagit slut är ingen åtgärd.
+
+**Rangordningen ändrades:** protein, sedan MÅLET, sedan kroppen. Målet slår
+frånvaro med flit. Båda säger "träna", men "2 pass efter planen mot Ner 5 kg"
+är ett skäl medan "fyra dagar sedan senaste passet" är en observation.
+
+**ETT UNDERSKOTT MAN INTE KAN TA IGEN ÄR SKULD, INTE ETT BESLUT.**
+`passAvvikelse` räknas från resans start och växer varje missad vecka. "20 pass
+efter planen" är sant men bryter regel 3 i `nudges.js` — en påminnelse ska gå
+att åtgärda direkt, och tjugo pass gör ingen ikapp. Vid mer än två veckors
+glapp byter påminnelsen därför både text och mål: takten man satte är inte den
+man har, och det åtgärdbara är planen, inte dagens pass.
+
+**Riktningen på vikten sägs inte i nudgen.** Om en vikt över kurvan betyder
+före eller efter beror på om resan går upp eller ner, och den tolkningen bor i
+`målfokus` (`facts.js`). Att upprepa den i nudges hade varit en andra sanning
+om samma tal — påminnelserna håller sig till det som är entydigt oavsett
+riktning: att ett pass saknas, att en vägning saknas, att ett datum är nära
+eller passerat.
+
+Ett eget testfall monterar hela `App2` med ett riktigt mål i lagringen och
+läser texten ur DOM:en. Motorn kan vara rätt och vägen fram ändå bruten —
+`nutritionTargets` fanns i motorn långt innan någon vy skickade in det.
 
 ## Matloggen bakåt i tiden
 
