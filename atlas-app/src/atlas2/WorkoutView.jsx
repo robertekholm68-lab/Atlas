@@ -43,13 +43,26 @@ function PulsKnapp({ puls, kopplad, ålder, onClick }) {
     <button onClick={onClick} data-puls="1"
       aria-label={kopplad ? `Puls ${puls != null ? puls : "—"} slag/min — tryck för att koppla ner` : "Koppla pulsband"}
       title={zon || undefined}
+      // SYNS SOM EN KNAPP, INTE SOM DEKOR.
+      //
+      // Ikonen ritades i C.text2 (#9A9A9A) utan ram — mot #0A0A0A blev den en
+      // grå fläck som gick att missa, och ingenting sa att den gick att trycka
+      // på. Ram och yta gör båda sakerna på en gång, och samma form som
+      // "Byt"-pillren i setraden: appen har redan ett språk för en liten knapp.
+      //
+      // HÖJDEN ÄR OFÖRÄNDRAD. 34 px är samma mått som platshållaren den
+      // ersatte; passvyn är den enda vy som måste rymmas utan scroll, och den
+      // har noll slack (mätt i CI två gånger).
       style={{
-        background: "none", border: "none", cursor: "pointer", padding: 6, minWidth: 34, minHeight: 34,
-        display: "flex", alignItems: "baseline", justifyContent: "center", gap: 3,
-        color: kopplad ? C.critical : C.text2, fontFamily: MONO,
+        background: kopplad ? "rgba(255,92,92,0.12)" : C.card2,
+        border: `1px solid ${kopplad ? C.critical : C.border}`,
+        borderRadius: 999, cursor: "pointer",
+        padding: kopplad ? "0 10px 0 8px" : 0, minWidth: 34, height: 34,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+        color: kopplad ? C.critical : C.text, fontFamily: MONO,
       }}>
-      <Ikon name="puls" size={17} color={kopplad ? C.critical : C.text2} fylld={kopplad} />
-      {kopplad && <span style={{ fontSize: 14, color: C.text }}>{puls != null ? puls : "—"}</span>}
+      <Ikon name="puls" size={19} color={kopplad ? C.critical : C.text} fylld={kopplad} />
+      {kopplad && <span style={{ fontSize: 14.5, color: C.text, lineHeight: 1 }}>{puls != null ? puls : "—"}</span>}
     </button>
   );
 }
@@ -657,12 +670,18 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             vy som måste rymmas utan scroll (verify-atlas2-layout.mjs), och en
             ny rad hade kostat just den höjden — samma läxa som matvyns
             dagsväljare. Chipet delar raden med musikknappen. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <PulsKnapp puls={puls} kopplad={!!pulsEnhet} ålder={ålder} onClick={kopplaPuls} />
+          {/* Samma form som pulschipet bredvid. Två knappar med samma uppgift
+              — öppna något — ska se likadana ut, annars ser den ena ut som en
+              knapp och den andra som en symbol. Bredden är kvar på 34 px. */}
           <button onClick={() => setMusik(true)} data-musik="1" aria-label="Träningsmusik"
-            style={{ background: "none", border: "none", color: C.text2,
-              cursor: "pointer", padding: 6, width: 34, lineHeight: 0 }}>
-            <Ikon name="musik" size={19} color={C.text2} />
+            style={{
+              background: C.card2, border: `1px solid ${C.border}`, borderRadius: 999,
+              color: C.text, cursor: "pointer", padding: 0, width: 34, height: 34,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+            <Ikon name="musik" size={19} color={C.text} />
           </button>
         </div>
       </div>
