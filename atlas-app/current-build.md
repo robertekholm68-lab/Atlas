@@ -2060,6 +2060,17 @@ lovar faller vid varje omritning och säger ingenting om det som betyder något.
 Assertionen prövar nu bredden, plus en ny rad som kräver att vyerna ritar `Ikon`
 och inte glyfer.
 
+**Sedan blev de synligare (#205).** Ritade som vektor men fortfarande i
+`C.text2` (#9A9A9A) utan ram blev de grå fläckar mot #0A0A0A, och ingenting sa
+att de gick att trycka på. Båda är nu runda chip: `C.card2`-yta, 1 px ram,
+vit ikon i 19 px — samma formspråk som "Byt"-pillren i setraden, så appen
+använder ett språk för en liten knapp och inte två.
+
+Kopplat band gör pulsen till ett rött piller med fyllt hjärta och pulstalet
+(70×34 px). **Höjden är oförändrad: 34 px, samma mått som platshållaren de
+ersatte.** Passvyn är den enda vy som måste rymmas utan scroll och den har noll
+slack — mätt efteråt, både okopplad och kopplad: scroll 0.
+
 **Läxan är värd att behålla:** mät i CI, inte bara lokalt. Skillnaden är liten
 och konstant, men i en vy utan slack är liten och konstant precis det som
 avgör.
