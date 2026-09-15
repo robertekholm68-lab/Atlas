@@ -21,6 +21,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { C, HFONT, MONO, hdr, label, card, btnPrimary, btnGhost, volt } from "./design.js";
+import { Ikon } from "./ikoner.jsx";
 import { lookupBarcode, tolkaPortion } from "../engines/index.js";
 import { DEKLARATION_SYSTEM, tolkaDeklaration, stämmerMakron } from "../engines/deklaration.js";
 
@@ -314,7 +315,7 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
                 style={{ display: "none" }} aria-hidden />
               <button onClick={() => dekFil.current && dekFil.current.click()}
                 data-fota-deklaration="1" style={{ ...btnPrimary, marginTop: 14 }}>
-                ◉ Fota näringsdeklarationen
+                <Ikon name="kamera" size={17} color="currentColor" /> Fota näringsdeklarationen
               </button>
             </div>
           )}
@@ -374,7 +375,7 @@ export function Streckkod({ onLägg, onStäng, onSpara }) {
             style={{ display: "none" }} aria-hidden />
           <button onClick={() => prodFil.current && prodFil.current.click()}
             data-fota-produkt="1" style={{ ...btnGhost, marginTop: 11 }}>
-            ◉ Fota produkten
+            <Ikon name="kamera" size={17} color="currentColor" /> Fota produkten
           </button>
         </div>
       )}

@@ -937,7 +937,8 @@ export function WorkoutView({ live, setLive, sessions, setSessions, onDone, onAb
             borderColor: röst && röst.läge === "lyssnar" ? C.lime : C.border,
             color: röst && röst.läge === "lyssnar" ? C.lime : C.text2,
           }}>
-            {röst && röst.läge === "lyssnar" ? "◼ Lyssnar — tryck för att avbryta" : "🎤 Säg set — ”åttio åtta”"}
+            <Ikon name={röst && röst.läge === "lyssnar" ? "stopp" : "mikrofon"} size={17} color="currentColor" />
+            {röst && röst.läge === "lyssnar" ? " Lyssnar — tryck för att avbryta" : " Säg set — ”åttio åtta”"}
           </button>
 
           {röst && röst.läge === "fel" && (

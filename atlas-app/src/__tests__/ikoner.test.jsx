@@ -19,7 +19,19 @@ import { C } from "../atlas2/design.js";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const NAMN = ["hem", "pass", "mat", "utveckling", "coachen", "puls", "musik"];
+const NAMN = ["hem", "pass", "mat", "utveckling", "coachen", "puls", "musik",
+  "mikrofon", "stopp", "streckkod", "kamera", "skafferi", "sport"];
+
+// TVÅ IKONER ÄR FYLLDA, OCH BÅDA BETYDER ETT TILLSTÅND.
+//
+// `puls` fylls när bandet är kopplat (och bara då — eget testfall nedan).
+// `stopp` är alltid fylld: en stoppruta i kontur läses som en tom ruta, och
+// fylld fyrkant är konventionen för "spelar in, tryck för att sluta". Mätt i
+// 15 px, den storlek matvyns knapp ritar den.
+//
+// Listan finns för att undantaget ska stå SKRIVET. Utan den hade nästa ikon
+// som råkade få en fyllning glidit in obemärkt.
+const FYLLDA = ["stopp"];
 
 describe("ikonerna", () => {
   let root, el;
@@ -68,12 +80,17 @@ describe("ikonerna", () => {
   });
 
   it("ingen ikon är fylld av bara farten", () => {
-    for (const name of NAMN) {
+    for (const name of NAMN.filter(n => !FYLLDA.includes(n))) {
       const svg = rita({ name, size: 23 });
       [...svg.querySelectorAll("path, rect, circle, ellipse")]
         .forEach(f => expect(f.getAttribute("fill"), name).toBe("none"));
       act(() => root.unmount()); el.remove(); root = null; el = null;
     }
+  });
+
+  it("stoppikonen är fylld i användarens färg — annars läses den som en tom ruta", () => {
+    const svg = rita({ name: "stopp", color: C.lime });
+    expect(svg.querySelector("rect").getAttribute("fill")).toBe(C.lime);
   });
 
   it("ett okänt namn ger coachen, inte ett tomt hål", () => {
@@ -84,10 +101,14 @@ describe("ikonerna", () => {
 describe("vyerna ritar ikoner, inte tecken", () => {
   // ♥ ♡ ♫ ärver inte linjevikten, sitter på egna baslinjer och ser olika ut på
   // varje telefon. Kommer de tillbaka ska det synas här och inte på en skärm.
-  const filer = ["WorkoutView.jsx", "SportView.jsx", "Nav.jsx", "Shell.jsx"];
+  const filer = ["WorkoutView.jsx", "SportView.jsx", "Nav.jsx", "Shell.jsx",
+    "FoodView.jsx", "Streckkod.jsx", "MachineGuide.jsx"];
   it.each(filer)("%s använder inga glyfikoner", fil => {
     const src = readFileSync(resolve("src/atlas2", fil), "utf8");
-    expect(src).not.toMatch(/[♥♡♫♪]/);
+    // ♥ ♡ ♫ ärvde inte linjevikten. 🎤 och 🏅 var FÄRGEMOJI mitt i en yta med
+    // en enda accentfärg, och såg dessutom olika ut på varje telefon. ▥ ▤ ◉ ◼
+    // var geometritecken som fick agera ikoner — ◉ lästes som en radioknapp.
+    expect(src).not.toMatch(/[♥♡♫♪🎤🏅▥▤◉◼⚙]/);
   });
 
   it("passikonen är en hantel, inte den oläsbara armen", () => {
