@@ -1993,6 +1993,42 @@ ingenting.
 var ~104 px före den här ändringen, så det är strikt bättre — men det är inte
 noll, och det står här för att det inte ska upptäckas som en nyhet.
 
+### Lanseringsunderlaget (#206)
+
+Uppskattningen av hur nära lansering vi är gav ett entydigt svar: **koden är inte
+flaskhalsen.** Det som saknades var tre saker utanför den, och två av dem var
+mina att göra.
+
+**Integritetspolicy** — `landing/integritet.html`, publicerad på
+`robertekholm68-lab.github.io/Atlas/integritet.html`. Google Play kräver en
+publik URL, och en länk som ger 404 stoppar en butikspublicering; därför ligger
+filen i deployens verifieringslista och inte bara i kopieringssteget.
+
+Innehållet är **avläst ur koden, inte antaget**. Fem saker lämnar telefonen och
+det står vilka: coachfrågor, foton (måltid och maskin — de går genom samma
+`/api/coach`-endpoint till Anthropic), streckkoder, sökord till Open Food Facts
+och testarformulärets text. IP-adressen läses av proxyn för en enda sak —
+takräkningen i minnet — och det står i klartext. `byggUnderlag` skickar härledda
+siffror, aldrig namn eller rå historik, och det kontrollerades i koden innan det
+skrevs.
+
+**Butikstext** — `lansering/play-butikstext.md`: appnamn, kort och fullständig
+beskrivning, kategori, och svaren till datasäkerhetsformuläret med stöd i koden.
+Teckengränserna är räknade, inte uppskattade (20 / 78 / 2 127 tecken). Siffrorna
+i texten är räknade ur datan: 160 övningar, 87 med teknikpunkter, 58 med bild,
+276 recept, 2 679 livsmedel.
+
+**Play-ikonen** — `lansering/play-ikon-512.png`. `atlas-icon-512.webp` och
+`-mask.webp` har en **rundad platta med skugga inbakad i bilden**. Google rundar
+hörnen själv, både i butiken och på hemskärmen, så en inbakad platta ger en
+platta i en platta med dubbel skugga. Den nya är gjord ur `askr-symbol.webp`:
+full yta, appens svärta ut i kanten, märket på 66 % av bredden, optiskt lyft sex
+pixlar eftersom det är tyngre nedtill.
+
+**`lansering/README.md`** är checklistan för resten — assetlinks i rotdomänen
+(inte i Atlas-repot, verifieringen läser alltid roten), TWA-bygget, Play Console,
+och vad som medvetet INTE ska göras nu: betalningen, App Store och fler språk.
+
 ### Kvittot svarar på målet (#203)
 
 Sammanfattningen på kvittot säger vad passet gjorde med KROPPEN — vilka grupper

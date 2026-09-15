@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Askr — integritetspolicy</title>
+<meta name="description" content="Vad Askr sparar, vad som lamnar telefonen och vem som behandlar det." />
+<meta name="theme-color" content="#0A0A0A" />
+<link rel="icon" type="image/webp" href="./askr-symbol.webp" />
+<link rel="apple-touch-icon" href="./atlas-icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Samma palett som appen (src/atlas2/design.js) och testarsidan. */
+  :root{
+    --bg:#0A0A0A; --card:#141414; --border:#232323; --field:#66666E;
+    --text:#FFFFFF; --text2:#C8CCD2; --muted:#8A8F98; --lime:#D4FF00;
+    --h:'Roboto Condensed','Arial Narrow',sans-serif;
+    --b:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--b);
+    -webkit-font-smoothing:antialiased; line-height:1.65; overflow-x:hidden;
+    padding:0 20px calc(56px + env(safe-area-inset-bottom));}
+  .wrap{max-width:620px; margin:0 auto}
+  header{padding:28px 0 0; display:flex; align-items:center; gap:11px}
+  .mark{width:36px; height:36px; flex:none; display:block}
+  .name{font-family:var(--h); font-weight:800; font-size:28px; letter-spacing:.02em}
+  h1{font-family:var(--h); font-weight:800; font-size:clamp(26px,7vw,36px); line-height:1.05;
+    margin:24px 0 0; text-transform:uppercase; overflow-wrap:anywhere}
+  .datum{color:var(--muted); font-size:13px; margin:10px 0 0}
+  h2{font-family:var(--h); font-weight:700; font-size:15px; letter-spacing:.05em;
+    text-transform:uppercase; margin:34px 0 10px; color:var(--lime)}
+  p{color:var(--text2); font-size:15px; margin:0 0 13px}
+  ul{color:var(--text2); font-size:15px; padding-left:20px; margin:0 0 13px}
+  li{margin:0 0 9px}
+  b{color:var(--text)}
+  .kort{background:var(--card); border:1px solid var(--field); border-radius:16px;
+    padding:20px 22px; margin:18px 0 0}
+  .kort p:last-child, .kort ul:last-child{margin-bottom:0}
+  table{width:100%; border-collapse:collapse; font-size:14px; color:var(--text2); margin:0 0 13px}
+  th,td{text-align:left; padding:9px 10px 9px 0; border-bottom:1px solid var(--border); vertical-align:top}
+  th{color:var(--text); font-weight:600; font-size:13px}
+  a{color:var(--lime)}
+  footer{margin:44px 0 0; color:var(--muted); font-size:12px; text-align:center}
+  @media print{ :root{--bg:#fff;--card:#fff;--text:#000;--text2:#111;--muted:#444;--border:#bbb;--field:#888}
+    body{padding:0} h2{color:#000} a{color:#000} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img class="mark" src="./askr-symbol.webp" alt="" />
+    <span class="name">Askr</span>
+  </header>
+
+  <h1>Integritetspolicy</h1>
+  <p class="datum">Senast ändrad 15 september 2026 · gäller appen Askr och sidorna på
+    <code>robertekholm68-lab.github.io/Atlas/</code></p>
+
+  <div class="kort">
+    <h2 style="margin-top:0">Kort version</h2>
+    <p><b>Din träningsdata stannar i din telefon.</b> Det finns inget konto, ingen
+      inloggning och ingen databas hos mig. Jag kan inte se vad du tränar, vad du
+      väger eller vad du äter.</p>
+    <p><b>Fem saker lämnar telefonen, och bara när du själv gör något som kräver det:</b>
+      en fråga till coachen, ett foto du tar, en streckkod du skannar, ett sökord i
+      livsmedelssökningen, och text du skickar via testformuläret. Inget av det sker
+      i bakgrunden.</p>
+    <p style="margin-bottom:0"><b>Ingen spårning, inga kakor, ingen annonsering,
+      ingen försäljning av data.</b> Till någon, någonsin.</p>
+  </div>
+
+  <h2>Det som stannar i telefonen</h2>
+  <p>Allt du loggar sparas lokalt i webbläsarens lagring på din enhet:</p>
+  <ul>
+    <li>Pass, övningar, set, vikter och reps</li>
+    <li>Kroppsvikt, kroppsmått och mätningar</li>
+    <li>Matlogg, näringsmål och egna recept</li>
+    <li>Mål och målresa</li>
+    <li>Profil: namn, ålder, kön, längd — om du fyller i dem</li>
+    <li>Sömn, vilopuls och HRV som du importerat ur en exportfil</li>
+    <li>Pulsdata från ett anslutet pulsband</li>
+  </ul>
+  <p>Ingenting av det skickas någonstans. Det betyder också två saker du bör veta:
+    <b>ingen automatisk säkerhetskopia</b> — raderar du appens data eller byter
+    telefon är den borta om du inte exporterat en backupfil — och <b>ingen synk</b>
+    mellan enheter.</p>
+
+  <h2>Det som lämnar telefonen</h2>
+  <table>
+    <tr><th>När</th><th>Vad som skickas</th><th>Till</th></tr>
+    <tr>
+      <td>Du ställer en fråga till coachen</td>
+      <td>Din fråga, plus härledda träningssiffror: beredskap, muskelnamn,
+        veckovolym, programnamn, eventuellt proteinmål och målets namn.
+        <b>Aldrig ditt namn, din e-post eller din råa historik.</b></td>
+      <td>Anthropic (Claude), via min server</td>
+    </tr>
+    <tr>
+      <td>Du fotograferar en måltid eller en gymmaskin</td>
+      <td><b>Bilden</b>, nedskalad, tillsammans med frågan om vad som syns på den.</td>
+      <td>Anthropic (Claude), via min server</td>
+    </tr>
+    <tr>
+      <td>Du skannar en streckkod</td>
+      <td>Streckkodens siffror.</td>
+      <td>Anthropic (Claude), via min server</td>
+    </tr>
+    <tr>
+      <td>Du söker ett livsmedel</td>
+      <td>Sökordet.</td>
+      <td>Open Food Facts, via min server</td>
+    </tr>
+    <tr>
+      <td>Du skickar synpunkter i testformuläret</td>
+      <td>Texten du skrivit, namnet du fyllt i, och vilken webbläsare och telefon du
+        använder.</td>
+      <td>Min e-post, via e-posttjänsten Resend</td>
+    </tr>
+  </table>
+  <p>Skriver du något personligt i en fråga till coachen eller i målintervjun följer
+    det med — texten skickas som du skrev den. Det är värt att veta innan du skriver
+    något du inte vill dela.</p>
+
+  <h2>Vilka som behandlar datan</h2>
+  <ul>
+    <li><b>Anthropic</b> — behandlar coachens frågor och bilder för att kunna svara.</li>
+    <li><b>Vercel</b> — driver den lilla server som håller API-nyckeln, så att den
+      inte ligger i appen där vem som helst kan läsa den.</li>
+    <li><b>Resend</b> — skickar testarformulärets meddelanden som e-post till mig.</li>
+    <li><b>Open Food Facts</b> — öppen livsmedelsdatabas, tar emot sökordet.</li>
+    <li><b>GitHub Pages</b> — levererar själva appen och de här sidorna.</li>
+  </ul>
+  <p>Jag har inget avtal med dig om var dessa företag i sin tur lagrar sina loggar,
+    och jag tänker inte påstå att jag kontrollerar det. Var och en har sina egna
+    villkor.</p>
+
+  <h2>IP-adress</h2>
+  <p>Min server läser din IP-adress för <b>en</b> sak: att räkna anrop per adress så
+    att en trasig loop eller någon som håller inne en knapp inte kan kosta mig
+    tusentals kronor. Räkningen ligger i minnet och försvinner när servern startas
+    om. Den sparas inte i någon databas och kopplas inte till dig.</p>
+  <p>Utöver det ser GitHub Pages och Vercel din IP-adress i sina vanliga
+    serverloggar, precis som varje webbplats du besöker.</p>
+
+  <h2>Behörigheter appen kan be om</h2>
+  <ul>
+    <li><b>Kamera</b> — bara när du fotograferar en måltid, en maskin eller en
+      streckkod. Bilden skickas för tolkning (se tabellen ovan) och sparas inte hos
+      mig.</li>
+    <li><b>Mikrofon</b> — bara när du trycker på röstknappen för att säga ett set.
+      Taligenkänningen görs av telefonens eget system.</li>
+    <li><b>Bluetooth</b> — bara när du kopplar ett pulsband. Pulsen går direkt från
+      bandet till telefonen och lämnar den aldrig.</li>
+    <li><b>Plats</b> — används av GPS-utepass i den äldre versionen av appen. Positionen
+      stannar i telefonen.</li>
+    <li><b>Notiser</b> — bara om du säger ja, och bara för signalen när vilan är slut.</li>
+  </ul>
+
+  <h2>Dina rättigheter</h2>
+  <p>Eftersom datan ligger i din telefon har du full kontroll över den utan att behöva
+    fråga mig:</p>
+  <ul>
+    <li><b>Se och ändra</b> — allt finns i appen och går att rätta eller ta bort.</li>
+    <li><b>Ta ut</b> — Meny → Historik → Datasäkerhet exporterar allt till en fil.</li>
+    <li><b>Radera</b> — avinstallera appen eller rensa webbplatsens data i webbläsaren,
+      så är allt borta. Jag har ingen kopia att radera.</li>
+  </ul>
+  <p>Vill du att jag raderar något du skickat till mig i testformuläret, hör av dig så
+    gör jag det.</p>
+
+  <h2>Barn</h2>
+  <p>Askr är inte gjord för barn under 13 år och samlar inte medvetet in något om dem.</p>
+
+  <h2>Om policyn ändras</h2>
+  <p>Ändras det som står här uppdateras datumet högst upp. Blir ändringen betydande —
+    till exempel att något nytt börjar lämna telefonen — säger appen till.</p>
+
+  <h2>Kontakt</h2>
+  <p>Robert Ekholm · <a href="mailto:robert.ekholm68@gmail.com">robert.ekholm68@gmail.com</a></p>
+
+  <footer>Askr · kroppen är gränssnittet</footer>
+
+</div>
+</body>
+</html>
