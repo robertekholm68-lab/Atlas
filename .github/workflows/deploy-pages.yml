@@ -121,6 +121,10 @@ jobs:
           # Testarsidan: handbyggd fil som byggena inte producerar, kopieras rakt
           # in i sajten (samma mönster som landningssidan).
           cp landing/test.html "$site/test.html"
+          # Integritetspolicyn. Google Play KRÄVER en publik URL till den, och en
+          # länk som ger 404 stoppar en butikspublicering — därför ligger den i
+          # verifieringslistan nedan och inte bara här.
+          cp landing/integritet.html "$site/integritet.html"
           # Utan .nojekyll strippar Pages filer som börjar med _ (och kan bråka
           # med andra namn). Krävs.
           touch "$site/.nojekyll"
@@ -130,7 +134,7 @@ jobs:
           set -e
           site="$GITHUB_WORKSPACE/_site"
           # Adressen får inte ändras: atlas2.html i roten.
-          for f in atlas2.html app.html mobile.html index.html test.html sw.js sw-atlas2.js atlas2.webmanifest .nojekyll; do
+          for f in atlas2.html app.html mobile.html index.html test.html integritet.html sw.js sw-atlas2.js atlas2.webmanifest .nojekyll; do
             test -f "$site/$f" || { echo "FEL: $f saknas i sajten"; exit 1; }
           done
           # Receptbilderna ska vara 134 (samma som källorna i src/assets/recipes).
@@ -146,7 +150,7 @@ jobs:
           # publiceras som en trasig bild eller en 404-favicon utan att något
           # larmar (hände när askr-mark.* togs bort).
           saknas=0
-          for html in "$site"/index.html "$site"/test.html "$site"/atlas2.html; do
+          for html in "$site"/index.html "$site"/test.html "$site"/integritet.html "$site"/atlas2.html; do
             test -f "$html" || continue
             for ref in $(grep -ohE '(href|src)="\./[^"]+\.(webp|png|jpg|json)"' "$html" \
                          | sed -E 's/.*"\.\/([^"]+)".*/\1/' | sort -u); do
