@@ -21,6 +21,7 @@ import { läggISkafferi, skafferiFrånPost, sorteratSkafferi, redanISkafferiet, 
 import { FotoMaltid } from "./FotoMaltid.jsx";
 import { useLayout } from "./layout.js";
 import { C, HFONT, MONO, hdr, label, btnPrimary, btnGhost, btnText, card, statRow, statCell, orDash, DASH, volt } from "./design.js";
+import { Ikon } from "./ikoner.jsx";
 import { FOOD_INDEX } from "../data/foods.js";
 import { RECIPES } from "../data/recipes.js";
 import { grupperaMåltider, måltidAvTid, MÅLTID_SV, MÅLTID_ORDNING } from "../engines/recipes.js";
@@ -697,7 +698,10 @@ function SnabbLogg({ onLägg, onLoggad, skafferi = [] }) {
           boxShadow: lyssnar && nivå > 0.05
             ? `0 0 0 ${Math.round(2 + nivå * 7)}px ${volt(0.16)}` : "none",
           transition: "box-shadow 90ms linear",
-        }}>{lyssnar ? "◼" : "🎤"}</button>
+        }}>
+          <Ikon name={lyssnar ? "stopp" : "mikrofon"} size={19}
+            color={stöd.ok ? (lyssnar ? C.lime : C.text) : C.muted} />
+        </button>
       </div>
       {röstNote && <div style={{ fontSize: 11.5, color: C.recovering, lineHeight: 1.5, marginTop: 8 }}>{röstNote}</div>}
 
@@ -1082,7 +1086,7 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
         border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer",
         fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
       }}>
-        <span aria-hidden style={{ fontSize: 15 }}>▥</span> Skanna streckkod
+        <Ikon name="streckkod" size={16} color="currentColor" /> Skanna streckkod
       </button>
 
       {/* SKAFFERIET. Varorna gick bara att nå via sökning — vill man rätta ett
@@ -1098,7 +1102,7 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
           color: visarSkafferi ? C.lime : C.text, cursor: "pointer",
           fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
         }}>
-          <span aria-hidden style={{ fontSize: 15 }}>▤</span> Skafferiet ({skafferi.length})
+          <Ikon name="skafferi" size={16} color="currentColor" /> Skafferiet ({skafferi.length})
         </button>
       )}
 
@@ -1221,7 +1225,7 @@ function Logga({ onLägg, foodLog, skafferi = [], setSkafferi, onLoggad, onErbju
         border: `1px solid ${C.border}`, background: C.card2, color: C.text, cursor: "pointer",
         fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
       }}>
-        <span aria-hidden style={{ fontSize: 15 }}>◉</span> Fota måltiden
+        <Ikon name="kamera" size={16} color="currentColor" /> Fota måltiden
       </button>
 
       <input value={sök} onChange={e => setSök(e.target.value)} placeholder="Sök livsmedel…"

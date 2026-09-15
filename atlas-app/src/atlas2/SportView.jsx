@@ -30,7 +30,7 @@ import { sportIcons, ensureSportIcons, onSportIcons } from "../data/sport-icons.
  * Renderingen skrivs här i stället för att återanvända `components/common`,
  * som drar in gamla appens tokens och lucide-react. Delad LOGIK, egen yta.
  */
-function SportIkon({ id, emoji = "🏅", size = 30 }) {
+function SportIkon({ id, size = 30 }) {
   const [, tick] = useState(0);
   useEffect(() => {
     if (sportIcons()) return;
@@ -40,7 +40,9 @@ function SportIkon({ id, emoji = "🏅", size = 30 }) {
   }, []);
   const lib = sportIcons();
   const svg = lib ? (lib[id] || lib[LEGACY_MAP[id]]) : null;
-  if (!svg) return <span style={{ fontSize: Math.round(size * 0.8), lineHeight: 1 }}>{emoji}</span>;
+  // RESERV UTAN FÄRG. Var en guldmedalj i emoji — identisk för varje aktivitet,
+  // och det enda färgade på skärmen medan filen hämtades.
+  if (!svg) return <span style={{ display: "inline-flex", lineHeight: 0 }}><Ikon name="sport" size={size} color={C.text2} /></span>;
   return (
     <span aria-hidden style={{ display: "inline-flex", width: size, height: size, lineHeight: 0 }}
       dangerouslySetInnerHTML={{ __html: svg.replace("<svg ", `<svg width="${size}" height="${size}" `) }} />
@@ -185,7 +187,7 @@ export function SportView({ onLogg, onClose, profile = null }) {
                           background: vald ? volt(0.06) : C.card2,
                           borderColor: vald ? C.lime : C.border, color: C.text,
                         }}>
-                        <SportIkon id={p.id} emoji={p.typ === "machine" ? "⚙️" : "🏅"} size={28} />
+                        <SportIkon id={p.id} size={28} />
                         <span style={{ fontSize: 11, lineHeight: 1.25, textAlign: "center" }}>{p.namn}</span>
                       </button>
                     );

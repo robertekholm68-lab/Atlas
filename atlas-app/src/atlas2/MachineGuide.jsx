@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { C, HFONT, hdr, label, btnText, card, volt } from "./design.js";
+import { Ikon } from "./ikoner.jsx";
 import { ersättandeÖvningar } from "../engines/machines.js";
 import { EXERCISES } from "../data/exercises.js";
 import { MACHINE_TYPES, MACHINE_MODELS, RESISTANCE_TYPES } from "../data/machines.js";
@@ -101,7 +102,7 @@ export function MachineGuide({ onClose }) {
         border: `1px solid ${C.border}`, background: C.card2, color: C.text,
         fontFamily: HFONT, fontSize: 12, fontWeight: 700, letterSpacing: 1.1, textTransform: "uppercase",
       }}>
-        <span aria-hidden style={{ fontSize: 15 }}>▥</span> Skanna maskin
+        <Ikon name="streckkod" size={16} color="currentColor" /> Skanna maskin
       </button>
 
       <input value={sök} onChange={e => setSök(e.target.value)}

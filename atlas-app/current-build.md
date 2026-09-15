@@ -107,7 +107,7 @@ Container nollställs mellan sessioner. Varaktig källa = repot
 | Övningar med teknikpunkter (`TEKNIK_CUES`) | 87 av 160 |
 | Kunskapsposter | 21 |
 | Kosttillskott | 25 |
-| Tester (vitest) | 1974 i 162 filer |
+| Tester (vitest) | 1978 i 162 filer |
 | DOM-skript | 18 |
 
 **"Maskiner 124" var tre listor hopslagna.** Siffran stod så i den här filen
@@ -2106,6 +2106,28 @@ Kopplat band gör pulsen till ett rött piller med fyllt hjärta och pulstalet
 (70×34 px). **Höjden är oförändrad: 34 px, samma mått som platshållaren de
 ersatte.** Passvyn är den enda vy som måste rymmas utan scroll och den har noll
 slack — mätt efteråt, både okopplad och kopplad: scroll 0.
+
+**Sist föll resten av glyfikonerna (#207).** Sex stycken, alla i samma familj:
+`🎤` mikrofon och `🏅` sportreserv var **färgemoji** mitt i en yta med en enda
+accentfärg, och såg dessutom olika ut på varje telefon. `▥` streckkod, `▤`
+skafferi, `◉` kamera och `◼` stopp var geometritecken som fick agera ikoner —
+`◉` lästes som en radioknapp, inte som en kamera.
+
+Alla sex ritades upp i **flera varianter och granskades i 15 px**, den storlek
+matvyns knappar faktiskt använder. Det sorterade bort två som såg bra ut i
+stort: en streckkod med hörnparenteser blev gröt, och hyllor för skafferiet
+lästes som en punktlista (en burk gör det inte).
+
+**`stopp` är fylld, och det är det andra undantaget från "aldrig fyllda ytor".**
+En stoppruta i kontur läses som en tom ruta; fylld fyrkant är konventionen för
+"spelar in, tryck för att sluta". Undantagen står i en egen lista i testet
+(`FYLLDA`) så att nästa ikon som råkar få en fyllning inte glider in obemärkt.
+
+**Bocken `✓` lämnades kvar** på sina fem ställen. Den står inne i knapptexter
+("Spara mål ✓", "Avsluta set ✓") som en typografisk detalj, inte som en ikon —
+den återges likadant överallt och har inget att vinna på att bli ritad.
+
+Glyfvakten i `ikoner.test.jsx` täcker nu sju filer och alla tretton tecknen.
 
 **Läxan är värd att behålla:** mät i CI, inte bara lokalt. Skillnaden är liten
 och konstant, men i en vy utan slack är liten och konstant precis det som
